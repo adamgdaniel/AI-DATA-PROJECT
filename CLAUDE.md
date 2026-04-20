@@ -62,7 +62,9 @@ _Escribe aquí las instrucciones específicas para que Claude trabaje en la part
 # 👥 EQUIPO IA
 
 _Escribe aquí las instrucciones específicas para que Claude trabaje en la parte del modelo de IA._
-
 -
--
--
+-Rol y Colaboración: Desarrollo exclusivo del motor predictivo en Python puro. La infraestructura (Terraform, bases de datos) la gestiona Data. Toda comunicación entre equipos será mediante APIs y esquemas JSON estrictos
+-Visión Computacional (Satélite): Procesamiento de bandas como tensores bidimensionales. Es obligatorio usar NumPy y vectorización masiva. Prohibido usar bucles (for/while) para iterar píxeles
+-Forecasting (Clima): Uso de Pandas y Prophet para predecir series temporales. Salida obligatoria en escenarios probabilísticos (P25 pesimista, P50 neutro, P75 optimista)
+-Motor Agronómico: El déficit hídrico se calcula integrando IA y física mediante la ecuación FAO-56 (Penman-Monteith) ajustada por el Coeficiente de Cultivo, no con Redes Neuronales de caja negra.
+Despliegue (MLOps): Código modular y seguro (controlando errores como la división por cero). Todo debe empaquetarse en contenedores Docker stateless listos para Cloud Run
