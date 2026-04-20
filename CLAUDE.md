@@ -7,6 +7,10 @@ Este archivo lo lee Claude automáticamente en cada sesión. Lo que escribas aqu
 
 ---
 
+# Concepto del proyecto
+Vamos a desarrollar un proyecto para el master de Data/IA. Se trata de una herramienta agéntica centrada en el seguimiendo y cuidado de plantaciones agrícolas. El usuario podrá logearse, interactuar con un front end desplegado en un cloud run, y la herramienta se conectará a varias APIs públicas para obtener información, y usará contexto a nivel de usuario y memoria. 
+Todos los recursos que crees deben ser lo más limitados posibles para que la aplicación funcione con pocos usuarios, pero reudciendo el coste de recursos al máximo.
+
 # Contexto del Proyecto
 
 ## Stack
@@ -24,7 +28,8 @@ DP3/
 ├── data-processing/          ← 👥 EQUIPO DATA
 ├── model-training/           ← 👥 EQUIPO IA 
 ├── model-serving/            ← 👥 EQUIPO IA
-└── api/                      ← 👥 EQUIPO DATA
+├── api/                      ← 👥 EQUIPO DATA
+└── frontend/                 ← 👥 EQUIPO DATA/IA
 ```
 
 ## Regla básica
@@ -49,6 +54,8 @@ _Escribe aquí las instrucciones específicas para que Claude trabaje en la part
 - El proyecto se guarda en un repo público de Git, todas las claves e información sensible debe ir con variables de entorno y/o secretos de GCP.
 - Todo debe ejecutarse con CI/CD
 - Todas las conexiones externas deben ir con APIs. 
+- El equipo está formado por perfiles junior, limita la complejidad de los scripts y herramientas usadas.
+- Si en algún prompt las instrucciones no estan lo suficientemente claras, pregunta al usuario antes de hacer freestyle.
 
 ---
 
