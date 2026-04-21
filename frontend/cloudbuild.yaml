@@ -1,0 +1,14 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/login-frontend:latest', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/login-frontend:latest']
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - run
+      - deploy
+      - login-frontend
+      - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/login-frontend:latest
+      - --region=europe-west1
+      - --platform=managed

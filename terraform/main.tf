@@ -1,0 +1,129 @@
+# --- Artifact Registry ---
+resource "google_artifact_registry_repository" "login" {
+  location      = var.region
+  repository_id = "login-repo"
+  format        = "DOCKER"
+}
+
+# --- Service Account para Cloud Run ---
+resource "google_service_account" "cloudrun" {
+  account_id   = "cloudrun-login"
+  display_name = "Cloud Run Login SA"
+}
+
+resource "google_project_iam_member" "cloudrun_cloudsql" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.cloudrun.email}"
+}
+
+# --- Cloud SQL ---
+resource "google_sql_database_instance" "main" {
+  name             = "login-db"
+  database_version = "POSTGRES_15"
+  region           = var.region
+
+  settings {
+    tier = "db-f1-micro"
+  }
+
+  deletion_protection = false
+}
+
+resource "google_sql_database" "main" {
+  name     = "logindb"
+  instance = google_sql_database_instance.main.name
+}
+
+resource "google_sql_user" "main" {
+  name     = "loginuser"
+  instance = google_sql_database_instance.main.name
+  password = var.db_password
+}
+
+# --- Cloud Run: API ---
+resource "google_cloud_run_v2_service" "api" {
+  name     = "login-api"
+  location = var.region
+
+  template {
+    service_account = google_service_account.cloudrun.email
+
+    containers {
+      image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
+
+      env {
+        name  = "INSTANCE_CONNECTION_NAME"
+        value = google_sql_database_instance.main.connection_name
+      }
+      env {
+        name  = "DB_NAME"
+        value = google_sql_database.main.name
+      }
+      env {
+        name  = "DB_USER"
+        value = google_sql_user.main.name
+      }
+      env {
+        name  = "DB_PASSWORD"
+        value = var.db_password
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+    }
+
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.main.connection_name]
+      }
+    }
+  }
+
+  # Cloud Build actualizará la imagen; ignoramos cambios en template tras el primer apply
+  lifecycle {
+    ignore_changes = [template]
+  }
+
+  depends_on = [google_project_iam_member.cloudrun_cloudsql]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "api_public" {
+  project  = var.project_id
+  location = google_cloud_run_v2_service.api.location
+  name     = google_cloud_run_v2_service.api.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# --- Cloud Run: Frontend ---
+resource "google_cloud_run_v2_service" "frontend" {
+  name     = "login-frontend"
+  location = var.region
+
+  template {
+    containers {
+      image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
+
+      env {
+        name  = "API_URL"
+        value = google_cloud_run_v2_service.api.uri
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [template]
+  }
+}
+
+resource "google_cloud_run_v2_service_iam_member" "frontend_public" {
+  project  = var.project_id
+  location = google_cloud_run_v2_service.frontend.location
+  name     = google_cloud_run_v2_service.frontend.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}

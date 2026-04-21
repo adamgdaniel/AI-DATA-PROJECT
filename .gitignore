@@ -1,0 +1,5 @@
+terraform.tfvars
+.env
+terraform/.terraform/
+terraform/terraform.exe
+*.exe
