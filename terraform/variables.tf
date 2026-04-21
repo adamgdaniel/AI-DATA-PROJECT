@@ -6,6 +6,10 @@ variable "region" {
   default = "europe-west1"
 }
 
+variable "project_number" {
+  default = "874385889107"
+}
+
 variable "db_password" {
   sensitive = true
 }
