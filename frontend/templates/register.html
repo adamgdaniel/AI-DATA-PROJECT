@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Registro</title>
+  <style>
+    body { font-family: sans-serif; display: flex; justify-content: center; margin-top: 100px; }
+    form { display: flex; flex-direction: column; gap: 6px; width: 250px; }
+    input { padding: 8px; font-size: 14px; }
+    button { padding: 8px; background: #333; color: white; border: none; cursor: pointer; margin-top: 4px; }
+    .error { color: red; font-size: 12px; margin: 0; }
+  </style>
+</head>
+<body>
+  <form method="POST">
+    <h2>Crear cuenta</h2>
+    <input type="text" name="username" placeholder="Usuario" required>
+    {% if errors.username %}<p class="error">{{ errors.username }}</p>{% endif %}
+    <input type="email" name="email" placeholder="Email" required>
+    {% if errors.email %}<p class="error">{{ errors.email }}</p>{% endif %}
+    <input type="password" name="password" placeholder="Contraseña" required>
+    <input type="password" name="password2" placeholder="Repite contraseña" required>
+    {% if errors.password2 %}<p class="error">{{ errors.password2 }}</p>{% endif %}
+    <button type="submit">Registrarse</button>
+    <a href="/" style="text-align:center; font-size:13px;">Ya tengo cuenta</a>
+  </form>
+</body>
+</html>

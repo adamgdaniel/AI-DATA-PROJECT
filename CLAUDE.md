@@ -9,6 +9,7 @@ Este archivo lo lee Claude automáticamente en cada sesión. Lo que escribas aqu
 
 # Concepto del proyecto
 Vamos a desarrollar un proyecto para el master de Data/IA. Se trata de una herramienta agéntica centrada en el seguimiendo y cuidado de plantaciones agrícolas. El usuario podrá logearse, interactuar con un front end desplegado en un cloud run, y la herramienta se conectará a varias APIs públicas para obtener información, y usará contexto a nivel de usuario y memoria. 
+La idea es que al entrar al front end y logearse, el usuario verá un mapa (creado idealmente con React) con las parcelas agrícolas que vamos a delimitar usando una capa a partir de la API de SIGPAC, que nos proporciona los polígonos y coordenadas de las parcelas. El usuario puede clickar sobre una parcela y "reclamarla" (asignarla como suya). Al hacer esto aparecerá un pequeño formulario donde el usuario (agricultor) tendrá que indicar tipo y varidead de cosecha (naranjas navelinas, manzanos golden, ...) y el año aproximado de siembra, en caso de ser cultivo de arbol. Eso guardará en una base de datos está relación e información. La herramienta hará el seguimiento de los indicadores de la parcela (lluvia, temperatura, humedad, etc) tanto de los últimos 30 dias como de las previsiones, información obtenida a través de la API de AEMET (o servicio similar). Esta la usará el modelo de IA (entrenado con cuidados necesarios de múltiples cultivos) para hacer las sugerencias e indicaciones de cuando haria falta regar un campo, abonarlo, etc. El agricultor también puede marcar estas acciones como hechas a través de la UI para cada campo, para que el modelo sepa que aunque hace x dias que no llueve, el agricultor regó hace 3 dias, por ejemplo, y mostrar en la UI las recomendaciones para cada parcela. 
 Todos los recursos que crees deben ser lo más limitados posibles para que la aplicación funcione con pocos usuarios, pero reudciendo el coste de recursos al máximo.
 
 # Contexto del Proyecto
@@ -56,6 +57,7 @@ _Escribe aquí las instrucciones específicas para que Claude trabaje en la part
 - Todas las conexiones externas deben ir con APIs. 
 - El equipo está formado por perfiles junior, limita la complejidad de los scripts y herramientas usadas.
 - Si en algún prompt las instrucciones no estan lo suficientemente claras, pregunta al usuario antes de hacer freestyle.
+- El proyecto debe funcionar cuando cambiemos a otra cuenta/proyecto de GCP, por lo que la infraestructira completa debe definirse con terraform, inclusive los permisos de Service accounts.
 
 ---
 
