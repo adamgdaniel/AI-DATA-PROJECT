@@ -136,6 +136,27 @@ resource "google_cloud_run_v2_service" "frontend" {
   }
 }
 
+# --- Cloud Build trigger: login-api ---
+resource "google_cloudbuild_trigger" "login_api" {
+  name        = "login-api-deploy"
+  description = "Build y redeploy de la API de login al hacer push a main"
+  location    = var.region
+
+  github {
+    owner = "adamgdaniel"
+    name  = "AI-DATA-PROJECT"
+    push {
+      branch = "^main$"
+    }
+  }
+
+  included_files = ["logging/api/**"]
+
+  filename = "logging/api/cloudbuild.yaml"
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
 resource "google_cloud_run_v2_service_iam_member" "frontend_public" {
   project  = var.project_id
   location = google_cloud_run_v2_service.frontend.location

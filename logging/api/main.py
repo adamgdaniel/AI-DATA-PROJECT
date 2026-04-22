@@ -77,7 +77,7 @@ def registrar_parcela():
         cur.execute("""
             INSERT INTO parcelas_usuario
                 (usuario_id, parcela_id, provincia, municipio, poligono, parcela, recinto,
-                 cultivo, superficie, lat, lng)
+                cultivo, superficie, lat, lng)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             usuario_id, parcela_id,
@@ -106,7 +106,7 @@ def obtener_parcelas():
     cur = conn.cursor()
     cur.execute("""
         SELECT parcela_id, provincia, municipio, poligono, parcela, recinto,
-               cultivo, superficie, lat, lng, fecha_registro
+            cultivo, superficie, lat, lng, fecha_registro
         FROM parcelas_usuario
         WHERE usuario_id = %s
         ORDER BY fecha_registro DESC
