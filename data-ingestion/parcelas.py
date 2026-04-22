@@ -1,0 +1,16 @@
+{
+    "valencia_citricos": {
+    "ref_catastral": "46017A018000410000IE",
+    "subparcela": "b",
+    "municipio": "Aigües Vives",
+    "provincia": "Valencia",
+    "comunidad": "Comunitat Valenciana",
+    "cultivo": "citricos",
+    "superficie_ha": 4.96,
+    "superficie_total_parcela_ha": 7.5,
+    "regadio": true,
+    "lat": 39.0790,
+    "lon": -0.3240,
+    "notas": "Para datos meteorológicos se usa el centroide general (resolución 1km, equivalente para toda la parcela). Para procesamiento satelital (NDVI), recortar únicamente la subparcela b (naranjos, zona rectangular con filas regulares). La parcela catastral completa incluye zona de monte al sureste que se excluye del análisis."
+    }
+}
