@@ -13,3 +13,5 @@ steps:
       - --region=europe-west1
       - --platform=managed
       - --update-env-vars=TEST_USERNAME=testuser,TEST_PASSWORD=testpassword
+options:
+  logging: CLOUD_LOGGING_ONLY
