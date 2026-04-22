@@ -1,12 +1,215 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Bienvenido</title>
+  <meta charset="utf-8"/>
+  <title>AgroMonitor — Mis Parcelas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
-    body { font-family: sans-serif; display: flex; justify-content: center; margin-top: 100px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+    header {
+      background: #2d6a4f; color: white;
+      padding: 12px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    header span { font-weight: bold; font-size: 16px; }
+    header a { color: #b7e4c7; font-size: 13px; text-decoration: none; }
+    #container { display: flex; flex: 1; overflow: hidden; }
+    #map { flex: 1; }
+    #sidebar {
+      width: 300px; overflow-y: auto;
+      border-left: 1px solid #ddd;
+      padding: 16px; background: #f9f9f9;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    #zoom-hint {
+      font-size: 12px; color: #888; background: #fff3cd;
+      border: 1px solid #ffc107; border-radius: 4px; padding: 8px;
+    }
+    #info-panel {
+      background: white; border: 1px solid #ccc;
+      border-radius: 6px; padding: 14px; display: none;
+    }
+    #info-panel h3 { color: #2d6a4f; margin-bottom: 10px; font-size: 14px; }
+    .field { margin-bottom: 8px; font-size: 13px; }
+    .field label { font-weight: bold; display: block; margin-bottom: 2px; }
+    select {
+      width: 100%; padding: 7px; margin-top: 4px;
+      border-radius: 4px; border: 1px solid #ccc; font-size: 13px;
+    }
+    .btn {
+      width: 100%; padding: 9px; margin-top: 10px;
+      border-radius: 4px; border: none;
+      background: #2d6a4f; color: white;
+      cursor: pointer; font-size: 13px;
+    }
+    .btn:hover { background: #1b4332; }
+    #msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+    #mis-parcelas h3 { color: #333; font-size: 14px; margin-bottom: 10px; }
+    .parcela-item {
+      background: white; border: 1px solid #ddd;
+      border-radius: 4px; padding: 10px; margin-bottom: 8px; font-size: 12px;
+    }
+    .parcela-item strong { display: block; color: #2d6a4f; margin-bottom: 4px; }
+    #empty-msg { font-size: 13px; color: #888; }
   </style>
 </head>
 <body>
-  <h2>You're logged in</h2>
+  <header>
+    <span>AgroMonitor</span>
+    <a href="/logout">Cerrar sesión</a>
+  </header>
+  <div id="container">
+    <div id="map"></div>
+    <div id="sidebar">
+      <div id="zoom-hint">
+        Acércate al mapa (zoom &ge; 14) y haz clic sobre una parcela para seleccionarla.
+      </div>
+
+      <div id="info-panel">
+        <h3>Parcela seleccionada</h3>
+        <div class="field"><label>Referencia SIGPAC</label><span id="f-ref">-</span></div>
+        <div class="field"><label>Superficie</label><span id="f-sup">-</span> ha</div>
+        <div class="field"><label>Uso SIGPAC</label><span id="f-uso">-</span></div>
+        <div class="field">
+          <label>Cultivo</label>
+          <select id="f-cultivo">
+            <option value="">-- Seleccionar cultivo --</option>
+            <option>Trigo</option>
+            <option>Cebada</option>
+            <option>Maíz</option>
+            <option>Girasol</option>
+            <option>Naranjos</option>
+            <option>Limoneros</option>
+            <option>Olivos</option>
+            <option>Vid</option>
+            <option>Almendros</option>
+            <option>Tomate</option>
+            <option>Pimiento</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <button class="btn" onclick="registrarParcela()">Registrar como mía</button>
+        <div id="msg"></div>
+      </div>
+
+      <div id="mis-parcelas">
+        <h3>Mis parcelas</h3>
+        <div id="empty-msg">Cargando...</div>
+        <div id="lista-parcelas"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([40.0, -3.7], 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    L.tileLayer.wms('https://wms.mapama.gob.es/wms/wms.aspx', {
+      layers: 'AU.Sigpac:recinto',
+      format: 'image/png',
+      transparent: true,
+      version: '1.1.1',
+      opacity: 0.6
+    }).addTo(map);
+
+    let selectedParcel = null;
+
+    map.on('click', function(e) {
+      if (map.getZoom() < 14) return;
+
+      const params = new URLSearchParams({
+        lat: e.latlng.lat,
+        lng: e.latlng.lng,
+        zoom: map.getZoom()
+      });
+
+      fetch('/sigpac-info?' + params)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.features || data.features.length === 0) {
+            document.getElementById('info-panel').style.display = 'none';
+            return;
+          }
+          const p = data.features[0].properties;
+          selectedParcel = {
+            provincia:  p.provincia,
+            municipio:  p.municipio,
+            agregado:   p.agregado ?? 0,
+            zona:       p.zona ?? 0,
+            poligono:   p.poligono,
+            parcela:    p.parcela,
+            recinto:    p.recinto,
+            superficie: p.superficie,
+            lat: p.lat ?? e.latlng.lat,
+            lng: p.lng ?? e.latlng.lng
+          };
+          document.getElementById('f-ref').textContent =
+            `${p.provincia}-${p.municipio}-${p.poligono}-${p.parcela}-${p.recinto}`;
+          document.getElementById('f-sup').textContent = p.superficie ?? '-';
+          document.getElementById('f-uso').textContent = p.uso_sigpac ?? '-';
+          document.getElementById('msg').textContent = '';
+          document.getElementById('f-cultivo').value = '';
+          document.getElementById('info-panel').style.display = 'block';
+        })
+        .catch(() => {
+          document.getElementById('msg').textContent = 'Error consultando SIGPAC.';
+        });
+    });
+
+    function registrarParcela() {
+      const cultivo = document.getElementById('f-cultivo').value;
+      if (!cultivo) {
+        document.getElementById('msg').textContent = 'Selecciona un cultivo primero.';
+        return;
+      }
+      fetch('/registrar-parcela', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...selectedParcel, cultivo })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('msg').textContent = '✓ Parcela registrada.';
+          document.getElementById('info-panel').style.display = 'none';
+          selectedParcel = null;
+          cargarParcelas();
+        } else {
+          document.getElementById('msg').textContent = data.error || 'Error al registrar.';
+        }
+      })
+      .catch(() => {
+        document.getElementById('msg').textContent = 'Error de conexión.';
+      });
+    }
+
+    function cargarParcelas() {
+      fetch('/mis-parcelas')
+        .then(r => r.json())
+        .then(parcelas => {
+          const lista = document.getElementById('lista-parcelas');
+          const emptyMsg = document.getElementById('empty-msg');
+          if (parcelas.length === 0) {
+            emptyMsg.textContent = 'Aún no tienes parcelas registradas.';
+            lista.innerHTML = '';
+          } else {
+            emptyMsg.textContent = '';
+            lista.innerHTML = parcelas.map(p => `
+              <div class="parcela-item">
+                <strong>${p.parcela_id}</strong>
+                ${p.cultivo}${p.superficie ? ' · ' + p.superficie + ' ha' : ''}
+              </div>
+            `).join('');
+          }
+        });
+    }
+
+    cargarParcelas();
+  </script>
 </body>
 </html>

@@ -1,9 +1,39 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, jsonify, redirect, url_for
 import requests
+import math
 import os
 
 app = Flask(__name__)
+app.secret_key = os.environ['SECRET_KEY']
 API_URL = os.environ['API_URL']
+SIGPAC_HEADERS = {'Referer': 'https://sigpac.mapa.gob.es/fega/visor/', 'User-Agent': 'Mozilla/5.0'}
+
+
+def _lat_lng_to_tile(lat, lng, zoom):
+    n = 2 ** zoom
+    x = int((lng + 180) / 360 * n)
+    lat_r = math.radians(lat)
+    xyz_y = int((1 - math.log(math.tan(lat_r) + 1 / math.cos(lat_r)) / math.pi) / 2 * n)
+    tms_y = n - 1 - xyz_y  # SIGPAC uses TMS (Y axis inverted vs standard XYZ)
+    return x, tms_y
+
+
+def _to_mercator(lat, lng):
+    x = lng * 20037508.342789244 / 180
+    y = math.log(math.tan((90 + lat) * math.pi / 360)) / (math.pi / 180)
+    y = y * 20037508.342789244 / 180
+    return x, y
+
+
+def _point_in_ring(px, py, ring):
+    inside = False
+    j = len(ring) - 1
+    for i, (xi, yi) in enumerate(ring):
+        xj, yj = ring[j]
+        if ((yi > py) != (yj > py)) and (px < (xj - xi) * (py - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    return inside
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -15,9 +45,130 @@ def login():
             'password': request.form['password']
         })
         if resp.status_code == 200:
-            return render_template('success.html')
+            session['user_id'] = resp.json().get('user_id', 1)
+            return redirect(url_for('mapa'))
         error = 'Usuario o contraseña incorrectos'
     return render_template('login.html', error=error)
+
+
+@app.route('/mapa')
+def mapa():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('success.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+
+@app.route('/sigpac-info')
+def sigpac_info():
+    lat = float(request.args.get('lat'))
+    lng = float(request.args.get('lng'))
+    tile_zoom = 15
+    tx, ty = _lat_lng_to_tile(lat, lng, tile_zoom)
+    tile_url = f'https://sigpac.mapa.gob.es/vectorsdg/vector/parcela@3857/{tile_zoom}.{tx}.{ty}.geojson'
+
+    try:
+        resp = requests.get(tile_url, headers=SIGPAC_HEADERS, timeout=8)
+        print(f"[SIGPAC tile] {resp.status_code} | {tile_url}")
+        if resp.status_code != 200:
+            return jsonify({'features': []}), 200
+
+        geojson = resp.json()
+        px, py = _to_mercator(lat, lng)
+        features = geojson.get('features', [])
+        print(f"[SIGPAC tile] {len(features)} features | click mercator: ({px:.0f}, {py:.0f})")
+        print(f"[SIGPAC tile raw] {resp.text[:300]}")
+        if features:
+            first_geom = features[0].get('geometry', {})
+            first_coords = first_geom.get('coordinates', [[]])[0]
+            if first_coords:
+                print(f"[SIGPAC tile] first ring sample: {first_coords[:2]}")
+        found_props = None
+
+        for feature in features:
+            geom = feature.get('geometry', {})
+            coords = geom.get('coordinates', [])
+            hit = False
+            if geom.get('type') == 'Polygon':
+                hit = _point_in_ring(px, py, coords[0])
+            elif geom.get('type') == 'MultiPolygon':
+                hit = any(_point_in_ring(px, py, poly[0]) for poly in coords)
+            if hit:
+                found_props = feature.get('properties', {})
+                print(f"[SIGPAC tile props] {found_props}")
+                break
+
+        if not found_props:
+            return jsonify({'features': []}), 200
+
+        p = found_props
+        prov = p.get('provincia', p.get('prov', p.get('PROVINCIA', '')))
+        mun  = p.get('municipio',  p.get('mun',  p.get('MUNICIPIO', '')))
+        agr  = p.get('agregado',   p.get('agr',  0))
+        zon  = p.get('zona',       p.get('zon',  0))
+        pol  = p.get('poligono',   p.get('pol',  p.get('POLIGONO', '')))
+        par  = p.get('parcela',    p.get('par',  p.get('PARCELA', '')))
+        ref  = f"{prov},{mun},{agr},{zon},{pol},{par}"
+
+        info_url = f'https://sigpac.mapa.gob.es/fega/serviciosvisorsigpac/layerinfo/parcela/{ref}/'
+        info_resp = requests.get(info_url, headers=SIGPAC_HEADERS, timeout=5)
+        print(f"[SIGPAC info] {info_resp.status_code} | {info_url} | {info_resp.text[:400]}")
+
+        if info_resp.status_code != 200:
+            return jsonify({'features': [{'properties': found_props}]}), 200
+
+        info = info_resp.json()
+        ids = info.get('id', [])
+        parcela_info = info.get('parcelaInfo', {})
+        first_recinto = (info.get('query') or [{}])[0]
+
+        normalized = {
+            'provincia': int(ids[0]) if len(ids) > 0 else prov,
+            'municipio':  int(ids[1]) if len(ids) > 1 else mun,
+            'agregado':   int(ids[2]) if len(ids) > 2 else agr,
+            'zona':       int(ids[3]) if len(ids) > 3 else zon,
+            'poligono':   int(ids[4]) if len(ids) > 4 else pol,
+            'parcela':    int(ids[5]) if len(ids) > 5 else par,
+            'recinto':    first_recinto.get('recinto', 1),
+            'superficie': round((parcela_info.get('dn_surface') or 0) / 10000, 4),
+            'uso_sigpac': first_recinto.get('uso_sigpac', ''),
+            'lat': lat,
+            'lng': lng
+        }
+        return jsonify({'features': [{'properties': normalized}]})
+
+    except Exception as e:
+        print(f"[SIGPAC] Error: {e}")
+        return jsonify({'features': []}), 200
+
+
+@app.route('/mis-parcelas')
+def mis_parcelas():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    try:
+        resp = requests.get(f'{API_URL}/parcelas', params={'user_id': session['user_id']})
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify([]), 200
+
+
+@app.route('/registrar-parcela', methods=['POST'])
+def registrar_parcela():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    data = request.json
+    data['user_id'] = session['user_id']
+    resp = requests.post(f'{API_URL}/parcelas', json=data)
+    try:
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': f'API no disponible (status {resp.status_code})'}), 502
 
 
 if __name__ == '__main__':

@@ -1,0 +1,72 @@
+{
+  "citricos": {
+    "nombre": "Naranjo",
+    "nombre_cientifico": "Citrus sinensis",
+    "tipo": "perenne",
+    "kc_inicio": 0.7,
+    "kc_desarrollo": 0.65,
+    "kc_medio": 0.7,
+    "kc_final": 0.7,
+    "profundidad_raiz_m": 1.2,
+    "tolerancia_sequia": "baja",
+    "riego_tipico": "goteo",
+    "ciclo_dias": 365,
+    "notas": "Perenne, NDVI estable todo el año. Kc relativamente constante."
+  },
+  "vinedo": {
+    "nombre": "Viña (regadío)",
+    "nombre_cientifico": "Vitis vinifera",
+    "tipo": "caduco",
+    "kc_inicio": 0.3,
+    "kc_desarrollo": 0.5,
+    "kc_medio": 0.7,
+    "kc_final": 0.45,
+    "profundidad_raiz_m": 1.5,
+    "tolerancia_sequia": "media",
+    "riego_tipico": "goteo",
+    "ciclo_dias": 200,
+    "notas": "Caduco. Brotación marzo, envero julio-agosto, vendimia sept-oct. NDVI muy variable."
+  },
+  "olivar": {
+    "nombre": "Olivo",
+    "nombre_cientifico": "Olea europaea",
+    "tipo": "perenne",
+    "kc_inicio": 0.65,
+    "kc_desarrollo": 0.65,
+    "kc_medio": 0.7,
+    "kc_final": 0.7,
+    "profundidad_raiz_m": 1.7,
+    "tolerancia_sequia": "alta",
+    "riego_tipico": "goteo_deficitario",
+    "ciclo_dias": 365,
+    "notas": "Muy tolerante a sequía. El riego deficitario controlado mejora calidad del aceite."
+  },
+  "cereal": {
+    "nombre": "Trigo blando",
+    "nombre_cientifico": "Triticum aestivum",
+    "tipo": "anual",
+    "kc_inicio": 0.3,
+    "kc_desarrollo": 0.7,
+    "kc_medio": 1.15,
+    "kc_final": 0.25,
+    "profundidad_raiz_m": 1.0,
+    "tolerancia_sequia": "baja",
+    "riego_tipico": "aspersion_o_secano",
+    "ciclo_dias": 180,
+    "notas": "Anual. Siembra noviembre, espigado abril-mayo, cosecha junio-julio. NDVI muy dramático."
+  },
+  "almendro": {
+    "nombre": "Almendro",
+    "nombre_cientifico": "Prunus dulcis",
+    "tipo": "caduco",
+    "kc_inicio": 0.4,
+    "kc_desarrollo": 0.65,
+    "kc_medio": 0.9,
+    "kc_final": 0.65,
+    "profundidad_raiz_m": 1.5,
+    "tolerancia_sequia": "media",
+    "riego_tipico": "goteo",
+    "ciclo_dias": 240,
+    "notas": "Caduco. Floración febrero (muy temprana), cosecha agosto-septiembre."
+  }
+}

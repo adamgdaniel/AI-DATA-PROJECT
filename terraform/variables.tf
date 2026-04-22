@@ -9,3 +9,7 @@ variable "region" {
 variable "db_password" {
   sensitive = true
 }
+
+variable "secret_key" {
+  sensitive = true
+}

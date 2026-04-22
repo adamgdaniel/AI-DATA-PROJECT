@@ -21,6 +21,25 @@ cur.execute("""
     )
 """)
 
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS parcelas_usuario (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        parcela_id VARCHAR(50) NOT NULL,
+        provincia INTEGER,
+        municipio INTEGER,
+        poligono INTEGER,
+        parcela INTEGER,
+        recinto INTEGER,
+        cultivo VARCHAR(100),
+        superficie NUMERIC(10,4),
+        lat NUMERIC(10,6),
+        lng NUMERIC(10,6),
+        fecha_registro TIMESTAMP DEFAULT NOW(),
+        UNIQUE(usuario_id, parcela_id)
+    )
+""")
+
 password_hash = bcrypt.hashpw(os.environ['TEST_PASSWORD'].encode(), bcrypt.gensalt()).decode()
 cur.execute(
     "INSERT INTO users (username, password_hash) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING",
