@@ -17,6 +17,18 @@ resource "google_project_iam_member" "cloudrun_cloudsql" {
   member  = "serviceAccount:${google_service_account.cloudrun.email}"
 }
 
+resource "google_service_account_iam_member" "cloudbuild_act_as_cloudrun" {
+  service_account_id = google_service_account.cloudrun.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_service_account_iam_member" "cloudbuild_act_as_compute" {
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
 # --- Cloud SQL ---
 resource "google_sql_database_instance" "main" {
   name             = "login-db"

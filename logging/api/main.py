@@ -32,6 +32,32 @@ def login():
     return jsonify({'success': False}), 401
 
 
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE username = %s", (data['username'],))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({'field': 'username', 'error': 'Este usuario ya existe'}), 409
+    cur.execute("SELECT id FROM users WHERE email = %s", (data['email'],))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        return jsonify({'field': 'email', 'error': 'Este email ya existe'}), 409
+    password_hash = bcrypt.hashpw(data['password'].encode(), bcrypt.gensalt()).decode()
+    cur.execute(
+        "INSERT INTO users (username, password_hash, email) VALUES (%s, %s, %s)",
+        (data['username'], password_hash, data['email'])
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'success': True})
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
