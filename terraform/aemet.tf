@@ -19,9 +19,23 @@ resource "google_secret_manager_secret" "aemet_api_key" {
   }
 }
 
-# --- Permiso para que el SA de Cloud Run lea el secret ---
+# --- Secret Manager: URL de conexión a la base de datos ---
+resource "google_secret_manager_secret" "db_url" {
+  secret_id = "aemet-db-url"
+  replication {
+    auto {}
+  }
+}
+
+# --- Permiso para que el SA de Cloud Run lea los secrets ---
 resource "google_secret_manager_secret_iam_member" "cloudrun_read_aemet_key" {
   secret_id = google_secret_manager_secret.aemet_api_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.cloudrun.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "cloudrun_read_db_url" {
+  secret_id = google_secret_manager_secret.db_url.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloudrun.email}"
 }
@@ -49,8 +63,13 @@ resource "google_cloud_run_v2_job" "aemet_ingest" {
         }
 
         env {
-          name  = "DATABASE_URL"
-          value = "postgresql://${google_sql_user.main.name}:${var.db_password}@/agrodb?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
+          name = "DATABASE_URL"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.db_url.secret_id
+              version = "latest"
+            }
+          }
         }
       }
 
@@ -69,6 +88,7 @@ resource "google_cloud_run_v2_job" "aemet_ingest" {
 
   depends_on = [
     google_secret_manager_secret_iam_member.cloudrun_read_aemet_key,
+    google_secret_manager_secret_iam_member.cloudrun_read_db_url,
     google_sql_database.agro,
   ]
 }
