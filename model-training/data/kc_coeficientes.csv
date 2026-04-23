@@ -1,0 +1,9 @@
+cultivo,fase,kc,descripcion
+citrico,inicial,0.70,Inicio temporada poca cobertura foliar
+citrico,desarrollo,0.85,Crecimiento activo del follaje
+citrico,mediados,1.00,Plena cobertura madurez vegetativa
+citrico,final,0.75,Fin de temporada reduccion foliar
+tomate,inicial,0.60,Plantula recien trasplantada
+tomate,desarrollo,0.90,Crecimiento rapido del cultivo
+tomate,mediados,1.15,Floracion y cuajado del fruto
+tomate,final,0.80,Maduracion y fin de ciclo
