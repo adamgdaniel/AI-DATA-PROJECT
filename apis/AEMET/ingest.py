@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import time
 import urllib.request
 from datetime import datetime, timezone
 
@@ -162,6 +163,7 @@ def main():
         except Exception as e:
             conn.rollback()
             log.error(f"{codigo_ine}: {e}")
+        time.sleep(2)
 
     conn.close()
 
