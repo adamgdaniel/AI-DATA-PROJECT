@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pandas
+psycopg2-binary
+google-cloud-secret-manager
+google-auth
