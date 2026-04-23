@@ -124,12 +124,58 @@ resource "google_cloud_run_v2_service" "frontend" {
         name  = "API_URL"
         value = google_cloud_run_v2_service.api.uri
       }
+      env {
+        name  = "SECRET_KEY"
+        value = var.secret_key
+      }
     }
   }
 
   lifecycle {
     ignore_changes = [template]
   }
+}
+
+# --- Cloud Build trigger: login-frontend ---
+resource "google_cloudbuild_trigger" "login_frontend" {
+  name        = "login-frontend-deploy"
+  description = "Build y redeploy del frontend al hacer push a main"
+  location    = var.region
+
+  github {
+    owner = "adamgdaniel"
+    name  = "AI-DATA-PROJECT"
+    push {
+      branch = "^main$"
+    }
+  }
+
+  included_files = ["frontend/**"]
+
+  filename = "frontend/cloudbuild.yaml"
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+# --- Cloud Build trigger: login-api ---
+resource "google_cloudbuild_trigger" "login_api" {
+  name        = "login-api-deploy"
+  description = "Build y redeploy de la API de login al hacer push a main"
+  location    = var.region
+
+  github {
+    owner = "adamgdaniel"
+    name  = "AI-DATA-PROJECT"
+    push {
+      branch = "^main$"
+    }
+  }
+
+  included_files = ["logging/api/**"]
+
+  filename = "logging/api/cloudbuild.yaml"
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
 }
 
 resource "google_cloud_run_v2_service_iam_member" "frontend_public" {

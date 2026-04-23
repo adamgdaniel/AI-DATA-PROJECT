@@ -13,3 +13,9 @@ variable "project_number" {
 variable "db_password" {
   sensitive = true
 }
+
+variable "secret_key" {
+  sensitive = true
+}
+
+
