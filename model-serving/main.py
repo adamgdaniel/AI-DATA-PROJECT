@@ -6,16 +6,19 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 from google.cloud import secretmanager
-import google.auth
 
 app = FastAPI()
 
+PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "project-7f8b4dee-2b72-40f2-941")
+
 # ── SECRET MANAGER ─────────────────────────────────────────────────────────────
 def get_database_url() -> str:
+    local_url = os.environ.get("DATABASE_URL")
+    if local_url:
+        return local_url
     try:
-        _, project_id = google.auth.default()
         client = secretmanager.SecretManagerServiceClient()
-        name = f"projects/{project_id}/secrets/aemet-db-url/versions/latest"
+        name = f"projects/{PROJECT_ID}/secrets/aemet-db-url/versions/latest"
         response = client.access_secret_version(request={"name": name})
         return response.payload.data.decode("UTF-8")
     except Exception as e:
@@ -39,7 +42,7 @@ class SolicitudRiego(BaseModel):
     codigo_ine: str
     cultivo: str
     fase: str
-    prevision: List[DiaMeteo] | None = None  # opcional, si no viene usamos la DB
+    prevision: List[DiaMeteo] | None = None
 
 # ── MÓDULO 1: PENMAN-MONTEITH ──────────────────────────────────────────────────
 def calcular_et0(dia: DiaMeteo, latitud: float = 39.5) -> float:
@@ -65,7 +68,7 @@ def calcular_et0(dia: DiaMeteo, latitud: float = 39.5) -> float:
 # ── MÓDULO 2: RAG — COEFICIENTES KC ───────────────────────────────────────────
 def obtener_kc(cultivo: str, fase: str) -> float:
     try:
-        with open("../model-training/data/cultivos_referencia.json", "r") as f:
+        with open("data/cultivos_referencia.json", "r") as f:
             cultivos = json.load(f)
         if cultivo not in cultivos:
             raise ValueError(f"Cultivo '{cultivo}' no encontrado")
@@ -84,18 +87,17 @@ def obtener_kc(cultivo: str, fase: str) -> float:
 # ── MÓDULO 3: CONEXIÓN A BASE DE DATOS ────────────────────────────────────────
 def get_prevision_db(codigo_ine: str) -> list:
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT fecha_prevision, tmax, tmin,
-                       humedad_max, humedad_min,
-                       prob_precipitacion, viento_velocidad, uv_max
-                FROM prevision_meteorologica
-                WHERE codigo_ine = %s
-                ORDER BY fecha_prevision ASC
-            """, (codigo_ine,))
-            rows = cur.fetchall()
-        conn.close()
+        with psycopg2.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT fecha_prevision, tmax, tmin,
+                           humedad_max, humedad_min,
+                           viento_velocidad, uv_max, prob_precipitacion
+                    FROM prevision_meteorologica
+                    WHERE codigo_ine = %s
+                    ORDER BY fecha_prevision ASC
+                """, (codigo_ine,))
+                rows = cur.fetchall()
         return [
             DiaMeteo(
                 fecha=str(row[0]),
@@ -103,19 +105,18 @@ def get_prevision_db(codigo_ine: str) -> list:
                 tmin=row[2] or 10.0,
                 humedad_max=row[3] or 70.0,
                 humedad_min=row[4] or 40.0,
-                prob_precipitacion=row[5] or 0,
-                viento_velocidad=row[6] or 10.0,
-                uv_max=row[7]
+                viento_velocidad=row[5] or 10.0,
+                uv_max=row[6],
+                prob_precipitacion=row[7] or 0
             )
             for row in rows
         ]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error DB: {e}")
+        raise HTTPException(status_code=500, detail=f"Error obteniendo previsión: {e}")
 
-# ── ENDPOINTS ──────────────────────────────────────────────────────────────────
+# ── MÓDULO 4: ENDPOINT PRINCIPAL ──────────────────────────────────────────────
 @app.post("/recomendar")
 def recomendar_riego(solicitud: SolicitudRiego):
-    """Endpoint con datos de prueba o datos enviados manualmente."""
     kc = obtener_kc(solicitud.cultivo, solicitud.fase)
     prevision = solicitud.prevision or get_prevision_db(solicitud.codigo_ine)
     resultados = []
