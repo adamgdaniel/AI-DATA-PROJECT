@@ -136,6 +136,41 @@ resource "google_cloud_run_v2_service" "frontend" {
   }
 }
 
+# --- Secret Manager: SECRET_KEY del frontend ---
+resource "google_secret_manager_secret" "frontend_secret_key" {
+  secret_id = "frontend-secret-key"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "frontend_read_secret_key" {
+  secret_id = google_secret_manager_secret.frontend_secret_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+# --- Cloud Build trigger: login-frontend ---
+resource "google_cloudbuild_trigger" "login_frontend" {
+  name        = "login-frontend-deploy"
+  description = "Build y redeploy del frontend al hacer push a main"
+  location    = var.region
+
+  github {
+    owner = "adamgdaniel"
+    name  = "AI-DATA-PROJECT"
+    push {
+      branch = "^main$"
+    }
+  }
+
+  included_files = ["frontend/**"]
+
+  filename = "frontend/cloudbuild.yaml"
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
 # --- Cloud Build trigger: login-api ---
 resource "google_cloudbuild_trigger" "login_api" {
   name        = "login-api-deploy"

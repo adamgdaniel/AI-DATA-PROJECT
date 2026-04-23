@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import time
 import urllib.request
 from datetime import datetime, timezone
 
@@ -11,173 +12,158 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 AEMET_API_KEY = os.environ["AEMET_API_KEY"]
-DATABASE_URL   = os.environ["DATABASE_URL"]  # postgres://user:pass@host:5432/dbname
+DATABASE_URL  = os.environ["DATABASE_URL"]
 
-FORECAST_URL = "https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{codigo}?api_key={key}"
+AEMET_URL      = "https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{codigo}?api_key={key}"
+OPENMETEO_URL  = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude={lat}&longitude={lon}"
+    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,"
+    "precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,"
+    "wind_gusts_10m_max,uv_index_max,et0_fao_evapotranspiration,weather_code,shortwave_radiation_sum"
+    "&forecast_days=16&timezone=Europe%2FMadrid"
+)
 
 
-def aemet_get(url):
+def http_get(url, encoding="utf-8"):
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=10) as r:
-        return json.loads(r.read().decode("latin-1"))
+        return json.loads(r.read().decode(encoding))
 
 
-def fetch_forecast(codigo_ine):
-    meta = aemet_get(FORECAST_URL.format(codigo=codigo_ine, key=AEMET_API_KEY))
+def fetch_openmeteo(lat, lon):
+    data = http_get(OPENMETEO_URL.format(lat=lat, lon=lon))
+    daily = data["daily"]
+    keys = [k for k in daily if k != "time"]
+    return {
+        date: {k: daily[k][i] for k in keys}
+        for i, date in enumerate(daily["time"])
+    }
+
+
+def fetch_aemet(codigo_ine):
+    meta = http_get(AEMET_URL.format(codigo=codigo_ine, key=AEMET_API_KEY))
     if meta.get("estado") != 200:
-        raise RuntimeError(f"AEMET error {meta.get('estado')} para {codigo_ine}: {meta.get('descripcion')}")
-    data = aemet_get(meta["datos"])
-    return data[0]["prediccion"]["dia"]
+        raise RuntimeError(f"AEMET {meta.get('estado')}: {meta.get('descripcion')}")
+    data = http_get(meta["datos"], encoding="latin-1")
+    result = {}
+    for dia in data[0]["prediccion"]["dia"]:
+        fecha = dia["fecha"][:10]
+        result[fecha] = {
+            "humedad_max":       dia.get("humedadRelativa", {}).get("maxima"),
+            "humedad_min":       dia.get("humedadRelativa", {}).get("minima"),
+            "estado_cielo_cod":  _get_period(dia.get("estadoCielo", [])) or None,
+            "estado_cielo_desc": _get_period(dia.get("estadoCielo", []), key="descripcion") or None,
+        }
+    return result
 
 
-def _get_period(items, periodo="00-24"):
-    """Devuelve el value del periodo indicado, o el único valor si no hay campo periodo."""
+def _get_period(items, periodo="00-24", key="value"):
     if not items:
         return None
     if "periodo" not in items[0]:
-        return items[0].get("value")
+        return items[0].get(key)
     for item in items:
         if item.get("periodo") == periodo:
-            return item.get("value")
+            return item.get(key)
     return None
 
 
-def _int_or_none(value):
+def _int_or_none(v):
     try:
-        return int(value)
+        return int(v)
     except (TypeError, ValueError):
         return None
 
 
-def parse_day(dia):
-    tmax = _int_or_none(dia.get("temperatura", {}).get("maxima"))
-    tmin = _int_or_none(dia.get("temperatura", {}).get("minima"))
-
-    humedad_max = _int_or_none(dia.get("humedadRelativa", {}).get("maxima"))
-    humedad_min = _int_or_none(dia.get("humedadRelativa", {}).get("minima"))
-
-    prob_precip = _int_or_none(_get_period(dia.get("probPrecipitacion", [])))
-
-    viento_items = dia.get("viento", [])
-    viento = None
-    if "periodo" not in (viento_items[0] if viento_items else {}):
-        viento = viento_items[0] if viento_items else None
-    else:
-        for v in viento_items:
-            if v.get("periodo") == "00-24":
-                viento = v
-                break
-    viento_vel = _int_or_none(viento.get("velocidad") if viento else None)
-    viento_dir = (viento.get("direccion") or None) if viento else None
-
-    racha_raw = _get_period(dia.get("rachaMax", []))
-    racha = _int_or_none(racha_raw)
-
-    cielo_items = dia.get("estadoCielo", [])
-    cielo = None
-    if "periodo" not in (cielo_items[0] if cielo_items else {}):
-        cielo = cielo_items[0] if cielo_items else None
-    else:
-        for c in cielo_items:
-            if c.get("periodo") == "00-24":
-                cielo = c
-                break
-    cielo_cod  = (cielo.get("value") or None) if cielo else None
-    cielo_desc = (cielo.get("descripcion") or None) if cielo else None
-
-    uv_max = _int_or_none(dia.get("uvMax"))
-
-    fecha_prevision = dia["fecha"][:10]  # "2026-04-22T00:00:00" → "2026-04-22"
-
-    return {
-        "fecha_prevision":    fecha_prevision,
-        "tmax":               tmax,
-        "tmin":               tmin,
-        "humedad_max":        humedad_max,
-        "humedad_min":        humedad_min,
-        "prob_precipitacion": prob_precip,
-        "viento_velocidad":   viento_vel,
-        "viento_direccion":   viento_dir,
-        "racha_max":          racha,
-        "estado_cielo_cod":   cielo_cod,
-        "estado_cielo_desc":  cielo_desc,
-        "uv_max":             uv_max,
-    }
+def build_rows(om_data, aemet_data, fecha_consulta, codigo_ine):
+    rows = []
+    for fecha, om in om_data.items():
+        aemet = aemet_data.get(fecha, {})
+        rows.append((
+            codigo_ine, fecha, fecha_consulta,
+            om.get("temperature_2m_max"),
+            om.get("temperature_2m_min"),
+            om.get("precipitation_sum"),
+            om.get("rain_sum"),
+            om.get("precipitation_probability_max"),
+            om.get("wind_speed_10m_max"),
+            om.get("wind_direction_10m_dominant"),
+            om.get("wind_gusts_10m_max"),
+            om.get("uv_index_max"),
+            om.get("et0_fao_evapotranspiration"),
+            om.get("shortwave_radiation_sum"),
+            om.get("weather_code"),
+            _int_or_none(aemet.get("humedad_max")),
+            _int_or_none(aemet.get("humedad_min")),
+            aemet.get("estado_cielo_cod"),
+            aemet.get("estado_cielo_desc"),
+            json.dumps(om),
+        ))
+    return rows
 
 
-def upsert_forecast(conn, codigo_ine, rows, fecha_consulta):
+def upsert(conn, rows):
     sql = """
         INSERT INTO prevision_meteorologica (
             codigo_ine, fecha_prevision, fecha_consulta,
             tmax, tmin,
-            humedad_max, humedad_min,
-            prob_precipitacion,
+            precipitacion_mm, lluvia_mm, prob_precipitacion,
             viento_velocidad, viento_direccion, racha_max,
+            uv_max, et0_evapotranspiracion, radiacion_solar, weather_code,
+            humedad_max, humedad_min,
             estado_cielo_cod, estado_cielo_desc,
-            uv_max, datos_raw
+            datos_raw
         ) VALUES %s
-        ON CONFLICT (codigo_ine, fecha_prevision)
-        DO UPDATE SET
-            fecha_consulta       = EXCLUDED.fecha_consulta,
-            tmax                 = EXCLUDED.tmax,
-            tmin                 = EXCLUDED.tmin,
-            humedad_max          = EXCLUDED.humedad_max,
-            humedad_min          = EXCLUDED.humedad_min,
-            prob_precipitacion   = EXCLUDED.prob_precipitacion,
-            viento_velocidad     = EXCLUDED.viento_velocidad,
-            viento_direccion     = EXCLUDED.viento_direccion,
-            racha_max            = EXCLUDED.racha_max,
-            estado_cielo_cod     = EXCLUDED.estado_cielo_cod,
-            estado_cielo_desc    = EXCLUDED.estado_cielo_desc,
-            uv_max               = EXCLUDED.uv_max,
-            datos_raw            = EXCLUDED.datos_raw
+        ON CONFLICT (codigo_ine, fecha_prevision) DO UPDATE SET
+            fecha_consulta         = EXCLUDED.fecha_consulta,
+            tmax                   = EXCLUDED.tmax,
+            tmin                   = EXCLUDED.tmin,
+            precipitacion_mm       = EXCLUDED.precipitacion_mm,
+            lluvia_mm              = EXCLUDED.lluvia_mm,
+            prob_precipitacion     = EXCLUDED.prob_precipitacion,
+            viento_velocidad       = EXCLUDED.viento_velocidad,
+            viento_direccion       = EXCLUDED.viento_direccion,
+            racha_max              = EXCLUDED.racha_max,
+            uv_max                 = EXCLUDED.uv_max,
+            et0_evapotranspiracion = EXCLUDED.et0_evapotranspiracion,
+            radiacion_solar        = EXCLUDED.radiacion_solar,
+            weather_code           = EXCLUDED.weather_code,
+            humedad_max            = EXCLUDED.humedad_max,
+            humedad_min            = EXCLUDED.humedad_min,
+            estado_cielo_cod       = EXCLUDED.estado_cielo_cod,
+            estado_cielo_desc      = EXCLUDED.estado_cielo_desc,
+            datos_raw              = EXCLUDED.datos_raw
     """
-    values = [
-        (
-            codigo_ine, r["fecha_prevision"], fecha_consulta,
-            r["tmax"], r["tmin"],
-            r["humedad_max"], r["humedad_min"],
-            r["prob_precipitacion"],
-            r["viento_velocidad"], r["viento_direccion"], r["racha_max"],
-            r["estado_cielo_cod"], r["estado_cielo_desc"],
-            r["uv_max"], json.dumps(r["datos_raw"]),
-        )
-        for r in rows
-    ]
     with conn.cursor() as cur:
-        execute_values(cur, sql, values)
+        execute_values(cur, sql, rows)
     conn.commit()
-
-
-def get_municipios(conn):
-    with conn.cursor() as cur:
-        cur.execute("SELECT codigo_ine FROM municipios_monitorizados WHERE activo = TRUE")
-        return [row[0] for row in cur.fetchall()]
 
 
 def main():
     conn = psycopg2.connect(DATABASE_URL)
-    fecha_consulta = datetime.now(timezone.utc)
 
-    municipios = get_municipios(conn)
+    with conn.cursor() as cur:
+        cur.execute("SELECT codigo_ine, lat, lon FROM municipios_monitorizados WHERE activo = TRUE")
+        municipios = cur.fetchall()
+
     if not municipios:
-        log.warning("No hay municipios activos. Nada que ingestar.")
+        log.warning("No hay municipios activos.")
         return
 
-    log.info(f"Municipios a consultar: {municipios}")
+    fecha_consulta = datetime.now(timezone.utc)
 
-    for codigo_ine in municipios:
+    for codigo_ine, lat, lon in municipios:
         try:
-            dias = fetch_forecast(codigo_ine)
-            rows = []
-            for dia in dias:
-                parsed = parse_day(dia)
-                parsed["datos_raw"] = dia
-                rows.append(parsed)
-            upsert_forecast(conn, codigo_ine, rows, fecha_consulta)
+            om_data   = fetch_openmeteo(lat, lon)
+            aemet_data = fetch_aemet(codigo_ine)
+            rows = build_rows(om_data, aemet_data, fecha_consulta, codigo_ine)
+            upsert(conn, rows)
             log.info(f"{codigo_ine}: {len(rows)} días insertados/actualizados")
         except Exception as e:
-            log.error(f"{codigo_ine}: error → {e}")
+            conn.rollback()
+            log.error(f"{codigo_ine}: {e}")
+        time.sleep(2)
 
     conn.close()
 
