@@ -13,5 +13,6 @@ steps:
       - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/login-frontend:latest
       - --region=europe-west1
       - --platform=managed
+      - --update-secrets=SECRET_KEY=frontend-secret-key:latest
 options:
   logging: CLOUD_LOGGING_ONLY
