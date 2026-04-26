@@ -77,6 +77,31 @@ def login():
     return render_template('login.html', error=error)
 
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'GET':
+        return render_template('register.html', errors={})
+    errors = {}
+    username = request.form.get('username', '').strip()
+    email    = request.form.get('email', '').strip()
+    password = request.form.get('password', '')
+    password2 = request.form.get('password2', '')
+    if password != password2:
+        errors['password2'] = 'Las contraseñas no coinciden'
+        return render_template('register.html', errors=errors)
+    resp = requests.post(f'{API_URL}/register', json={
+        'username': username, 'email': email, 'password': password
+    })
+    if resp.status_code == 201 or resp.status_code == 200:
+        return redirect(url_for('login'))
+    data = resp.json()
+    if 'field' in data:
+        errors[data['field']] = data.get('error', 'Error al registrarse')
+    else:
+        errors['username'] = data.get('error', 'Error al registrarse')
+    return render_template('register.html', errors=errors)
+
+
 @app.route('/mapa')
 def mapa():
     if 'user_id' not in session:
