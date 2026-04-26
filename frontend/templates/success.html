@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AgroMonitor — Mis Parcelas</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
@@ -14,18 +15,22 @@
     }
     header span { font-weight: bold; font-size: 16px; }
     header a { color: #b7e4c7; font-size: 13px; text-decoration: none; }
+
     #container { display: flex; flex: 1; overflow: hidden; }
-    #map { flex: 1; }
+    #map { flex: 1; min-height: 0; }
     #sidebar {
       width: 300px; overflow-y: auto;
       border-left: 1px solid #ddd;
       padding: 16px; background: #f9f9f9;
       display: flex; flex-direction: column; gap: 16px;
     }
+
     #zoom-hint {
       font-size: 12px; color: #888; background: #fff3cd;
       border: 1px solid #ffc107; border-radius: 4px; padding: 8px;
     }
+
+    /* --- Panel registro --- */
     #info-panel {
       background: white; border: 1px solid #ccc;
       border-radius: 6px; padding: 14px; display: none;
@@ -45,18 +50,91 @@
     }
     .btn:hover { background: #1b4332; }
     #msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+
+    /* --- Panel detalle parcela propia --- */
+    #detail-panel {
+      background: white; border: 2px solid #2d6a4f;
+      border-radius: 8px; padding: 14px; display: none;
+    }
+    .dp-header {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin-bottom: 12px; padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .dp-emoji { font-size: 34px; line-height: 1; }
+    .dp-info { flex: 1; }
+    .dp-info strong { display: block; color: #2d6a4f; font-size: 13px; margin-bottom: 2px; }
+    .dp-info span { font-size: 12px; color: #666; }
+    .dp-close {
+      background: none; border: none; font-size: 20px;
+      cursor: pointer; color: #aaa; padding: 0; line-height: 1;
+    }
+    .dp-close:hover { color: #333; }
+    .dp-section { margin-bottom: 14px; }
+    .dp-section h4 {
+      font-size: 11px; color: #999; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 8px;
+    }
+
+    /* Weather widget */
+    #dp-weather-cards {
+      display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px;
+    }
+    .weather-card {
+      min-width: 38px; flex-shrink: 0;
+      background: #f8faff; border: 1px solid #d0e4f7;
+      border-radius: 6px; padding: 6px 3px;
+      text-align: center;
+    }
+    .wc-day { font-size: 10px; font-weight: bold; color: #555; }
+    .wc-icon { font-size: 15px; margin: 3px 0; }
+    .wc-max { font-size: 12px; font-weight: bold; color: #c0392b; }
+    .wc-min { font-size: 11px; color: #2980b9; }
+    .wc-precip { font-size: 9px; color: #2980b9; margin-top: 2px; min-height: 11px; }
+
+    /* Acción buttons */
+    .dp-actions { display: flex; gap: 8px; }
+    .btn-accion {
+      flex: 1; padding: 9px 4px;
+      background: white; border: 1.5px solid #2d6a4f;
+      border-radius: 6px; color: #2d6a4f;
+      cursor: pointer; font-size: 12px; font-weight: bold;
+    }
+    .btn-accion:hover { background: #2d6a4f; color: white; }
+
+    /* Lista parcelas */
     #mis-parcelas h3 { color: #333; font-size: 14px; margin-bottom: 10px; }
     .parcela-item {
       background: white; border: 1px solid #ddd;
-      border-radius: 4px; padding: 10px; margin-bottom: 8px; font-size: 12px;
+      border-radius: 4px; padding: 10px; margin-bottom: 8px;
+      font-size: 12px; cursor: pointer; transition: border-color 0.15s;
     }
+    .parcela-item:hover { border-color: #2d6a4f; }
     .parcela-item strong { display: block; color: #2d6a4f; margin-bottom: 4px; }
     #empty-msg { font-size: 13px; color: #888; }
+
+    .crop-marker { background: none !important; border: none !important; }
+
+    /* --- Móvil --- */
+    @media (max-width: 768px) {
+      body { height: auto; min-height: 100vh; }
+      #container { flex-direction: column; overflow: visible; }
+      #map { height: 55vh; flex: none; width: 100%; }
+      #sidebar {
+        width: 100%; border-left: none;
+        border-top: 2px solid #2d6a4f;
+        max-height: none; overflow-y: visible;
+      }
+      select, .btn { padding: 12px; font-size: 15px; }
+      .field { font-size: 14px; }
+      .parcela-item { padding: 12px; font-size: 13px; }
+      .weather-card { min-width: 44px; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <span>AgroMonitor</span>
+    <span>🌱 AgroMonitor</span>
     <a href="/logout">Cerrar sesión</a>
   </header>
   <div id="container">
@@ -66,6 +144,7 @@
         Acércate al mapa (zoom &ge; 14) y haz clic sobre una parcela para seleccionarla.
       </div>
 
+      <!-- Panel: registrar parcela no propia -->
       <div id="info-panel">
         <h3>Parcela seleccionada</h3>
         <div class="field"><label>Referencia SIGPAC</label><span id="f-ref">-</span></div>
@@ -93,6 +172,35 @@
         <div id="msg"></div>
       </div>
 
+      <!-- Panel: detalle de parcela propia -->
+      <div id="detail-panel">
+        <div class="dp-header">
+          <div class="dp-emoji" id="dp-icon">🌿</div>
+          <div class="dp-info">
+            <strong id="dp-id"></strong>
+            <span id="dp-cultivo"></span> &middot; <span id="dp-sup"></span> ha
+          </div>
+          <button class="dp-close" onclick="cerrarDetalle()">✕</button>
+        </div>
+
+        <div class="dp-section">
+          <h4>Previsión 7 días</h4>
+          <div id="dp-weather-cards">
+            <p style="font-size:12px;color:#aaa">Cargando...</p>
+          </div>
+        </div>
+
+        <div class="dp-section">
+          <h4>Acciones</h4>
+          <div class="dp-actions">
+            <button class="btn-accion" onclick="registrarAccion('riego')">💧 Regar</button>
+            <button class="btn-accion" onclick="registrarAccion('abono')">🌱 Abonar</button>
+            <button class="btn-accion" onclick="registrarAccion('poda')">✂️ Podar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de parcelas -->
       <div id="mis-parcelas">
         <h3>Mis parcelas</h3>
         <div id="empty-msg">Cargando...</div>
@@ -103,6 +211,19 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    const CROP_COLORS = {
+      'Trigo':    '#d4a843', 'Cebada':   '#c8933f', 'Maíz':     '#27ae60',
+      'Girasol':  '#f39c12', 'Naranjos': '#e67e22', 'Limoneros':'#f1c40f',
+      'Olivos':   '#6d8c3f', 'Vid':      '#8e44ad', 'Almendros':'#d4917a',
+      'Tomate':   '#c0392b', 'Pimiento': '#e74c3c', 'Otro':     '#7f8c8d'
+    };
+    const CROP_ICONS = {
+      'Trigo':    '🌾', 'Cebada':   '🌾', 'Maíz':     '🌽',
+      'Girasol':  '🌻', 'Naranjos': '🍊', 'Limoneros':'🍋',
+      'Olivos':   '🫒', 'Vid':      '🍇', 'Almendros':'🌰',
+      'Tomate':   '🍅', 'Pimiento': '🌶️', 'Otro':     '🌿'
+    };
+
     const map = L.map('map').setView([40.0, -3.7], 6);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -118,6 +239,11 @@
     }).addTo(map);
 
     let selectedParcel = null;
+    let misParcelasData = [];
+    const misParcelasLayer = L.layerGroup().addTo(map);
+
+    // IDs de parcelas propias para detectar clicks en el mapa
+    const misParcelasIds = new Set();
 
     map.on('click', function(e) {
       if (map.getZoom() < 14) return;
@@ -136,25 +262,33 @@
             return;
           }
           const p = data.features[0].properties;
+          const parcelaId = `${p.provincia}-${p.municipio}-${p.poligono}-${p.parcela}-${p.recinto}`;
+
+          // Si es una parcela propia, mostrar detalle en vez de registro
+          const propia = misParcelasData.find(mp => mp.parcela_id === parcelaId);
+          if (propia) {
+            mostrarDetalleParcela(propia);
+            return;
+          }
+
           selectedParcel = {
-            provincia:  p.provincia,
-            municipio:  p.municipio,
-            agregado:   p.agregado ?? 0,
-            zona:       p.zona ?? 0,
-            poligono:   p.poligono,
-            parcela:    p.parcela,
-            recinto:    p.recinto,
-            superficie: p.superficie,
-            lat: p.lat ?? e.latlng.lat,
-            lng: p.lng ?? e.latlng.lng
+            provincia:  p.provincia,  municipio:  p.municipio,
+            agregado:   p.agregado ?? 0, zona: p.zona ?? 0,
+            poligono:   p.poligono,   parcela:    p.parcela,
+            recinto:    p.recinto,    superficie: p.superficie,
+            lat: p.lat ?? e.latlng.lat, lng: p.lng ?? e.latlng.lng,
+            geometria: p.geometry ?? null
           };
-          document.getElementById('f-ref').textContent =
-            `${p.provincia}-${p.municipio}-${p.poligono}-${p.parcela}-${p.recinto}`;
+          document.getElementById('f-ref').textContent = parcelaId;
           document.getElementById('f-sup').textContent = p.superficie ?? '-';
           document.getElementById('f-uso').textContent = p.uso_sigpac ?? '-';
           document.getElementById('msg').textContent = '';
           document.getElementById('f-cultivo').value = '';
+          document.getElementById('detail-panel').style.display = 'none';
           document.getElementById('info-panel').style.display = 'block';
+          if (window.innerWidth <= 768) {
+            document.getElementById('info-panel').scrollIntoView({ behavior: 'smooth' });
+          }
         })
         .catch(() => {
           document.getElementById('msg').textContent = 'Error consultando SIGPAC.';
@@ -192,21 +326,140 @@
       fetch('/mis-parcelas')
         .then(r => r.json())
         .then(parcelas => {
+          misParcelasData = parcelas;
+          misParcelasLayer.clearLayers();
+          misParcelasIds.clear();
+
           const lista = document.getElementById('lista-parcelas');
           const emptyMsg = document.getElementById('empty-msg');
+
           if (parcelas.length === 0) {
             emptyMsg.textContent = 'Aún no tienes parcelas registradas.';
             lista.innerHTML = '';
-          } else {
-            emptyMsg.textContent = '';
-            lista.innerHTML = parcelas.map(p => `
-              <div class="parcela-item">
-                <strong>${p.parcela_id}</strong>
-                ${p.cultivo}${p.superficie ? ' · ' + p.superficie + ' ha' : ''}
-              </div>
-            `).join('');
+            return;
           }
+
+          emptyMsg.textContent = '';
+          lista.innerHTML = parcelas.map(p => `
+            <div class="parcela-item" onclick="focusParcela('${p.parcela_id}')">
+              <strong>${CROP_ICONS[p.cultivo] || '🌿'} ${p.parcela_id}</strong>
+              ${p.cultivo}${p.superficie ? ' · ' + p.superficie + ' ha' : ''}
+            </div>
+          `).join('');
+
+          parcelas.forEach(p => {
+            misParcelasIds.add(p.parcela_id);
+            const color = CROP_COLORS[p.cultivo] || '#95a5a6';
+
+            if (p.geometria) {
+              const layer = L.geoJSON(p.geometria, {
+                style: { color, weight: 2.5, fillColor: color, fillOpacity: 0.35 }
+              });
+              layer.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                mostrarDetalleParcela(p);
+              });
+              layer.addTo(misParcelasLayer);
+            }
+
+            if (p.lat && p.lng) {
+              const cropIcon = L.divIcon({
+                html: `<span style="font-size:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">${CROP_ICONS[p.cultivo] || '🌿'}</span>`,
+                className: 'crop-marker',
+                iconAnchor: [10, 10]
+              });
+              const marker = L.marker([p.lat, p.lng], { icon: cropIcon });
+              marker.on('click', (e) => {
+                L.DomEvent.stopPropagation(e);
+                mostrarDetalleParcela(p);
+              });
+              marker.addTo(misParcelasLayer);
+            }
+          });
         });
+    }
+
+    function focusParcela(parcelaId) {
+      const p = misParcelasData.find(mp => mp.parcela_id === parcelaId);
+      if (!p) return;
+      if (p.lat && p.lng) map.setView([p.lat, p.lng], 15);
+      mostrarDetalleParcela(p);
+    }
+
+    function mostrarDetalleParcela(p) {
+      document.getElementById('info-panel').style.display = 'none';
+      document.getElementById('dp-icon').textContent = CROP_ICONS[p.cultivo] || '🌿';
+      document.getElementById('dp-id').textContent = p.parcela_id;
+      document.getElementById('dp-cultivo').textContent = p.cultivo;
+      document.getElementById('dp-sup').textContent = p.superficie ?? '-';
+      document.getElementById('detail-panel').style.display = 'block';
+      document.getElementById('dp-weather-cards').innerHTML =
+        '<p style="font-size:12px;color:#aaa">Cargando previsión...</p>';
+
+      fetch(`/tiempo-parcela?provincia=${p.provincia}&municipio=${p.municipio}`)
+        .then(r => r.json())
+        .then(renderizarTiempo)
+        .catch(() => {
+          document.getElementById('dp-weather-cards').innerHTML =
+            '<p style="font-size:12px;color:#c00">No se pudo cargar la previsión.</p>';
+        });
+
+      if (window.innerWidth <= 768) {
+        document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function cerrarDetalle() {
+      document.getElementById('detail-panel').style.display = 'none';
+    }
+
+    function weatherIcon(code) {
+      const c = parseInt(code) || 0;
+      if (c === 0)  return '🌤️';
+      if (c <= 12)  return '☀️';
+      if (c <= 14)  return '🌤️';
+      if (c <= 17)  return '⛅';
+      if (c <= 26)  return '☁️';
+      if (c <= 36)  return '🌧️';
+      if (c <= 46)  return '🌦️';
+      if (c <= 64)  return '🌧️';
+      if (c <= 74)  return '⛈️';
+      return '❄️';
+    }
+
+    function renderizarTiempo(data) {
+      const container = document.getElementById('dp-weather-cards');
+      if (!Array.isArray(data) || data.length === 0) {
+        container.innerHTML = '<p style="font-size:12px;color:#aaa">Sin datos.</p>';
+        return;
+      }
+      const dias_pred = data[0]?.prediccion?.dia;
+      if (!dias_pred || dias_pred.length === 0) {
+        container.innerHTML = '<p style="font-size:12px;color:#aaa">Sin datos.</p>';
+        return;
+      }
+      const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      container.innerHTML = dias_pred.slice(0, 7).map(dia => {
+        const fecha = new Date(dia.fecha);
+        const label = DIAS[fecha.getDay()];
+        const cielo = (dia.estadoCielo || []).find(e => e.periodo === '00-24')
+                      || (dia.estadoCielo || [])[0] || {};
+        const tmax  = dia.temperatura?.maxima ?? '-';
+        const tmin  = dia.temperatura?.minima ?? '-';
+        const prec  = ((dia.precipitacion || []).find(e => e.periodo === '00-24') || {}).value || '0';
+        return `
+          <div class="weather-card">
+            <div class="wc-day">${label}</div>
+            <div class="wc-icon">${weatherIcon(cielo.value)}</div>
+            <div class="wc-max">${tmax}°</div>
+            <div class="wc-min">${tmin}°</div>
+            <div class="wc-precip">${parseFloat(prec) > 0 ? '💧' + prec : ''}</div>
+          </div>`;
+      }).join('');
+    }
+
+    function registrarAccion(tipo) {
+      alert(`Acción "${tipo}" registrada (próximamente se guardará en la BD).`);
     }
 
     cargarParcelas();

@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 import psycopg2
 import bcrypt
+import json
 import os
 
 load_dotenv()
@@ -74,17 +75,19 @@ def registrar_parcela():
     conn = get_db()
     cur = conn.cursor()
     try:
+        geometria = data.get('geometria')
         cur.execute("""
             INSERT INTO parcelas_usuario
                 (usuario_id, parcela_id, provincia, municipio, poligono, parcela, recinto,
-                cultivo, superficie, lat, lng)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                cultivo, superficie, lat, lng, geometria)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             usuario_id, parcela_id,
             data.get('provincia'), data.get('municipio'), data.get('poligono'),
             data.get('parcela'), data.get('recinto'),
             data.get('cultivo'), data.get('superficie'),
-            data.get('lat'), data.get('lng')
+            data.get('lat'), data.get('lng'),
+            json.dumps(geometria) if geometria else None
         ))
         conn.commit()
         return jsonify({'success': True, 'parcela_id': parcela_id}), 201
@@ -106,7 +109,7 @@ def obtener_parcelas():
     cur = conn.cursor()
     cur.execute("""
         SELECT parcela_id, provincia, municipio, poligono, parcela, recinto,
-            cultivo, superficie, lat, lng, fecha_registro
+            cultivo, superficie, lat, lng, geometria, fecha_registro
         FROM parcelas_usuario
         WHERE usuario_id = %s
         ORDER BY fecha_registro DESC
@@ -114,6 +117,11 @@ def obtener_parcelas():
     rows = cur.fetchall()
     cur.close()
     conn.close()
+
+    def _geom(val):
+        if val is None:
+            return None
+        return val if isinstance(val, dict) else json.loads(val)
 
     parcelas = [
         {
@@ -124,7 +132,8 @@ def obtener_parcelas():
             'superficie': float(r[7]) if r[7] else None,
             'lat': float(r[8]) if r[8] else None,
             'lng': float(r[9]) if r[9] else None,
-            'fecha_registro': r[10].isoformat()
+            'geometria': _geom(r[10]),
+            'fecha_registro': r[11].isoformat()
         }
         for r in rows
     ]
