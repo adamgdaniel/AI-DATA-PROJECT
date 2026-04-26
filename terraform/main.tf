@@ -150,6 +150,12 @@ resource "google_secret_manager_secret_iam_member" "frontend_read_secret_key" {
   member    = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
 }
 
+resource "google_secret_manager_secret_iam_member" "frontend_read_aemet_key" {
+  secret_id = "aemet-api-key"
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
 # --- Cloud Build trigger: login-frontend ---
 resource "google_cloudbuild_trigger" "login_frontend" {
   name        = "login-frontend-deploy"
