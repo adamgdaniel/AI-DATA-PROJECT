@@ -6,6 +6,8 @@ import os
 app = Flask(__name__)
 app.secret_key = os.environ['SECRET_KEY']
 API_URL = os.environ['API_URL']
+AEMET_API_KEY = os.environ.get('AEMET_API_KEY', '')
+AEMET_BASE = 'https://opendata.aemet.es/openapi/api'
 SIGPAC_HEADERS = {'Referer': 'https://sigpac.mapa.gob.es/fega/visor/', 'User-Agent': 'Mozilla/5.0'}
 
 
@@ -23,6 +25,29 @@ def _to_mercator(lat, lng):
     y = math.log(math.tan((90 + lat) * math.pi / 360)) / (math.pi / 180)
     y = y * 20037508.342789244 / 180
     return x, y
+
+
+def _from_mercator(x, y):
+    lng = x * 180 / 20037508.342789244
+    lat = math.degrees(2 * math.atan(math.exp(y * math.pi / 20037508.342789244)) - math.pi / 2)
+    return lat, lng
+
+
+def _convert_geometry(geom):
+    if not geom:
+        return None
+    def conv_ring(ring):
+        result = []
+        for pt in ring:
+            lat, lng = _from_mercator(pt[0], pt[1])
+            result.append([lng, lat])
+        return result
+    t = geom.get('type', '')
+    if t == 'Polygon':
+        return {'type': 'Polygon', 'coordinates': [conv_ring(r) for r in geom['coordinates']]}
+    if t == 'MultiPolygon':
+        return {'type': 'MultiPolygon', 'coordinates': [[conv_ring(r) for r in poly] for poly in geom['coordinates']]}
+    return None
 
 
 def _point_in_ring(px, py, ring):
@@ -90,6 +115,7 @@ def sigpac_info():
                 print(f"[SIGPAC tile] first ring sample: {first_coords[:2]}")
         found_props = None
 
+        found_geom = None
         for feature in features:
             geom = feature.get('geometry', {})
             coords = geom.get('coordinates', [])
@@ -100,6 +126,7 @@ def sigpac_info():
                 hit = any(_point_in_ring(px, py, poly[0]) for poly in coords)
             if hit:
                 found_props = feature.get('properties', {})
+                found_geom = geom
                 print(f"[SIGPAC tile props] {found_props}")
                 break
 
@@ -138,7 +165,8 @@ def sigpac_info():
             'superficie': round((parcela_info.get('dn_surface') or 0) / 10000, 4),
             'uso_sigpac': first_recinto.get('uso_sigpac', ''),
             'lat': lat,
-            'lng': lng
+            'lng': lng,
+            'geometry': _convert_geometry(found_geom)
         }
         return jsonify({'features': [{'properties': normalized}]})
 
@@ -169,6 +197,33 @@ def registrar_parcela():
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': f'API no disponible (status {resp.status_code})'}), 502
+
+
+@app.route('/tiempo-parcela')
+def tiempo_parcela():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not AEMET_API_KEY:
+        return jsonify({'error': 'AEMET_API_KEY no configurada'}), 503
+    provincia = request.args.get('provincia', '')
+    municipio = request.args.get('municipio', '')
+    if not provincia or not municipio:
+        return jsonify({'error': 'provincia y municipio requeridos'}), 400
+    cod_mun = f"{int(provincia):02d}{int(municipio):03d}"
+    headers = {'api_key': AEMET_API_KEY, 'Accept': 'application/json'}
+    try:
+        r1 = requests.get(
+            f'{AEMET_BASE}/prediccion/especifica/municipio/diaria/{cod_mun}',
+            headers=headers, timeout=8
+        )
+        if r1.status_code != 200:
+            return jsonify({'error': f'AEMET {r1.status_code}'}), 502
+        data_url = r1.json().get('datos')
+        r2 = requests.get(data_url, headers=headers, timeout=8)
+        return jsonify(r2.json()), r2.status_code
+    except Exception as e:
+        print(f"[AEMET] Error: {e}")
+        return jsonify({'error': 'Error consultando AEMET'}), 502
 
 
 if __name__ == '__main__':

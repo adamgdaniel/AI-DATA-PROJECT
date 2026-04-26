@@ -37,10 +37,12 @@ cur.execute("""
         superficie NUMERIC(10,4),
         lat NUMERIC(10,6),
         lng NUMERIC(10,6),
+        geometria JSONB,
         fecha_registro TIMESTAMP DEFAULT NOW(),
         UNIQUE(usuario_id, parcela_id)
     )
 """)
+cur.execute("ALTER TABLE parcelas_usuario ADD COLUMN IF NOT EXISTS geometria JSONB")
 
 password_hash = bcrypt.hashpw(os.environ['TEST_PASSWORD'].encode(), bcrypt.gensalt()).decode()
 cur.execute(
