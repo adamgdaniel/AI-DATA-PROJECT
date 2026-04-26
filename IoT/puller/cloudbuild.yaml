@@ -1,0 +1,17 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/iot-puller:latest', '.']
+    dir: 'IoT/puller'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/iot-puller:latest']
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - run
+      - jobs
+      - deploy
+      - iot-puller
+      - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/iot-puller:latest
+      - --region=europe-west1
+options:
+  logging: CLOUD_LOGGING_ONLY
