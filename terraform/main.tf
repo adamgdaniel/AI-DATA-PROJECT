@@ -125,6 +125,10 @@ resource "google_cloud_run_v2_service" "frontend" {
         value = google_cloud_run_v2_service.api.uri
       }
       env {
+        name  = "IOT_API_URL"
+        value = google_cloud_run_v2_service.iot_api.uri
+      }
+      env {
         name  = "SECRET_KEY"
         value = var.secret_key
       }

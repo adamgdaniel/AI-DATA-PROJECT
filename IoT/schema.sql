@@ -2,14 +2,16 @@
 
 -- Se tiene que crear en LOGINDB poirque si no Postgres no nos deja usar foreign keys entre bases de datos
 
+-- Un usuario puede tener múltiples instancias de HA (casa, finca, etc.)
+-- ha_url es siempre la URL pública de Nabu Casa: https://xxx.ui.nabu.casa
 CREATE TABLE IF NOT EXISTS ha_connections (
     id              SERIAL PRIMARY KEY,
     user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     ha_url          VARCHAR(255) NOT NULL,
     ha_token        TEXT NOT NULL,
+    display_name    VARCHAR(100),
     created_at      TIMESTAMP DEFAULT NOW(),
-    last_seen_at    TIMESTAMP,
-    UNIQUE (user_id)
+    last_seen_at    TIMESTAMP
 );
 
 

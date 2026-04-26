@@ -6,6 +6,7 @@ import os
 app = Flask(__name__)
 app.secret_key = os.environ['SECRET_KEY']
 API_URL = os.environ['API_URL']
+IOT_API_URL = os.environ.get('IOT_API_URL', '')
 AEMET_API_KEY = os.environ.get('AEMET_API_KEY', '')
 AEMET_BASE = 'https://opendata.aemet.es/openapi/api'
 SIGPAC_HEADERS = {'Referer': 'https://sigpac.mapa.gob.es/fega/visor/', 'User-Agent': 'Mozilla/5.0'}
@@ -224,6 +225,65 @@ def tiempo_parcela():
     except Exception as e:
         print(f"[AEMET] Error: {e}")
         return jsonify({'error': 'Error consultando AEMET'}), 502
+
+
+@app.route('/home-assistant', methods=['GET'])
+def home_assistant():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    connections = []
+    if IOT_API_URL:
+        try:
+            resp = requests.get(f'{IOT_API_URL}/ha/connections', params={'user_id': session['user_id']})
+            if resp.status_code == 200:
+                connections = resp.json()
+        except Exception:
+            pass
+    return render_template('ha_connect.html',
+                           connections=connections,
+                           success=request.args.get('success'),
+                           form_error=None)
+
+
+@app.route('/home-assistant/conectar', methods=['POST'])
+def ha_conectar():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    ha_url    = request.form.get('ha_url', '').strip()
+    ha_token  = request.form.get('ha_token', '').strip()
+    display_name = request.form.get('display_name', '').strip() or None
+    if not ha_url or not ha_token:
+        return render_template('ha_connect.html', connections=[],
+                               success=None, form_error='URL y token son obligatorios.')
+    if not IOT_API_URL:
+        return render_template('ha_connect.html', connections=[],
+                               success=None, form_error='Servicio IoT no configurado.')
+    try:
+        resp = requests.post(f'{IOT_API_URL}/ha/connect', json={
+            'user_id': session['user_id'],
+            'ha_url': ha_url,
+            'ha_token': ha_token,
+            'display_name': display_name
+        })
+        if resp.status_code == 201:
+            return redirect(url_for('home_assistant', success='1'))
+        form_error = resp.json().get('error', 'Error al conectar.')
+    except Exception:
+        form_error = 'No se pudo contactar con el servicio IoT.'
+    return render_template('ha_connect.html', connections=[], success=None, form_error=form_error)
+
+
+@app.route('/home-assistant/eliminar/<int:connection_id>', methods=['POST'])
+def ha_eliminar_conexion(connection_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    if IOT_API_URL:
+        try:
+            requests.delete(f'{IOT_API_URL}/ha/connections/{connection_id}',
+                            params={'user_id': session['user_id']})
+        except Exception:
+            pass
+    return redirect(url_for('home_assistant'))
 
 
 if __name__ == '__main__':
