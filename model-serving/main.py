@@ -1,10 +1,9 @@
 import os
-import math
 import json
 import psycopg2
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from google.cloud import secretmanager
 
 app = FastAPI()
@@ -29,43 +28,19 @@ DATABASE_URL = get_database_url()
 # ── CONTRATO DE DATOS ──────────────────────────────────────────────────────────
 class DiaMeteo(BaseModel):
     fecha: str
-    tmax: float
-    tmin: float
-    humedad_max: float
-    humedad_min: float
-    viento_velocidad: float
-    uv_max: float | None = None
-    prob_precipitacion: float = 0
+    et0_mm: float
+    precipitacion_mm: float
+    prob_precipitacion: Optional[float] = 0
+    estado_cielo_desc: Optional[str] = None
 
 class SolicitudRiego(BaseModel):
     parcela_id: str
     codigo_ine: str
     cultivo: str
     fase: str
-    prevision: List[DiaMeteo] | None = None
+    prevision: Optional[List[DiaMeteo]] = None
 
-# ── MÓDULO 1: PENMAN-MONTEITH ──────────────────────────────────────────────────
-def calcular_et0(dia: DiaMeteo, latitud: float = 39.5) -> float:
-    try:
-        tmedia = (dia.tmax + dia.tmin) / 2
-        hr_media = (dia.humedad_max + dia.humedad_min) / 2
-        viento_ms = dia.viento_velocidad / 3.6
-        es = 0.6108 * math.exp((17.27 * tmedia) / (tmedia + 237.3))
-        ea = es * (hr_media / 100)
-        vpd = es - ea
-        if dia.uv_max:
-            rs = dia.uv_max * 2.0
-        else:
-            rs = 0.16 * math.sqrt(abs(dia.tmax - dia.tmin)) * 35
-        delta = (4098 * es) / ((tmedia + 237.3) ** 2)
-        gamma = 0.067
-        et0 = (0.408 * delta * rs + gamma * (900 / (tmedia + 273)) * viento_ms * vpd) / \
-              (delta + gamma * (1 + 0.34 * viento_ms))
-        return round(max(et0, 0), 2)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error en ET0: {e}")
-
-# ── MÓDULO 2: RAG — COEFICIENTES KC ───────────────────────────────────────────
+# ── MÓDULO 1: COEFICIENTES KC ──────────────────────────────────────────────────
 def obtener_kc(cultivo: str, fase: str) -> float:
     try:
         with open("data/cultivos_referencia.json", "r") as f:
@@ -84,57 +59,79 @@ def obtener_kc(cultivo: str, fase: str) -> float:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error en Kc: {e}")
 
-# ── MÓDULO 3: CONEXIÓN A BASE DE DATOS ────────────────────────────────────────
-def get_prevision_db(codigo_ine: str) -> list:
+# ── MÓDULO 2: LECTURA DE PREVISIÓN DESDE BD ────────────────────────────────────
+def get_prevision_db(codigo_ine: str) -> List[DiaMeteo]:
     try:
         with psycopg2.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT fecha_prevision, tmax, tmin,
-                           humedad_max, humedad_min,
-                           viento_velocidad, uv_max, prob_precipitacion
+                    SELECT
+                        fecha_prevision,
+                        et0_evapotranspiracion,
+                        precipitacion_mm,
+                        prob_precipitacion,
+                        estado_cielo_desc
                     FROM prevision_meteorologica
                     WHERE codigo_ine = %s
                     ORDER BY fecha_prevision ASC
                 """, (codigo_ine,))
                 rows = cur.fetchall()
+        if not rows:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Sin datos de previsión para municipio {codigo_ine}"
+            )
         return [
             DiaMeteo(
                 fecha=str(row[0]),
-                tmax=row[1] or 20.0,
-                tmin=row[2] or 10.0,
-                humedad_max=row[3] or 70.0,
-                humedad_min=row[4] or 40.0,
-                viento_velocidad=row[5] or 10.0,
-                uv_max=row[6],
-                prob_precipitacion=row[7] or 0
+                et0_mm=float(row[1] or 0),
+                precipitacion_mm=float(row[2] or 0),
+                prob_precipitacion=float(row[3] or 0),
+                estado_cielo_desc=row[4]
             )
             for row in rows
         ]
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error obteniendo previsión: {e}")
 
-# ── MÓDULO 4: ENDPOINT PRINCIPAL ──────────────────────────────────────────────
+# ── MÓDULO 3: MOTOR AGRONÓMICO ─────────────────────────────────────────────────
+def calcular_deficit(et0_mm: float, kc: float, precipitacion_mm: float) -> dict:
+    """
+    Balance hídrico FAO-56:
+      ETc  = ET0 * Kc          (necesidad hídrica real del cultivo)
+      Déficit = ETc - Lluvia   (agua que hay que aportar mediante riego)
+    """
+    etc_mm = round(et0_mm * kc, 2)
+    deficit_mm = round(max(etc_mm - precipitacion_mm, 0), 2)
+    return {"etc_mm": etc_mm, "deficit_mm": deficit_mm}
+
+# ── ENDPOINT PRINCIPAL ─────────────────────────────────────────────────────────
 @app.post("/recomendar")
 def recomendar_riego(solicitud: SolicitudRiego):
     kc = obtener_kc(solicitud.cultivo, solicitud.fase)
     prevision = solicitud.prevision or get_prevision_db(solicitud.codigo_ine)
+
     resultados = []
     for dia in prevision:
-        et0 = calcular_et0(dia)
-        etc = round(et0 * kc, 2)
+        balance = calcular_deficit(dia.et0_mm, kc, dia.precipitacion_mm)
         resultados.append({
-            "fecha": dia.fecha,
-            "et0_mm": et0,
-            "etc_mm": etc,
-            "kc_aplicado": kc,
-            "nota": "Lluvia no disponible en mm — limitación AEMET"
+            "fecha":             dia.fecha,
+            "et0_mm":            dia.et0_mm,
+            "etc_mm":            balance["etc_mm"],
+            "precipitacion_mm":  dia.precipitacion_mm,
+            "deficit_mm":        balance["deficit_mm"],
+            "prob_precipitacion": dia.prob_precipitacion,
+            "estado_cielo":      dia.estado_cielo_desc,
+            "kc_aplicado":       kc,
         })
+
     return {
-        "parcela_id": solicitud.parcela_id,
-        "cultivo": solicitud.cultivo,
-        "fase": solicitud.fase,
-        "recomendacion_7dias": resultados
+        "parcela_id":          solicitud.parcela_id,
+        "cultivo":             solicitud.cultivo,
+        "fase":                solicitud.fase,
+        "recomendacion_dias":  resultados,
     }
 
 @app.get("/health")
