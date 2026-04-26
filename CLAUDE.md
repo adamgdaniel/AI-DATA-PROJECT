@@ -13,6 +13,48 @@ La idea es que al entrar al front end y logearse, el usuario verá un mapa (crea
 Adicionalmente, la plataforma integrará sensores IoT opcionales: el agricultor podrá colocar dispositivos físicos en su parcela (sensores de humedad del suelo, temperatura, etc.) y sus lecturas se incorporarán como datos de entrada al modelo, complementando los datos meteorológicos para mejorar las sugerencias.
 Todos los recursos que crees deben ser lo más limitados posibles para que la aplicación funcione con pocos usuarios, pero reudciendo el coste de recursos al máximo.
 
+# Integración de dispositivos IoT (a través de Home Assistant)
+
+## Contexto
+El tutor del máster nos ha recomendado centrar el proyecto en la integración de sensores IoT. Disponemos de un sensor de humedad del suelo con conectividad Zigbee, conectado a una Raspberry Pi con Home Assistant OS en red local. El sensor devuelve tres métricas: humedad del suelo, humedad ambiental y temperatura.
+
+## Arquitectura acordada
+
+```
+Sensor Zigbee
+     ↓
+Home Assistant (Raspberry Pi, red local)
+     ↓  [automation: on state change → HTTP POST]
+Cloud Run /ingest  ←──── Cloud SQL (lookup sensor_id → parcel_id + metadatos)
+     ↓
+Pub/Sub (lecturas crudas)
+     ↓
+Dataflow (job batch, se ejecuta cada hora)
+     ↓
+BigQuery (1 registro por sensor por hora)
+     ↓
+Model serving / API
+```
+
+**Decisión clave — push en lugar de pull:** Home Assistant envía los datos mediante una automation que hace HTTP POST al endpoint de Cloud Run cada vez que el sensor registra un cambio. Cloud Run no sondea a Home Assistant. Esto evita exponer la Raspberry Pi a internet de forma permanente (solo necesita salida, no entrada).
+
+## Justificación del uso de Dataflow
+
+El sensor envía lecturas cada pocos minutos. Usar Dataflow en modo batch horario está justificado por tres razones técnicas reales:
+
+1. **Reducción de ruido**: los sensores Zigbee pueden emitir lecturas ruidosas o duplicadas. Agregar en ventanas de 1 hora produce valores estables para el modelo.
+2. **Consistencia temporal con Open-Meteo**: los datos meteorológicos de Open-Meteo tienen resolución horaria. Que los datos del sensor también sean horarios permite un join limpio y coherente en el modelo de IA.
+3. **Separación de responsabilidades y resiliencia**: Pub/Sub absorbe las lecturas crudas sin pérdida aunque Dataflow no esté procesando en ese momento. El pipeline Apache Beam gestiona natively el windowing, mensajes desordenados (late data) y es testeable unitariamente. El código escala a múltiples sensores sin cambios.
+
+Lo que produce Dataflow por cada ventana de 1 hora y sensor: media, mínimo y máximo de cada métrica, más el enriquecimiento con `parcel_id` y metadatos de cultivo obtenidos de Cloud SQL.
+
+## Bases de datos
+
+| Qué | Dónde | Por qué |
+|---|---|---|
+| Registro de sensores (sensor_id, coordenadas, parcel_id) | Cloud SQL (PostgreSQL) | Datos relacionales, pocas escrituras, ya usado en el proyecto |
+| Lecturas agregadas por hora | BigQuery | Barato para series temporales, consumo directo por el modelo de IA |
+
 # Contexto del Proyecto
 
 ## Stack
