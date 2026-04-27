@@ -28,11 +28,11 @@ def run():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT s.id, s.sensor_id, s.sensor_type, s.parcela_usuario_id, s.user_id,
+        SELECT s.sensor_id, s.sensor_type, s.parcela_usuario_id, s.user_id,
                h.ha_url, h.ha_token, h.id
         FROM sensors s
         JOIN ha_connections h ON s.connection_id = h.id
-        WHERE s.active = TRUE AND s.id %% %s = %s
+        WHERE s.active = TRUE AND h.id %% %s = %s
     """, (TASK_COUNT, TASK_INDEX))
 
     rows = cur.fetchall()
@@ -40,18 +40,18 @@ def run():
     # Agrupar por conexión HA para hacer una sola llamada por instancia
     connections = {}
     for row in rows:
-        conn_id = row[7]
+        conn_id = row[6]
         if conn_id not in connections:
             connections[conn_id] = {
-                'ha_url': _decrypt(row[5]),
-                'ha_token': _decrypt(row[6]),
+                'ha_url': _decrypt(row[4]),
+                'ha_token': _decrypt(row[5]),
                 'sensors': []
             }
         connections[conn_id]['sensors'].append({
-            'sensor_id': row[1],
-            'sensor_type': row[2],
-            'parcela_usuario_id': row[3],
-            'user_id': row[4]
+            'sensor_id': row[0],
+            'sensor_type': row[1],
+            'parcela_usuario_id': row[2],
+            'user_id': row[3]
         })
 
     publisher = pubsub_v1.PublisherClient()
