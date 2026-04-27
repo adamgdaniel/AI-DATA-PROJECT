@@ -59,7 +59,7 @@ def ha_connect():
         INSERT INTO ha_connections (user_id, ha_url, ha_token, display_name, last_seen_at)
         VALUES (%s, %s, %s, %s, NOW())
         RETURNING id
-    """, (user_id, ha_url, _encrypt(ha_token), display_name))
+    """, (user_id, _encrypt(ha_url), _encrypt(ha_token), display_name))
     connection_id = cur.fetchone()[0]
     conn.commit()
     cur.close()
@@ -85,7 +85,7 @@ def ha_get_connections():
 
     return jsonify([{
         'connection_id': r[0],
-        'ha_url': r[1],
+        'ha_url': _decrypt(r[1]),
         'display_name': r[2],
         'created_at': r[3].isoformat(),
         'last_seen_at': r[4].isoformat() if r[4] else None
@@ -127,7 +127,7 @@ def ha_discover():
     if not row:
         return jsonify({'error': 'Conexión no encontrada'}), 404
 
-    ha_url, ha_token = row[0], _decrypt(row[1])
+    ha_url, ha_token = _decrypt(row[0]), _decrypt(row[1])
 
     try:
         resp = requests.get(

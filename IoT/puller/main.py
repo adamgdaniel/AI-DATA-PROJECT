@@ -43,7 +43,7 @@ def run():
         conn_id = row[7]
         if conn_id not in connections:
             connections[conn_id] = {
-                'ha_url': row[5],
+                'ha_url': _decrypt(row[5]),
                 'ha_token': _decrypt(row[6]),
                 'sensors': []
             }
