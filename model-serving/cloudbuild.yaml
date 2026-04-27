@@ -1,4 +1,11 @@
 steps:
+  # Copia cultivos_referencia.json al contexto del build antes de construir la imagen
+  - name: 'bash'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - 'mkdir -p model-serving/data && cp model-training/data/cultivos_referencia.json model-serving/data/cultivos_referencia.json'
+
   - name: 'gcr.io/cloud-builders/docker'
     dir: 'model-serving'
     args:
@@ -12,16 +19,16 @@ steps:
       - 'push'
       - '$_REGION-docker.pkg.dev/$PROJECT_ID/model-serving-repo/model-serving:$COMMIT_SHA'
 
+  # Solo actualiza la imagen; Terraform gestiona el servicio
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - 'run'
-      - 'deploy'
+      - 'services'
+      - 'update'
       - 'model-serving'
       - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/model-serving-repo/model-serving:$COMMIT_SHA'
       - '--region=$_REGION'
-      - '--platform=managed'
-      - '--allow-unauthenticated'
 
 substitutions:
   _REGION: europe-west1
