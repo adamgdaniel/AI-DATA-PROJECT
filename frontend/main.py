@@ -311,5 +311,79 @@ def ha_eliminar_conexion(connection_id):
     return redirect(url_for('home_assistant'))
 
 
+@app.route('/mis-conexiones-ha')
+def mis_conexiones_ha():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not IOT_API_URL:
+        return jsonify([]), 200
+    try:
+        resp = requests.get(f'{IOT_API_URL}/ha/connections', params={'user_id': session['user_id']})
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify([]), 200
+
+
+@app.route('/iot/descubrir-sensores')
+def iot_descubrir_sensores():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    connection_id = request.args.get('connection_id')
+    if not connection_id or not IOT_API_URL:
+        return jsonify([]), 200
+    try:
+        resp = requests.get(f'{IOT_API_URL}/ha/sensores/discover',
+                            params={'connection_id': connection_id}, timeout=20)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'Error contactando IoT API'}), 502
+
+
+@app.route('/iot/registrar-sensor', methods=['POST'])
+def iot_registrar_sensor():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not IOT_API_URL:
+        return jsonify({'error': 'Servicio IoT no configurado'}), 503
+    data = request.json
+    data['user_id'] = session['user_id']
+    try:
+        resp = requests.post(f'{IOT_API_URL}/ha/sensores', json=data)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'Error contactando IoT API'}), 502
+
+
+@app.route('/iot/mis-sensores')
+def iot_mis_sensores():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not IOT_API_URL:
+        return jsonify([]), 200
+    parcela_usuario_id = request.args.get('parcela_usuario_id')
+    params = {'parcela_usuario_id': parcela_usuario_id} if parcela_usuario_id \
+             else {'user_id': session['user_id']}
+    try:
+        resp = requests.get(f'{IOT_API_URL}/ha/sensores', params=params)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify([]), 200
+
+
+@app.route('/iot/eliminar-sensor', methods=['POST'])
+def iot_eliminar_sensor():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not IOT_API_URL:
+        return jsonify({'error': 'Servicio IoT no configurado'}), 503
+    sensor_id = request.json.get('sensor_id')
+    try:
+        resp = requests.delete(f'{IOT_API_URL}/ha/sensores',
+                               params={'sensor_id': sensor_id, 'user_id': session['user_id']})
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'Error contactando IoT API'}), 502
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)

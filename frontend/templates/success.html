@@ -115,6 +115,49 @@
 
     .crop-marker { background: none !important; border: none !important; }
 
+    /* Sensor section */
+    .dp-section h4 { display: flex; align-items: center; justify-content: space-between; }
+    .btn-add-small {
+      padding: 2px 8px; background: #2d6a4f; color: white;
+      border: none; border-radius: 3px; cursor: pointer; font-size: 10px;
+      font-weight: normal; text-transform: none; letter-spacing: 0;
+    }
+    .btn-add-small:hover { background: #1b4332; }
+
+    .sensor-item {
+      display: flex; align-items: center; gap: 6px;
+      background: #f0f7f4; border: 1px solid #b7dcc8;
+      border-radius: 4px; padding: 6px 8px; margin-bottom: 4px;
+    }
+    .sensor-item-info { flex: 1; min-width: 0; }
+    .sensor-item-type { font-size: 11px; font-weight: bold; color: #2d6a4f; }
+    .sensor-item-id { font-size: 10px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sensor-del { background: none; border: none; color: #c0392b; cursor: pointer; font-size: 14px; line-height: 1; flex-shrink: 0; }
+    .sensor-del:hover { color: #922b21; }
+
+    #add-sensor-panel {
+      border-top: 1px solid #eee; padding-top: 10px; margin-top: 8px;
+    }
+    .discover-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px;
+    }
+    .discover-item:last-child { border-bottom: none; }
+    .discover-info { flex: 1; min-width: 0; }
+    .discover-name { font-weight: bold; color: #333; }
+    .discover-meta { font-size: 10px; color: #888; }
+    .btn-add-row {
+      padding: 3px 8px; background: #2d6a4f; color: white;
+      border: none; border-radius: 3px; cursor: pointer; font-size: 11px; flex-shrink: 0;
+    }
+    .btn-add-row:hover { background: #1b4332; }
+    .btn-cancel-small {
+      padding: 5px 10px; margin-top: 8px;
+      background: none; border: 1px solid #ccc;
+      border-radius: 3px; cursor: pointer; font-size: 11px; color: #666;
+    }
+    .btn-cancel-small:hover { background: #f5f5f5; }
+
     /* --- Móvil --- */
     @media (max-width: 768px) {
       body { height: auto; min-height: 100vh; }
@@ -199,6 +242,26 @@
             <button class="btn-accion" onclick="registrarAccion('riego')">💧 Regar</button>
             <button class="btn-accion" onclick="registrarAccion('abono')">🌱 Abonar</button>
             <button class="btn-accion" onclick="registrarAccion('poda')">✂️ Podar</button>
+          </div>
+        </div>
+
+        <div class="dp-section">
+          <h4>Sensores IoT <button class="btn-add-small" onclick="abrirPanelSensor()">+ Añadir</button></h4>
+          <div id="dp-sensors-list">
+            <p style="font-size:12px;color:#aaa">Cargando...</p>
+          </div>
+          <div id="add-sensor-panel" style="display:none;">
+            <div class="field">
+              <label style="font-size:12px;font-weight:bold;display:block;margin-bottom:2px;">Conexión Home Assistant</label>
+              <select id="sensor-conn-sel" onchange="onConexionChange()" style="font-size:12px;">
+                <option value="">-- Seleccionar conexión --</option>
+              </select>
+            </div>
+            <div id="sensores-desc" style="display:none;margin-top:8px;">
+              <p style="font-size:11px;color:#888;margin-bottom:4px;">Sensores disponibles:</p>
+              <div id="sensores-desc-list"></div>
+            </div>
+            <button class="btn-cancel-small" onclick="cerrarPanelSensor()">Cancelar</button>
           </div>
         </div>
       </div>
@@ -390,12 +453,15 @@
     }
 
     function mostrarDetalleParcela(p) {
+      currentParcela = p;
       document.getElementById('info-panel').style.display = 'none';
       document.getElementById('dp-icon').textContent = CROP_ICONS[p.cultivo] || '🌿';
       document.getElementById('dp-id').textContent = p.parcela_id;
       document.getElementById('dp-cultivo').textContent = p.cultivo;
       document.getElementById('dp-sup').textContent = p.superficie ?? '-';
       document.getElementById('detail-panel').style.display = 'block';
+      cerrarPanelSensor();
+      if (p.id) cargarSensoresParcela(p.id);
       document.getElementById('dp-weather-cards').innerHTML =
         '<p style="font-size:12px;color:#aaa">Cargando previsión...</p>';
 
@@ -463,6 +529,138 @@
 
     function registrarAccion(tipo) {
       alert(`Acción "${tipo}" registrada (próximamente se guardará en la BD).`);
+    }
+
+    // ---- Sensor management ----
+    const SENSOR_LABELS = {
+      'soil_moisture':   'Humedad del suelo',
+      'temperature':     'Temperatura',
+      'ambient_humidity':'Hum. ambiental'
+    };
+    let currentParcela = null;
+
+    function cargarSensoresParcela(parcelaUsuarioId) {
+      const list = document.getElementById('dp-sensors-list');
+      list.innerHTML = '<p style="font-size:12px;color:#aaa">Cargando...</p>';
+      fetch(`/iot/mis-sensores?parcela_usuario_id=${parcelaUsuarioId}`)
+        .then(r => r.json())
+        .then(sensores => {
+          if (!Array.isArray(sensores) || sensores.length === 0) {
+            list.innerHTML = '<p style="font-size:12px;color:#aaa">Sin sensores asignados.</p>';
+            return;
+          }
+          list.innerHTML = sensores.map(s => `
+            <div class="sensor-item">
+              <div class="sensor-item-info">
+                <div class="sensor-item-type">${SENSOR_LABELS[s.sensor_type] || s.sensor_type}</div>
+                <div class="sensor-item-id">${s.display_name || s.sensor_id}</div>
+              </div>
+              <button class="sensor-del" title="Eliminar sensor"
+                onclick="eliminarSensor('${s.sensor_id.replace(/'/g,"\\'")}')">✕</button>
+            </div>
+          `).join('');
+        })
+        .catch(() => {
+          list.innerHTML = '<p style="font-size:12px;color:#aaa">Sin sensores asignados.</p>';
+        });
+    }
+
+    function abrirPanelSensor() {
+      const panel = document.getElementById('add-sensor-panel');
+      panel.style.display = 'block';
+      document.getElementById('sensores-desc').style.display = 'none';
+      const sel = document.getElementById('sensor-conn-sel');
+      sel.innerHTML = '<option value="">Cargando conexiones...</option>';
+      fetch('/mis-conexiones-ha')
+        .then(r => r.json())
+        .then(conns => {
+          if (!Array.isArray(conns) || conns.length === 0) {
+            sel.innerHTML = '<option value="">Sin conexiones HA configuradas</option>';
+            return;
+          }
+          sel.innerHTML = '<option value="">-- Seleccionar conexión --</option>' +
+            conns.map(c => `<option value="${c.connection_id}">${c.display_name || c.ha_url}</option>`).join('');
+        })
+        .catch(() => {
+          sel.innerHTML = '<option value="">Error al cargar conexiones</option>';
+        });
+    }
+
+    function cerrarPanelSensor() {
+      document.getElementById('add-sensor-panel').style.display = 'none';
+      document.getElementById('sensores-desc').style.display = 'none';
+    }
+
+    function onConexionChange() {
+      const connectionId = document.getElementById('sensor-conn-sel').value;
+      const descDiv = document.getElementById('sensores-desc');
+      const list = document.getElementById('sensores-desc-list');
+      if (!connectionId) { descDiv.style.display = 'none'; return; }
+      descDiv.style.display = 'block';
+      list.innerHTML = '<p style="font-size:11px;color:#aaa">Buscando sensores...</p>';
+      fetch(`/iot/descubrir-sensores?connection_id=${connectionId}`)
+        .then(r => r.json())
+        .then(sensores => {
+          if (!Array.isArray(sensores) || sensores.length === 0) {
+            list.innerHTML = '<p style="font-size:11px;color:#888">No se encontraron sensores compatibles.</p>';
+            return;
+          }
+          list.innerHTML = sensores.map(s => `
+            <div class="discover-item">
+              <div class="discover-info">
+                <div class="discover-name">${s.display_name || s.sensor_id}</div>
+                <div class="discover-meta">${SENSOR_LABELS[s.sensor_type] || s.sensor_type} · ${s.state} ${s.unit || ''}</div>
+              </div>
+              <button class="btn-add-row"
+                onclick="añadirSensor('${s.sensor_id.replace(/'/g,"\\'")}','${s.sensor_type}','${(s.display_name||'').replace(/'/g,"\\'")}',${connectionId})">
+                Añadir
+              </button>
+            </div>
+          `).join('');
+        })
+        .catch(() => {
+          list.innerHTML = '<p style="font-size:11px;color:#c00">Error al contactar con Home Assistant.</p>';
+        });
+    }
+
+    function añadirSensor(sensorId, sensorType, displayName, connectionId) {
+      if (!currentParcela || !currentParcela.id) return;
+      fetch('/iot/registrar-sensor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sensor_id: sensorId,
+          sensor_type: sensorType,
+          display_name: displayName || null,
+          connection_id: connectionId,
+          parcela_usuario_id: currentParcela.id
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          cerrarPanelSensor();
+          cargarSensoresParcela(currentParcela.id);
+        } else {
+          alert(data.error || 'Error al registrar el sensor.');
+        }
+      })
+      .catch(() => alert('Error de conexión.'));
+    }
+
+    function eliminarSensor(sensorId) {
+      if (!confirm('¿Eliminar este sensor?')) return;
+      fetch('/iot/eliminar-sensor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sensor_id: sensorId })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && currentParcela) cargarSensoresParcela(currentParcela.id);
+        else alert(data.error || 'Error al eliminar el sensor.');
+      })
+      .catch(() => alert('Error de conexión.'));
     }
 
     cargarParcelas();
