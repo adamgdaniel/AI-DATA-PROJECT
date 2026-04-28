@@ -1,26 +1,22 @@
 steps:
-  - name: 'python:3.11'
-    entrypoint: bash
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/dataflow-pipeline:latest', 'dataflow/']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/dataflow-pipeline:latest']
+
+  - name: 'europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/dataflow-pipeline:latest'
     args:
-      - -c
-      - |
-        pip install -r dataflow/requirements.txt --quiet &&
-        python dataflow/pipeline.py \
-          --runner=DataflowRunner \
-          --project=$PROJECT_ID \
-          --region=europe-west1 \
-          --temp_location=gs://$PROJECT_ID-dataflow/temp \
-          --staging_location=gs://$PROJECT_ID-dataflow/staging \
-          --job_name=iot-sensor-pipeline \
-          --streaming \
-          --project_id=$PROJECT_ID \
-          --subscription=sensor-readings-dataflow-sub \
-          --bq_dataset=iot_data \
-          --bq_table=sensor_aggregated \
-          --instance_connection_name=$_INSTANCE_CONNECTION_NAME \
-          --db_user=loginuser \
-          --db_password=$_DB_PASSWORD \
-          --db_name=logindb
+      - --runner=DataflowRunner
+      - --project_id=$PROJECT_ID
+      - --subscription=sensor-readings-dataflow-sub
+      - --bq_dataset=iot_data
+      - --bq_table=sensor_aggregated
+      - --instance_connection_name=$_INSTANCE_CONNECTION_NAME
+      - --db_user=loginuser
+      - --db_password=$_DB_PASSWORD
+      - --db_name=logindb
+      - --requirements_file=/app/requirements.txt
 
 substitutions:
   _INSTANCE_CONNECTION_NAME: 'project-7f8b4dee-2b72-40f2-941:europe-west1:login-db'
