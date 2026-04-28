@@ -25,3 +25,6 @@ steps:
 
 substitutions:
   _INSTANCE_CONNECTION_NAME: 'project-7f8b4dee-2b72-40f2-941:europe-west1:login-db'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
