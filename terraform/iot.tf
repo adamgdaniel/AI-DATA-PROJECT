@@ -34,6 +34,14 @@ resource "google_pubsub_topic" "sensor_readings" {
   name = "sensor-readings-raw"
 }
 
+resource "google_pubsub_subscription" "sensor_readings_dataflow" {
+  name  = "sensor-readings-dataflow-sub"
+  topic = google_pubsub_topic.sensor_readings.id
+
+  ack_deadline_seconds       = 600
+  message_retention_duration = "604800s" 
+}
+
 # --- Secret Manager: clave de cifrado para tokens HA ---
 resource "google_secret_manager_secret" "iot_encryption_key" {
   secret_id = "iot-encryption-key"
