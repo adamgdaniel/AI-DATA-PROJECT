@@ -1,5 +1,5 @@
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions, GoogleCloudOptions, GoogleCloudOptions
 from apache_beam.transforms.window import FixedWindows
 from apache_beam.transforms.periodicsequence import PeriodicImpulse
 from apache_beam.transforms import trigger, window
@@ -128,6 +128,13 @@ def run():
     options = PipelineOptions(beam_args)
     options.view_as(StandardOptions).streaming = True
     options.view_as(SetupOptions).save_main_session = True
+
+    gcp = options.view_as(GoogleCloudOptions)
+    gcp.project          = known_args.project_id
+    gcp.region           = 'europe-west1'
+    gcp.job_name         = 'iot-sensor-pipeline'
+    gcp.temp_location    = f'gs://{known_args.project_id}-dataflow/temp'
+    gcp.staging_location = f'gs://{known_args.project_id}-dataflow/staging'
 
     sub      = f"projects/{known_args.project_id}/subscriptions/{known_args.subscription}"
     bq_table = f"{known_args.project_id}:{known_args.bq_dataset}.{known_args.bq_table}"
