@@ -42,6 +42,12 @@ resource "google_project_iam_member" "compute_bigquery_editor" {
   member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
 }
 
+resource "google_project_iam_member" "compute_cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
 # --- BigQuery Dataset ---
 resource "google_bigquery_dataset" "iot_data" {
   dataset_id = "iot_data"
