@@ -1,3 +1,9 @@
+# --- Dataflow API ---
+resource "google_project_service" "dataflow" {
+  service            = "dataflow.googleapis.com"
+  disable_on_destroy = false
+}
+
 # --- GCS Bucket para Dataflow (temp y staging) ---
 resource "google_storage_bucket" "dataflow_temp" {
   name                        = "${var.project_id}-dataflow"
@@ -10,6 +16,30 @@ resource "google_storage_bucket_iam_member" "dataflow_temp_admin" {
   bucket = google_storage_bucket.dataflow_temp.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_dataflow_developer" {
+  project = var.project_id
+  role    = "roles/dataflow.developer"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_dataflow_worker" {
+  project = var.project_id
+  role    = "roles/dataflow.worker"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_pubsub_subscriber" {
+  project = var.project_id
+  role    = "roles/pubsub.subscriber"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_bigquery_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
 }
 
 # --- BigQuery Dataset ---

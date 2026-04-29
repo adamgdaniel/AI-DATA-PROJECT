@@ -147,44 +147,47 @@ def run():
         "reading_count:INTEGER,unit:STRING"
     )
 
-    with beam.Pipeline(options=options) as p:
+    p = beam.Pipeline(options=options)
 
-        # Side input: parcelas de Cloud SQL, se refresca cada hora
-        parcelas_side = (
-            p
-            | "Reloj"         >> PeriodicImpulse(fire_interval=3600, apply_windowing=True)
-            | "VentanaGlobal" >> beam.WindowInto(
-                window.GlobalWindows(),
-                trigger=trigger.Repeatedly(trigger.AfterCount(1)),
-                accumulation_mode=trigger.AccumulationMode.DISCARDING
-            )
-            | "CargarSQL"     >> beam.ParDo(CargarParcelasSQL(
-                instance_connection_name=known_args.instance_connection_name,
-                db_user=known_args.db_user,
-                db_password=known_args.db_password,
-                db_name=known_args.db_name
-            ))
+    # Side input: parcelas de Cloud SQL, se refresca cada hora
+    parcelas_side = (
+        p
+        | "Reloj"         >> PeriodicImpulse(fire_interval=3600, apply_windowing=True)
+        | "VentanaGlobal" >> beam.WindowInto(
+            window.GlobalWindows(),
+            trigger=trigger.Repeatedly(trigger.AfterCount(1)),
+            accumulation_mode=trigger.AccumulationMode.DISCARDING
         )
+        | "CargarSQL"     >> beam.ParDo(CargarParcelasSQL(
+            instance_connection_name=known_args.instance_connection_name,
+            db_user=known_args.db_user,
+            db_password=known_args.db_password,
+            db_name=known_args.db_name
+        ))
+    )
 
-        vista_parcelas = beam.pvalue.AsSingleton(parcelas_side, default_value={})
+    vista_parcelas = beam.pvalue.AsSingleton(parcelas_side, default_value={})
 
-        # Pipeline principal
-        (
-            p
-            | "LeerPubSub"        >> beam.io.ReadFromPubSub(subscription=sub)
-            | "Parsear"           >> beam.Map(parse_message)
-            | "FiltrarNulos"      >> beam.Filter(lambda x: x is not None)
-            | "ClaveSensor"       >> beam.Map(lambda x: (x['sensor_id'], x))
-            | "Ventana1h"         >> beam.WindowInto(FixedWindows(3600))
-            | "Agrupar"           >> beam.GroupByKey()
-            | "AgregarEnriquecer" >> beam.ParDo(AgregarYEnriquecer(), parcelas=vista_parcelas)
-            | "EscribirBQ"        >> beam.io.WriteToBigQuery(
-                table=bq_table,
-                schema=bq_schema,
-                write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
-                create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED
-            )
+    # Pipeline principal
+    (
+        p
+        | "LeerPubSub"        >> beam.io.ReadFromPubSub(subscription=sub)
+        | "Parsear"           >> beam.Map(parse_message)
+        | "FiltrarNulos"      >> beam.Filter(lambda x: x is not None)
+        | "ClaveSensor"       >> beam.Map(lambda x: (x['sensor_id'], x))
+        | "Ventana1h"         >> beam.WindowInto(FixedWindows(3600))
+        | "Agrupar"           >> beam.GroupByKey()
+        | "AgregarEnriquecer" >> beam.ParDo(AgregarYEnriquecer(), parcelas=vista_parcelas)
+        | "EscribirBQ"        >> beam.io.WriteToBigQuery(
+            table=bq_table,
+            schema=bq_schema,
+            write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
+            create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED
         )
+    )
+
+    result = p.run()
+    logging.info(f"Job de Dataflow lanzado correctamente. Job ID: {result.job_id()}")
 
 
 if __name__ == '__main__':
