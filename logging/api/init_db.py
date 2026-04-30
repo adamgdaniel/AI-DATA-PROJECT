@@ -44,6 +44,27 @@ cur.execute("""
 """)
 cur.execute("ALTER TABLE parcelas_usuario ADD COLUMN IF NOT EXISTS geometria JSONB")
 
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS invernaderos (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        nombre VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+    )
+""")
+
+cur.execute("""
+    CREATE TABLE IF NOT EXISTS plantas_invernadero (
+        id SERIAL PRIMARY KEY,
+        invernadero_id INTEGER NOT NULL REFERENCES invernaderos(id) ON DELETE CASCADE,
+        tipo VARCHAR(50) NOT NULL,
+        grid_col INTEGER NOT NULL,
+        grid_row INTEGER NOT NULL,
+        sensor_entity_id VARCHAR(200),
+        created_at TIMESTAMP DEFAULT NOW()
+    )
+""")
+
 password_hash = bcrypt.hashpw(os.environ['TEST_PASSWORD'].encode(), bcrypt.gensalt()).decode()
 cur.execute(
     "INSERT INTO users (username, password_hash) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING",
