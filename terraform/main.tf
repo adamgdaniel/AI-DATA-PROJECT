@@ -111,6 +111,63 @@ resource "google_cloud_run_v2_service_iam_member" "api_public" {
   member   = "allUsers"
 }
 
+# --- Cloud Run: Data API ---
+resource "google_cloud_run_v2_service" "data_api" {
+  name     = "data-api"
+  location = var.region
+
+  template {
+    service_account = google_service_account.cloudrun.email
+
+    containers {
+      image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
+
+      env {
+        name  = "INSTANCE_CONNECTION_NAME"
+        value = google_sql_database_instance.main.connection_name
+      }
+      env {
+        name  = "DB_NAME"
+        value = google_sql_database.main.name
+      }
+      env {
+        name  = "DB_USER"
+        value = google_sql_user.main.name
+      }
+      env {
+        name  = "DB_PASSWORD"
+        value = var.db_password
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+    }
+
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.main.connection_name]
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [template]
+  }
+
+  depends_on = [google_project_iam_member.cloudrun_cloudsql]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "data_api_public" {
+  project  = var.project_id
+  location = google_cloud_run_v2_service.data_api.location
+  name     = google_cloud_run_v2_service.data_api.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
 # --- Cloud Run: Frontend ---
 resource "google_cloud_run_v2_service" "frontend" {
   name     = "login-frontend"
@@ -123,6 +180,10 @@ resource "google_cloud_run_v2_service" "frontend" {
       env {
         name  = "API_URL"
         value = google_cloud_run_v2_service.api.uri
+      }
+      env {
+        name  = "DATA_API_URL"
+        value = google_cloud_run_v2_service.data_api.uri
       }
       env {
         name  = "IOT_API_URL"
@@ -173,8 +234,6 @@ resource "google_cloudbuild_trigger" "login_frontend" {
       branch = "^main$"
     }
   }
-
-  included_files = ["frontend/**"]
 
   filename = "frontend/cloudbuild.yaml"
 

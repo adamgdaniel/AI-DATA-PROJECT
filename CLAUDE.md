@@ -13,10 +13,38 @@ La idea es que al entrar al front end y logearse, el usuario verá un mapa (crea
 Adicionalmente, la plataforma integrará sensores IoT opcionales: el agricultor podrá colocar dispositivos físicos en su parcela (sensores de humedad del suelo, temperatura, etc.) y sus lecturas se incorporarán como datos de entrada al modelo, complementando los datos meteorológicos para mejorar las sugerencias.
 Todos los recursos que crees deben ser lo más limitados posibles para que la aplicación funcione con pocos usuarios, pero reudciendo el coste de recursos al máximo.
 
+# Cultivos objetivos:
+## Parcelas (exterior-regadio)
+- Maiz (variedad híbrida de ciclo largo/grano)
+- Naranjo (Navelate, Navelina, Valencia late)
+- Mandarino (Clemenules, Híbrido tardío)
+- Melocotonero (Amarillo/Pavía, Nectarina, Paraguayo)
+- Limonero (Primofiori)
+
+## Invernadero
+- Tomate (Rama/LongLife, Pera, Cherry)
+- Pimiento (California, Lamuyo)
+- Pepino (Holandés)
+- Calabacín (Verde oscuro)
+
 # Integración de dispositivos IoT (a través de Home Assistant)
 
 ## Contexto
 El tutor del máster nos ha recomendado centrar el proyecto en la integración de sensores IoT. Disponemos de un sensor de humedad del suelo con conectividad Zigbee, conectado a una Raspberry Pi con Home Assistant OS en red local. El sensor devuelve tres métricas: humedad del suelo, humedad ambiental y temperatura.
+
+## Concepto de frontend
+Pages:
+# Login
+    - Proceso de login de usuarios
+  
+# Crear usuario
+     - Permite crear un usuario al preguntar username, password y correo electronico
+# Main page
+     - Una vez el usuario se logea, puede ver esta interfaz con un mapa donde reclamar o ver sus parcelas
+     - Puede clickar en "Conectar con Home Assistant" para crear una conexión con este recurso. Una vez tiene una conexion creada, puede empezar a añadir dispositivos a cada parcela
+# GreenHose page 
+     - Esta página es una interfaz donde el usuario podrá ver y customizar sus invernaderos
+     - La interfaz está inspirada en un juego tipo HayDay o Habbo. El usuario verá un espacio rectangular, y debajo tiene una linea con iconos que representan los cultivos objetivos de invernadero (tomates, pepinos, pimientos y fresas). Al seleccionar cada tipo. El usuario puede arrastrar el icono y colocarlo en la parte que quiera de la cuadrícula que representa el invernadero. La cuadrícula se verá en 3D estilo pixel art, desde un ángulo de 45 grados. Cada usuario puede crear varios invernaderos, y podrá alternar entre ellos desde un selector situado arriba a la izquierda. Cada "tomate" que se coloca tendrá el icono de una plantera de tomates, ocupando un espacio de 2x1 cuadrículas. AL seleccionar la plantera, El usuario puede ver el cultivo, y si tiene configurado una conexión con Home asistant, podrá añadir dispositivos conectados. Si una plantera tiene dispositivos conectados, en la interfaz general del invernadero, se verá una cajita encima indicando las lecturas (temperatura, humedad ambiental, humedad del suelo) de los dispositivos.
 
 ## Arquitectura acordada
 
@@ -112,4 +140,4 @@ _Escribe aquí las instrucciones específicas para que Claude trabaje en la part
 -Visión Computacional (Satélite): Procesamiento de bandas como tensores bidimensionales. Es obligatorio usar NumPy y vectorización masiva. Prohibido usar bucles (for/while) para iterar píxeles
 -Forecasting (Clima): Uso de Pandas y Prophet para predecir series temporales. Salida obligatoria en escenarios probabilísticos (P25 pesimista, P50 neutro, P75 optimista)
 -Motor Agronómico: El déficit hídrico se calcula integrando IA y física mediante la ecuación FAO-56 (Penman-Monteith) ajustada por el Coeficiente de Cultivo, no con Redes Neuronales de caja negra.
-Despliegue (MLOps): Código modular y seguro (controlando errores como la división por cero). Todo debe empaquetarse en contenedores Docker stateless listos para Cloud Run
+Despliegue (MLOps): Código modular y seguro (controlando errores como la división por cero). Todo debe empaquetarse en contenedores Docker stateless listos para Cloud Run 

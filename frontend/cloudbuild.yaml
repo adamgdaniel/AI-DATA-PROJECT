@@ -1,4 +1,5 @@
 steps:
+  # --- Frontend ---
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/login-frontend:latest', '.']
     dir: 'frontend'
@@ -14,5 +15,20 @@ steps:
       - --region=europe-west1
       - --platform=managed
       - --update-secrets=SECRET_KEY=frontend-secret-key:latest,AEMET_API_KEY=aemet-api-key:latest
+  # --- Data API ---
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/data-api:latest', '.']
+    dir: 'frontend/data-api'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/data-api:latest']
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - run
+      - deploy
+      - data-api
+      - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/data-api:latest
+      - --region=europe-west1
+      - --platform=managed
 options:
   logging: CLOUD_LOGGING_ONLY

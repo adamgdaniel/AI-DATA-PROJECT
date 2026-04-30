@@ -109,13 +109,10 @@ def obtener_parcelas():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-<<<<<<< Updated upstream
         SELECT id, parcela_id, provincia, municipio, poligono, parcela, recinto,
             cultivo, superficie, lat, lng, geometria, fecha_registro
-=======
         SELECT parcela_id, provincia, municipio, poligono, parcela, recinto,
             cultivo, superficie, lat, lng, geometria, zonas, grid, fecha_registro
->>>>>>> Stashed changes
         FROM parcelas_usuario
         WHERE usuario_id = %s
         ORDER BY fecha_registro DESC
@@ -131,7 +128,6 @@ def obtener_parcelas():
 
     parcelas = [
         {
-<<<<<<< Updated upstream
             'id': r[0],
             'parcela_id': r[1],
             'provincia': r[2], 'municipio': r[3], 'poligono': r[4],
@@ -142,7 +138,6 @@ def obtener_parcelas():
             'lng': float(r[10]) if r[10] else None,
             'geometria': _geom(r[11]),
             'fecha_registro': r[12].isoformat()
-=======
             'parcela_id': r[0],
             'provincia': r[1], 'municipio': r[2], 'poligono': r[3],
             'parcela': r[4], 'recinto': r[5],
@@ -154,7 +149,6 @@ def obtener_parcelas():
             'zonas': _json(r[11]) or [],
             'grid': _json(r[12]) or {},
             'fecha_registro': r[13].isoformat()
->>>>>>> Stashed changes
         }
         for r in rows
     ]
@@ -235,4 +229,4 @@ def eliminar_zona(parcela_id, zona_id):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+  app.run(host='0.0.0.0', port=8080)
