@@ -13,6 +13,7 @@ AEMET_BASE = 'https://opendata.aemet.es/openapi/api'
 SIGPAC_HEADERS = {'Referer': 'https://sigpac.mapa.gob.es/fega/visor/', 'User-Agent': 'Mozilla/5.0'}
 
 
+
 def _lat_lng_to_tile(lat, lng, zoom):
     n = 2 ** zoom
     x = int((lng + 180) / 360 * n)
