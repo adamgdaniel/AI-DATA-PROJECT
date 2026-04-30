@@ -9,6 +9,20 @@ API_URL = os.environ['API_URL']
 IOT_API_URL = os.environ.get('IOT_API_URL', '')
 AEMET_API_KEY = os.environ.get('AEMET_API_KEY', '')
 AEMET_BASE = 'https://opendata.aemet.es/openapi/api'
+
+# Código INE de la capital de cada provincia (fallback cuando el municipio no tiene previsión)
+PROVINCE_CAPITALS = {
+    '01':'01059','02':'02003','03':'03014','04':'04013','05':'05019',
+    '06':'06015','07':'07040','08':'08019','09':'09059','10':'10037',
+    '11':'11012','12':'12040','13':'13034','14':'14021','15':'15030',
+    '16':'16078','17':'17079','18':'18087','19':'19130','20':'20069',
+    '21':'21041','22':'22125','23':'23050','24':'24089','25':'25120',
+    '26':'26089','27':'27028','28':'28079','29':'29067','30':'30030',
+    '31':'31201','32':'32054','33':'33044','34':'34120','35':'35016',
+    '36':'36038','37':'37274','38':'38038','39':'39075','40':'40194',
+    '41':'41091','42':'42173','43':'43148','44':'44216','45':'45168',
+    '46':'46250','47':'47186','48':'48020','49':'49275','50':'50297',
+}
 SIGPAC_HEADERS = {'Referer': 'https://sigpac.mapa.gob.es/fega/visor/', 'User-Agent': 'Mozilla/5.0'}
 
 
@@ -225,31 +239,85 @@ def registrar_parcela():
         return jsonify({'error': f'API no disponible (status {resp.status_code})'}), 502
 
 
+@app.route('/parcela/<parcela_id>')
+def detalle_parcela(parcela_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    try:
+        resp = requests.get(f'{API_URL}/parcelas', params={'user_id': session['user_id']})
+        parcelas = resp.json()
+        parcela = next((p for p in parcelas if p['parcela_id'] == parcela_id), None)
+    except Exception:
+        parcela = None
+    if not parcela:
+        return redirect(url_for('mapa'))
+    return render_template('parcela_detail.html', parcela=parcela)
+
+
+@app.route('/parcela/<parcela_id>/grid', methods=['POST'])
+def update_grid(parcela_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    data = request.json
+    data['user_id'] = session['user_id']
+    resp = requests.post(f'{API_URL}/parcelas/{parcela_id}/grid', json=data)
+    try:
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'API error'}), 502
+
+
+@app.route('/parcela/<parcela_id>/zona', methods=['POST'])
+def añadir_zona(parcela_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    data = request.json
+    data['user_id'] = session['user_id']
+    resp = requests.post(f'{API_URL}/parcelas/{parcela_id}/zona', json=data)
+    try:
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'API error'}), 502
+
+
+@app.route('/parcela/<parcela_id>/zona/<zona_id>', methods=['DELETE'])
+def eliminar_zona(parcela_id, zona_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    resp = requests.delete(
+        f'{API_URL}/parcelas/{parcela_id}/zona/{zona_id}',
+        json={'user_id': session['user_id']}
+    )
+    try:
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'API error'}), 502
+
+
 @app.route('/tiempo-parcela')
 def tiempo_parcela():
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
-    if not AEMET_API_KEY:
-        return jsonify({'error': 'AEMET_API_KEY no configurada'}), 503
-    provincia = request.args.get('provincia', '')
-    municipio = request.args.get('municipio', '')
-    if not provincia or not municipio:
-        return jsonify({'error': 'provincia y municipio requeridos'}), 400
-    cod_mun = f"{int(provincia):02d}{int(municipio):03d}"
-    headers = {'api_key': AEMET_API_KEY, 'Accept': 'application/json'}
+    lat = request.args.get('lat')
+    lng = request.args.get('lng')
+    if not lat or not lng:
+        return jsonify({'error': 'lat y lng requeridos'}), 400
     try:
-        r1 = requests.get(
-            f'{AEMET_BASE}/prediccion/especifica/municipio/diaria/{cod_mun}',
-            headers=headers, timeout=8
+        r = requests.get(
+            'https://api.open-meteo.com/v1/forecast',
+            params={
+                'latitude': lat,
+                'longitude': lng,
+                'daily': 'temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode',
+                'timezone': 'auto',
+                'forecast_days': 7
+            },
+            timeout=8
         )
-        if r1.status_code != 200:
-            return jsonify({'error': f'AEMET {r1.status_code}'}), 502
-        data_url = r1.json().get('datos')
-        r2 = requests.get(data_url, headers=headers, timeout=8)
-        return jsonify(r2.json()), r2.status_code
+        return jsonify(r.json()), r.status_code
     except Exception as e:
-        print(f"[AEMET] Error: {e}")
-        return jsonify({'error': 'Error consultando AEMET'}), 502
+        print(f"[OpenMeteo] Error: {e}")
+        return jsonify({'error': 'Error consultando Open-Meteo'}), 502
 
 
 @app.route('/home-assistant', methods=['GET'])

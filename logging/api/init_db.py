@@ -43,6 +43,8 @@ cur.execute("""
     )
 """)
 cur.execute("ALTER TABLE parcelas_usuario ADD COLUMN IF NOT EXISTS geometria JSONB")
+cur.execute("ALTER TABLE parcelas_usuario ADD COLUMN IF NOT EXISTS zonas JSONB DEFAULT '[]'::jsonb")
+cur.execute("ALTER TABLE parcelas_usuario ADD COLUMN IF NOT EXISTS grid JSONB DEFAULT '{}'::jsonb")
 
 password_hash = bcrypt.hashpw(os.environ['TEST_PASSWORD'].encode(), bcrypt.gensalt()).decode()
 cur.execute(

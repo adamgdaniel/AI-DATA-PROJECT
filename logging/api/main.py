@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import psycopg2
 import bcrypt
 import json
+import uuid
 import os
 
 load_dotenv()
@@ -108,8 +109,13 @@ def obtener_parcelas():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
+<<<<<<< Updated upstream
         SELECT id, parcela_id, provincia, municipio, poligono, parcela, recinto,
             cultivo, superficie, lat, lng, geometria, fecha_registro
+=======
+        SELECT parcela_id, provincia, municipio, poligono, parcela, recinto,
+            cultivo, superficie, lat, lng, geometria, zonas, grid, fecha_registro
+>>>>>>> Stashed changes
         FROM parcelas_usuario
         WHERE usuario_id = %s
         ORDER BY fecha_registro DESC
@@ -118,13 +124,14 @@ def obtener_parcelas():
     cur.close()
     conn.close()
 
-    def _geom(val):
+    def _json(val):
         if val is None:
             return None
-        return val if isinstance(val, dict) else json.loads(val)
+        return val if isinstance(val, (dict, list)) else json.loads(val)
 
     parcelas = [
         {
+<<<<<<< Updated upstream
             'id': r[0],
             'parcela_id': r[1],
             'provincia': r[2], 'municipio': r[3], 'poligono': r[4],
@@ -135,10 +142,96 @@ def obtener_parcelas():
             'lng': float(r[10]) if r[10] else None,
             'geometria': _geom(r[11]),
             'fecha_registro': r[12].isoformat()
+=======
+            'parcela_id': r[0],
+            'provincia': r[1], 'municipio': r[2], 'poligono': r[3],
+            'parcela': r[4], 'recinto': r[5],
+            'cultivo': r[6],
+            'superficie': float(r[7]) if r[7] else None,
+            'lat': float(r[8]) if r[8] else None,
+            'lng': float(r[9]) if r[9] else None,
+            'geometria': _json(r[10]),
+            'zonas': _json(r[11]) or [],
+            'grid': _json(r[12]) or {},
+            'fecha_registro': r[13].isoformat()
+>>>>>>> Stashed changes
         }
         for r in rows
     ]
     return jsonify(parcelas)
+
+
+@app.route('/parcelas/<parcela_id>/grid', methods=['POST'])
+def update_grid(parcela_id):
+    data = request.json
+    usuario_id = data.get('user_id')
+    if not usuario_id:
+        return jsonify({'error': 'user_id requerido'}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE parcelas_usuario SET grid = %s::jsonb
+        WHERE parcela_id = %s AND usuario_id = %s
+    """, (json.dumps(data.get('grid', {})), parcela_id, usuario_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/parcelas/<parcela_id>/zona', methods=['POST'])
+def añadir_zona(parcela_id):
+    data = request.json
+    usuario_id = data.get('user_id')
+    if not usuario_id:
+        return jsonify({'error': 'user_id requerido'}), 400
+    zona = {
+        'id': uuid.uuid4().hex[:8],
+        'lat': data['lat'], 'lng': data['lng'],
+        'cultivo': data['cultivo'], 'emoji': data['emoji']
+    }
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE parcelas_usuario
+        SET zonas = COALESCE(zonas, '[]'::jsonb) || %s::jsonb
+        WHERE parcela_id = %s AND usuario_id = %s
+        RETURNING zonas
+    """, (json.dumps([zona]), parcela_id, usuario_id))
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    if not row:
+        return jsonify({'error': 'Parcela no encontrada'}), 404
+    zonas = row[0] if isinstance(row[0], list) else json.loads(row[0])
+    return jsonify({'success': True, 'zonas': zonas})
+
+
+@app.route('/parcelas/<parcela_id>/zona/<zona_id>', methods=['DELETE'])
+def eliminar_zona(parcela_id, zona_id):
+    data = request.json or {}
+    usuario_id = data.get('user_id')
+    if not usuario_id:
+        return jsonify({'error': 'user_id requerido'}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE parcelas_usuario
+        SET zonas = (
+            SELECT COALESCE(jsonb_agg(z), '[]'::jsonb)
+            FROM jsonb_array_elements(COALESCE(zonas, '[]'::jsonb)) z
+            WHERE z->>'id' != %s
+        )
+        WHERE parcela_id = %s AND usuario_id = %s
+        RETURNING zonas
+    """, (zona_id, parcela_id, usuario_id))
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    zonas = (row[0] if isinstance(row[0], list) else json.loads(row[0])) if row else []
+    return jsonify({'success': True, 'zonas': zonas})
 
 
 if __name__ == '__main__':

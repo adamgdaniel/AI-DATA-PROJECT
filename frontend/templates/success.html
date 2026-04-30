@@ -453,6 +453,7 @@
     }
 
     function mostrarDetalleParcela(p) {
+<<<<<<< Updated upstream
       currentParcela = p;
       document.getElementById('info-panel').style.display = 'none';
       document.getElementById('dp-icon').textContent = CROP_ICONS[p.cultivo] || '🌿';
@@ -480,6 +481,9 @@
 
     function cerrarDetalle() {
       document.getElementById('detail-panel').style.display = 'none';
+=======
+      window.location.href = `/parcela/${p.parcela_id}`;
+>>>>>>> Stashed changes
     }
 
     function weatherIcon(code) {
