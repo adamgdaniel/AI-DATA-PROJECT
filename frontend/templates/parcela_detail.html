@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>AgroMonitor — {{ parcela.parcela_id }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: sans-serif; background: #0d1f16; color: white; overflow: hidden; }
+    body { display: flex; flex-direction: column; }
+
+    /* HEADER */
+    header {
+      background: #1a3a27; padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0; border-bottom: 1px solid #2d6a4f;
+    }
+    header a { color: #74c69d; font-size: 13px; text-decoration: none; flex-shrink: 0; }
+    .h-emoji { font-size: 26px; }
+    .h-info { flex: 1; min-width: 0; }
+    .h-info strong { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .h-info span { font-size: 11px; color: #95d5b2; }
+    .h-badge { background: #2d6a4f; color: #b7e4c7; padding: 3px 9px; border-radius: 10px; font-size: 11px; flex-shrink: 0; }
+
+    /* WEATHER */
+    #weather {
+      background: linear-gradient(135deg, #0d3b66 0%, #1a6fa8 100%);
+      padding: 10px 14px; flex-shrink: 0;
+    }
+    #weather-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.55); margin-bottom: 7px; }
+    #weather-cards { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+    #weather-cards::-webkit-scrollbar { height: 2px; }
+    #weather-cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); }
+    .wc {
+      min-width: 48px; flex-shrink: 0; text-align: center;
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+      border-radius: 8px; padding: 6px 4px;
+    }
+    .wc.today { background: rgba(255,255,255,.28); border-color: rgba(255,255,255,.55); }
+    .wc-d { font-size: 9px; font-weight: 700; opacity: .75; }
+    .wc-i { font-size: 18px; margin: 3px 0; }
+    .wc-h { font-size: 13px; font-weight: 700; }
+    .wc-l { font-size: 10px; opacity: .65; }
+    .wc-r { font-size: 9px; color: #90e0ef; min-height: 11px; margin-top: 2px; }
+    #weather-error { font-size: 11px; color: rgba(255,255,255,.45); padding: 4px 0; }
+
+    /* CANVAS AREA */
+    #canvas-wrap {
+      flex: 1; position: relative; overflow: hidden;
+      background: radial-gradient(ellipse at center, #1a3a27 0%, #0a1a0f 100%);
+    }
+    canvas { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+
+    /* HINT */
+    #hint {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,.55); color: rgba(255,255,255,.8);
+      padding: 5px 12px; border-radius: 14px; font-size: 11px;
+      pointer-events: none; white-space: nowrap;
+    }
+
+    /* ACTION BAR */
+    #action-bar {
+      background: #1a3a27; border-top: 1px solid #2d6a4f;
+      padding: 10px 14px; display: flex; gap: 8px; align-items: center;
+      flex-shrink: 0;
+    }
+    .btn-act {
+      flex: 1; padding: 10px 4px;
+      background: #2d6a4f; color: #b7e4c7;
+      border: 1.5px solid #40916c; border-radius: 8px;
+      cursor: pointer; font-size: 12px; font-weight: bold;
+      transition: background .15s;
+    }
+    .btn-act:hover { background: #40916c; color: white; }
+    .btn-act.danger { background: #6b2121; border-color: #c0392b; color: #f1948a; }
+    .btn-act.danger:hover { background: #c0392b; color: white; }
+    #sel-label { font-size: 11px; color: #95d5b2; text-align: center; min-width: 70px; }
+
+    /* NO GEOMETRY */
+    #no-geom {
+      display: none; position: absolute; inset: 0;
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px; text-align: center; padding: 30px;
+    }
+    #no-geom.show { display: flex; }
+    #no-geom p { color: rgba(255,255,255,.55); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/mapa">← Volver</a>
+  <div class="h-emoji" id="h-icon"></div>
+  <div class="h-info">
+    <strong>{{ parcela.parcela_id }}</strong>
+    <span id="h-sub"></span>
+  </div>
+  <div class="h-badge" id="h-sup"></div>
+</header>
+
+<div id="weather">
+  <div id="weather-label">Previsión 7 días — Open-Meteo</div>
+  <div id="weather-cards"><p id="weather-error">Cargando...</p></div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="hint">Arrastra para seleccionar cuadrículas</div>
+  <div id="no-geom">
+    <p style="font-size:32px">⚠️</p>
+    <p>Esta parcela no tiene geometría guardada.<br>
+       Elimínala y vuelve a registrarla desde el mapa para ver la cuadrícula.</p>
+  </div>
+</div>
+
+<div id="action-bar">
+  <div id="sel-label">0 zonas</div>
+  <button class="btn-act" onclick="applyAction('watered')">💧 Regar</button>
+  <button class="btn-act" onclick="applyAction('planted')">🌱 Plantar</button>
+  <button class="btn-act" onclick="applyAction('harvested')">🌾 Cosechar</button>
+  <button class="btn-act danger" onclick="applyAction('empty')">✕ Vaciar</button>
+</div>
+
+<script>
+  const PARCELA = {{ parcela | tojson }};
+
+  const CROP_ICONS = {
+    'Trigo':'🌾','Cebada':'🌾','Maíz':'🌽','Girasol':'🌻',
+    'Naranjos':'🍊','Limoneros':'🍋','Olivos':'🫒','Vid':'🍇',
+    'Almendros':'🌰','Tomate':'🍅','Pimiento':'🌶️','Otro':'🌿'
+  };
+  const CROP_COLORS = {
+    'Trigo':'#d4a843','Cebada':'#c8933f','Maíz':'#27ae60','Girasol':'#f39c12',
+    'Naranjos':'#e67e22','Limoneros':'#f1c40f','Olivos':'#6d8c3f','Vid':'#8e44ad',
+    'Almendros':'#d4917a','Tomate':'#c0392b','Pimiento':'#e74c3c','Otro':'#7f8c8d'
+  };
+
+  const CELL_FILL = {
+    empty:     'rgba(56,142,60,0.30)',
+    watered:   'rgba(2,119,189,0.55)',
+    planted:   'rgba(27,94,32,0.70)',
+    harvested: 'rgba(121,85,72,0.65)',
+  };
+  const CELL_EMOJI = { watered:'💧', planted:'🌱', harvested:'🌾', empty:null };
+
+  // Header
+  document.getElementById('h-icon').textContent = CROP_ICONS[PARCELA.cultivo] || '🌿';
+  document.getElementById('h-sub').textContent   = PARCELA.cultivo;
+  document.getElementById('h-sup').textContent   = (PARCELA.superficie || '-') + ' ha';
+
+  // ── WEATHER ─────────────────────────────────────────────────────────
+  const DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+  function wIcon(code) {
+    const c = parseInt(code) || 0;
+    if (c === 0)  return '☀️';
+    if (c <= 2)   return '🌤️';
+    if (c <= 3)   return '⛅';
+    if (c <= 48)  return '🌫️';
+    if (c <= 55)  return '🌦️';
+    if (c <= 65)  return '🌧️';
+    if (c <= 77)  return '❄️';
+    if (c <= 82)  return '🌦️';
+    if (c <= 86)  return '❄️';
+    return '⛈️';
+  }
+
+  fetch(`/tiempo-parcela?lat=${PARCELA.lat}&lng=${PARCELA.lng}`)
+    .then(r => r.json())
+    .then(data => {
+      const box = document.getElementById('weather-cards');
+      const daily = data.daily;
+      if (!daily || !daily.time) {
+        box.innerHTML = `<p id="weather-error">⚠️ ${data?.error || 'Sin datos'}</p>`;
+        return;
+      }
+      box.innerHTML = daily.time.map((fecha, i) => {
+        const label = i === 0 ? 'Hoy' : DIAS[new Date(fecha + 'T12:00:00').getDay()];
+        const tmax  = Math.round(daily.temperature_2m_max[i]) ?? '-';
+        const tmin  = Math.round(daily.temperature_2m_min[i]) ?? '-';
+        const prec  = daily.precipitation_sum[i] ?? 0;
+        const code  = daily.weathercode[i] ?? 0;
+        return `<div class="wc${i===0?' today':''}">
+          <div class="wc-d">${label}</div>
+          <div class="wc-i">${wIcon(code)}</div>
+          <div class="wc-h">${tmax}°</div>
+          <div class="wc-l">${tmin}°</div>
+          <div class="wc-r">${prec > 0 ? '💧' + prec + 'mm' : ''}</div>
+        </div>`;
+      }).join('');
+    })
+    .catch(err => {
+      document.getElementById('weather-cards').innerHTML =
+        `<p id="weather-error">⚠️ ${err.message}</p>`;
+    });
+
+  // ── CANVAS GRID ──────────────────────────────────────────────────────
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+
+  const ROWS = 10, COLS = 10;
+  let W = 0, H = 0;
+  let projRing = [];          // outer ring in canvas px
+  let cells = [];             // valid (inside) cells
+  let cellGrid = PARCELA.grid || {};
+  let selectedKeys = new Set();
+  let dragging = false;
+
+  // ── Geometry helpers ────────────────────────────────────────────────
+  function bbox(geom) {
+    const flat = geom.type === 'Polygon'
+      ? geom.coordinates.flat()
+      : geom.coordinates.flat(2);
+    return {
+      minX: Math.min(...flat.map(c=>c[0])), maxX: Math.max(...flat.map(c=>c[0])),
+      minY: Math.min(...flat.map(c=>c[1])), maxY: Math.max(...flat.map(c=>c[1]))
+    };
+  }
+
+  function project(lng, lat, bb, W, H, pad) {
+    pad = pad || 28;
+    const fw = W-2*pad, fh = H-2*pad;
+    const dX = bb.maxX - bb.minX, dY = bb.maxY - bb.minY;
+    const scale = Math.min(fw / (dX||1), fh / (dY||1));
+    const ox = pad + (fw - scale*dX)/2;
+    const oy = pad + (fh - scale*dY)/2;
+    return {
+      x: ox + scale*(lng - bb.minX),
+      y: H - oy - scale*(lat - bb.minY)
+    };
+  }
+
+  function pip(x, y, ring) {
+    let inside = false;
+    for (let i=0, j=ring.length-1; i<ring.length; j=i++) {
+      const xi=ring[i].x, yi=ring[i].y, xj=ring[j].x, yj=ring[j].y;
+      if (((yi>y)!==(yj>y)) && x < (xj-xi)*(y-yi)/(yj-yi)+xi) inside=!inside;
+    }
+    return inside;
+  }
+
+  // ── Build / resize ───────────────────────────────────────────────────
+  function resize() {
+    const wrap = canvas.parentElement;
+    W = canvas.width  = wrap.clientWidth;
+    H = canvas.height = wrap.clientHeight;
+    build();
+    draw();
+  }
+
+  function build() {
+    cells = [];
+    if (!PARCELA.geometria) {
+      document.getElementById('no-geom').classList.add('show');
+      return;
+    }
+    const bb  = bbox(PARCELA.geometria);
+    const ring = PARCELA.geometria.type === 'Polygon'
+      ? PARCELA.geometria.coordinates[0]
+      : PARCELA.geometria.coordinates[0][0];
+
+    projRing = ring.map(([lng,lat]) => project(lng, lat, bb, W, H));
+
+    const cw = W / COLS, ch = H / ROWS;
+    for (let r=0; r<ROWS; r++) {
+      for (let c=0; c<COLS; c++) {
+        const cx = c*cw + cw/2, cy = r*ch + ch/2;
+        if (pip(cx, cy, projRing)) {
+          cells.push({ r, c, x:c*cw, y:r*ch, w:cw, h:ch, cx, cy, key:`${r},${c}` });
+        }
+      }
+    }
+  }
+
+  // ── Draw ─────────────────────────────────────────────────────────────
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    if (!projRing.length) return;
+
+    // Parcel glow bg
+    ctx.save();
+    ctx.beginPath();
+    projRing.forEach((pt,i) => i===0 ? ctx.moveTo(pt.x,pt.y) : ctx.lineTo(pt.x,pt.y));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(27,67,50,0.55)';
+    ctx.fill();
+    ctx.restore();
+
+    // Cells
+    const emojiSize = Math.round(Math.min(W/COLS, H/ROWS) * 0.42);
+    ctx.font = `${emojiSize}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    cells.forEach(cell => {
+      const sel   = selectedKeys.has(cell.key);
+      const state = cellGrid[cell.key] || 'empty';
+
+      ctx.fillStyle = sel ? 'rgba(255,193,7,0.65)' : (CELL_FILL[state] || CELL_FILL.empty);
+      ctx.fillRect(cell.x+1, cell.y+1, cell.w-2, cell.h-2);
+
+      ctx.strokeStyle = sel ? 'rgba(255,193,7,0.95)' : 'rgba(180,230,180,0.22)';
+      ctx.lineWidth   = sel ? 2 : 1;
+      ctx.strokeRect(cell.x+.5, cell.y+.5, cell.w-1, cell.h-1);
+
+      const emoji = CELL_EMOJI[state];
+      if (emoji && !sel) ctx.fillText(emoji, cell.cx, cell.cy);
+    });
+
+    // Parcel border
+    ctx.beginPath();
+    projRing.forEach((pt,i) => i===0 ? ctx.moveTo(pt.x,pt.y) : ctx.lineTo(pt.x,pt.y));
+    ctx.closePath();
+    ctx.strokeStyle = CROP_COLORS[PARCELA.cultivo] || '#74c69d';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Selection badge
+    if (selectedKeys.size > 0) {
+      const txt = `${selectedKeys.size} zona${selectedKeys.size>1?'s':''} seleccionada${selectedKeys.size>1?'s':''}`;
+      ctx.font = 'bold 12px sans-serif';
+      const tw = ctx.measureText(txt).width;
+      const bw = tw + 24, bh = 28, bx = W/2 - bw/2, by = 10;
+      ctx.fillStyle = 'rgba(255,193,7,0.92)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 14);
+      else ctx.rect(bx, by, bw, bh);
+      ctx.fill();
+      ctx.fillStyle = '#1a1a00';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(txt, W/2, by + bh/2);
+    }
+  }
+
+  // ── Cell lookup ───────────────────────────────────────────────────────
+  function cellAt(x, y) {
+    return cells.find(c => x>=c.x && x<c.x+c.w && y>=c.y && y<c.y+c.h) || null;
+  }
+
+  function canvasXY(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    return { x: clientX - r.left, y: clientY - r.top };
+  }
+
+  // ── Mouse ─────────────────────────────────────────────────────────────
+  canvas.addEventListener('mousedown', e => {
+    const {x,y} = canvasXY(e.clientX, e.clientY);
+    const cell = cellAt(x, y);
+    if (!cell) return;
+    if (!e.shiftKey) selectedKeys.clear();
+    dragging = true;
+    selectedKeys.add(cell.key);
+    updateBar(); draw();
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const {x,y} = canvasXY(e.clientX, e.clientY);
+    const cell = cellAt(x, y);
+    if (cell && !selectedKeys.has(cell.key)) { selectedKeys.add(cell.key); draw(); }
+  });
+
+  canvas.addEventListener('mouseup', () => { dragging = false; updateBar(); });
+
+  // ── Touch ─────────────────────────────────────────────────────────────
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    const {x,y} = canvasXY(t.clientX, t.clientY);
+    const cell = cellAt(x, y);
+    if (!cell) return;
+    selectedKeys.clear();
+    dragging = true;
+    selectedKeys.add(cell.key);
+    updateBar(); draw();
+  }, {passive:false});
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!dragging) return;
+    const t = e.touches[0];
+    const {x,y} = canvasXY(t.clientX, t.clientY);
+    const cell = cellAt(x, y);
+    if (cell && !selectedKeys.has(cell.key)) { selectedKeys.add(cell.key); draw(); }
+  }, {passive:false});
+
+  canvas.addEventListener('touchend', () => { dragging = false; updateBar(); });
+
+  // ── Actions ───────────────────────────────────────────────────────────
+  function updateBar() {
+    document.getElementById('sel-label').textContent =
+      selectedKeys.size ? `${selectedKeys.size} zona${selectedKeys.size>1?'s':''}` : '0 zonas';
+  }
+
+  function applyAction(state) {
+    if (selectedKeys.size === 0) return;
+    selectedKeys.forEach(key => { cellGrid[key] = state; });
+    selectedKeys.clear();
+    updateBar(); draw();
+    saveGrid();
+  }
+
+  function saveGrid() {
+    fetch(`/parcela/${encodeURIComponent(PARCELA.parcela_id)}/grid`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ grid: cellGrid })
+    }).catch(e => console.warn('Grid save error:', e));
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────
+  const ro = new ResizeObserver(resize);
+  ro.observe(canvas.parentElement);
+  resize();
+</script>
+</body>
+</html>
