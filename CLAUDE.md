@@ -13,6 +13,20 @@ La idea es que al entrar al front end y logearse, el usuario verá un mapa (crea
 Adicionalmente, la plataforma integrará sensores IoT opcionales: el agricultor podrá colocar dispositivos físicos en su parcela (sensores de humedad del suelo, temperatura, etc.) y sus lecturas se incorporarán como datos de entrada al modelo, complementando los datos meteorológicos para mejorar las sugerencias.
 Todos los recursos que crees deben ser lo más limitados posibles para que la aplicación funcione con pocos usuarios, pero reudciendo el coste de recursos al máximo.
 
+# Cultivos objetivos:
+## Parcelas (exterior-regadio)
+- Maiz (variedad híbrida de ciclo largo/grano)
+- Naranjo (Navelate, Navelina, Valencia late)
+- Mandarino (Clemenules, Híbrido tardío)
+- Melocotonero (Amarillo/Pavía, Nectarina, Paraguayo)
+- Limonero (Primofiori)
+
+## Invernadero
+- Tomate (Rama/LongLife, Pera, Cherry)
+- Pimiento (California, Lamuyo)
+- Pepino (Holandés)
+- Calabacín (Verde oscuro)
+
 # Integración de dispositivos IoT (a través de Home Assistant)
 
 ## Contexto
