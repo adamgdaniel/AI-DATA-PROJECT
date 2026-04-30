@@ -42,7 +42,7 @@ Pages:
 # Main page
      - Una vez el usuario se logea, puede ver esta interfaz con un mapa donde reclamar o ver sus parcelas
      - Puede clickar en "Conectar con Home Assistant" para crear una conexión con este recurso. Una vez tiene una conexion creada, puede empezar a añadir dispositivos a cada parcela
-# GreenHose page
+# GreenHose page 
      - Esta página es una interfaz donde el usuario podrá ver y customizar sus invernaderos
      - La interfaz está inspirada en un juego tipo HayDay o Habbo. El usuario verá un espacio rectangular, y debajo tiene una linea con iconos que representan los cultivos objetivos de invernadero (tomates, pepinos, pimientos y fresas). Al seleccionar cada tipo. El usuario puede arrastrar el icono y colocarlo en la parte que quiera de la cuadrícula que representa el invernadero. La cuadrícula se verá en 3D estilo pixel art, desde un ángulo de 45 grados. Cada usuario puede crear varios invernaderos, y podrá alternar entre ellos desde un selector situado arriba a la izquierda. Cada "tomate" que se coloca tendrá el icono de una plantera de tomates, ocupando un espacio de 2x1 cuadrículas. AL seleccionar la plantera, El usuario puede ver el cultivo, y si tiene configurado una conexión con Home asistant, podrá añadir dispositivos conectados. Si una plantera tiene dispositivos conectados, en la interfaz general del invernadero, se verá una cajita encima indicando las lecturas (temperatura, humedad ambiental, humedad del suelo) de los dispositivos.
 
