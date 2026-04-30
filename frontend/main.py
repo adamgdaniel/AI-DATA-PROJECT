@@ -6,6 +6,7 @@ import os
 app = Flask(__name__)
 app.secret_key = os.environ['SECRET_KEY']
 API_URL = os.environ['API_URL']
+DATA_API_URL = os.environ.get('DATA_API_URL', API_URL)
 IOT_API_URL = os.environ.get('IOT_API_URL', '')
 AEMET_API_KEY = os.environ.get('AEMET_API_KEY', '')
 AEMET_BASE = 'https://opendata.aemet.es/openapi/api'
@@ -206,7 +207,7 @@ def mis_parcelas():
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        resp = requests.get(f'{API_URL}/parcelas', params={'user_id': session['user_id']})
+        resp = requests.get(f'{DATA_API_URL}/parcelas', params={'user_id': session['user_id']})
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify([]), 200
@@ -218,7 +219,7 @@ def registrar_parcela():
         return jsonify({'error': 'no autenticado'}), 401
     data = request.json
     data['user_id'] = session['user_id']
-    resp = requests.post(f'{API_URL}/parcelas', json=data)
+    resp = requests.post(f'{DATA_API_URL}/parcelas', json=data)
     try:
         return jsonify(resp.json()), resp.status_code
     except Exception:
@@ -397,7 +398,7 @@ def mis_invernaderos():
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        resp = requests.get(f'{API_URL}/invernaderos', params={'user_id': session['user_id']})
+        resp = requests.get(f'{DATA_API_URL}/invernaderos', params={'user_id': session['user_id']})
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify([]), 200
@@ -410,7 +411,7 @@ def crear_invernadero():
     data = request.json
     data['user_id'] = session['user_id']
     try:
-        resp = requests.post(f'{API_URL}/invernaderos', json=data)
+        resp = requests.post(f'{DATA_API_URL}/invernaderos', json=data)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'API no disponible'}), 502
@@ -421,7 +422,7 @@ def eliminar_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        requests.delete(f'{API_URL}/invernaderos/{inv_id}', params={'user_id': session['user_id']})
+        requests.delete(f'{DATA_API_URL}/invernaderos/{inv_id}', params={'user_id': session['user_id']})
     except Exception:
         pass
     return jsonify({'success': True})
@@ -432,7 +433,7 @@ def plantas_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        resp = requests.get(f'{API_URL}/invernaderos/{inv_id}/plantas')
+        resp = requests.get(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas')
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify([]), 200
@@ -443,7 +444,7 @@ def anadir_planta(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        resp = requests.post(f'{API_URL}/invernaderos/{inv_id}/plantas', json=request.json)
+        resp = requests.post(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas', json=request.json)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'API no disponible'}), 502
@@ -454,7 +455,7 @@ def eliminar_planta(inv_id, planta_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        requests.delete(f'{API_URL}/invernaderos/{inv_id}/plantas/{planta_id}')
+        requests.delete(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas/{planta_id}')
     except Exception:
         pass
     return jsonify({'success': True})
@@ -466,7 +467,7 @@ def actualizar_sensor_planta(inv_id, planta_id):
         return jsonify({'error': 'no autenticado'}), 401
     try:
         resp = requests.put(
-            f'{API_URL}/invernaderos/{inv_id}/plantas/{planta_id}/sensor',
+            f'{DATA_API_URL}/invernaderos/{inv_id}/plantas/{planta_id}/sensor',
             json=request.json
         )
         return jsonify(resp.json()), resp.status_code
