@@ -385,5 +385,94 @@ def iot_eliminar_sensor():
         return jsonify({'error': 'Error contactando IoT API'}), 502
 
 
+@app.route('/invernadero')
+def invernadero():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('greenhouse.html')
+
+
+@app.route('/mis-invernaderos')
+def mis_invernaderos():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    try:
+        resp = requests.get(f'{API_URL}/invernaderos', params={'user_id': session['user_id']})
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify([]), 200
+
+
+@app.route('/crear-invernadero', methods=['POST'])
+def crear_invernadero():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    data = request.json
+    data['user_id'] = session['user_id']
+    try:
+        resp = requests.post(f'{API_URL}/invernaderos', json=data)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'API no disponible'}), 502
+
+
+@app.route('/eliminar-invernadero/<int:inv_id>', methods=['DELETE'])
+def eliminar_invernadero(inv_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    try:
+        requests.delete(f'{API_URL}/invernaderos/{inv_id}', params={'user_id': session['user_id']})
+    except Exception:
+        pass
+    return jsonify({'success': True})
+
+
+@app.route('/plantas-invernadero/<int:inv_id>')
+def plantas_invernadero(inv_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    try:
+        resp = requests.get(f'{API_URL}/invernaderos/{inv_id}/plantas')
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify([]), 200
+
+
+@app.route('/anadir-planta/<int:inv_id>', methods=['POST'])
+def anadir_planta(inv_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    try:
+        resp = requests.post(f'{API_URL}/invernaderos/{inv_id}/plantas', json=request.json)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'API no disponible'}), 502
+
+
+@app.route('/eliminar-planta/<int:inv_id>/<int:planta_id>', methods=['DELETE'])
+def eliminar_planta(inv_id, planta_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    try:
+        requests.delete(f'{API_URL}/invernaderos/{inv_id}/plantas/{planta_id}')
+    except Exception:
+        pass
+    return jsonify({'success': True})
+
+
+@app.route('/actualizar-sensor-planta/<int:inv_id>/<int:planta_id>', methods=['PUT'])
+def actualizar_sensor_planta(inv_id, planta_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    try:
+        resp = requests.put(
+            f'{API_URL}/invernaderos/{inv_id}/plantas/{planta_id}/sensor',
+            json=request.json
+        )
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'API no disponible'}), 502
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)

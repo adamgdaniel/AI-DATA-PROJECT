@@ -141,5 +141,120 @@ def obtener_parcelas():
     return jsonify(parcelas)
 
 
+@app.route('/invernaderos', methods=['GET'])
+def get_invernaderos():
+    usuario_id = request.args.get('user_id')
+    if not usuario_id:
+        return jsonify({'error': 'user_id requerido'}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, nombre, created_at FROM invernaderos
+        WHERE usuario_id = %s ORDER BY created_at ASC
+    """, (usuario_id,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify([{'id': r[0], 'nombre': r[1], 'created_at': r[2].isoformat()} for r in rows])
+
+
+@app.route('/invernaderos', methods=['POST'])
+def crear_invernadero():
+    data = request.json
+    usuario_id = data.get('user_id')
+    nombre = (data.get('nombre') or '').strip()
+    if not usuario_id or not nombre:
+        return jsonify({'error': 'user_id y nombre requeridos'}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO invernaderos (usuario_id, nombre) VALUES (%s, %s) RETURNING id
+    """, (usuario_id, nombre))
+    new_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'id': new_id, 'nombre': nombre}), 201
+
+
+@app.route('/invernaderos/<int:invernadero_id>', methods=['DELETE'])
+def eliminar_invernadero(invernadero_id):
+    usuario_id = request.args.get('user_id')
+    if not usuario_id:
+        return jsonify({'error': 'user_id requerido'}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM invernaderos WHERE id = %s AND usuario_id = %s", (invernadero_id, usuario_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/invernaderos/<int:invernadero_id>/plantas', methods=['GET'])
+def get_plantas(invernadero_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, tipo, grid_col, grid_row, sensor_entity_id
+        FROM plantas_invernadero WHERE invernadero_id = %s ORDER BY id ASC
+    """, (invernadero_id,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify([{
+        'id': r[0], 'tipo': r[1], 'grid_col': r[2], 'grid_row': r[3], 'sensor_entity_id': r[4]
+    } for r in rows])
+
+
+@app.route('/invernaderos/<int:invernadero_id>/plantas', methods=['POST'])
+def anadir_planta(invernadero_id):
+    data = request.json
+    tipo = data.get('tipo')
+    grid_col = data.get('grid_col')
+    grid_row = data.get('grid_row')
+    if tipo is None or grid_col is None or grid_row is None:
+        return jsonify({'error': 'tipo, grid_col y grid_row requeridos'}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO plantas_invernadero (invernadero_id, tipo, grid_col, grid_row)
+        VALUES (%s, %s, %s, %s) RETURNING id
+    """, (invernadero_id, tipo, grid_col, grid_row))
+    new_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'id': new_id, 'tipo': tipo, 'grid_col': grid_col, 'grid_row': grid_row}), 201
+
+
+@app.route('/invernaderos/<int:invernadero_id>/plantas/<int:planta_id>', methods=['DELETE'])
+def eliminar_planta(invernadero_id, planta_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM plantas_invernadero WHERE id = %s AND invernadero_id = %s",
+                (planta_id, invernadero_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'success': True})
+
+
+@app.route('/invernaderos/<int:invernadero_id>/plantas/<int:planta_id>/sensor', methods=['PUT'])
+def update_planta_sensor(invernadero_id, planta_id):
+    data = request.json
+    sensor_entity_id = data.get('sensor_entity_id')
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE plantas_invernadero SET sensor_entity_id = %s
+        WHERE id = %s AND invernadero_id = %s
+    """, (sensor_entity_id, planta_id, invernadero_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'success': True})
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)

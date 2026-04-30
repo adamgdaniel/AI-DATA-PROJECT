@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgroMonitor — Invernaderos</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; background: #0d1f14; overflow: hidden; }
+
+    header {
+      background: #2d6a4f; color: white;
+      padding: 12px 20px; flex-shrink: 0;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 10;
+    }
+    header span { font-weight: bold; font-size: 16px; }
+    header a { color: #b7e4c7; font-size: 13px; text-decoration: none; }
+    header div { display: flex; gap: 16px; align-items: center; }
+
+    /* ── Top bar ── */
+    #top-bar {
+      background: #1a3a26; border-bottom: 1px solid #2d5a3a;
+      padding: 8px 16px; display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0; z-index: 9;
+    }
+    #gh-select {
+      padding: 6px 10px; border-radius: 6px;
+      background: #2d6a4f; color: white; border: 1px solid #3d8a65;
+      font-size: 13px; cursor: pointer; min-width: 180px;
+    }
+    #gh-select option { background: #1a3a26; }
+    .btn-top {
+      padding: 6px 14px; border-radius: 6px; border: none;
+      font-size: 12px; cursor: pointer; font-weight: bold;
+    }
+    .btn-new { background: #52b788; color: #0d1f14; }
+    .btn-new:hover { background: #74c69d; }
+    .btn-del { background: transparent; color: #e76f51; border: 1px solid #e76f51; }
+    .btn-del:hover { background: #e76f51; color: white; }
+    #no-gh-msg { color: #74c69d; font-size: 13px; font-style: italic; }
+
+    /* ── Grid scene ── */
+    #grid-area {
+      flex: 1; display: flex; justify-content: center; align-items: center;
+      overflow: hidden; position: relative;
+    }
+
+    .grid-scene {
+      perspective: 900px;
+    }
+    #iso-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 64px);
+      grid-template-rows: repeat(6, 64px);
+      transform: rotateX(52deg) rotateZ(45deg);
+      transform-origin: center center;
+      filter: drop-shadow(0 24px 60px rgba(0,0,0,0.8));
+    }
+
+    .cell {
+      width: 64px; height: 64px;
+      background: #2d5e3a;
+      border: 1px solid #1e4528;
+      display: flex; align-items: center; justify-content: center;
+      cursor: crosshair;
+      transition: background 0.12s;
+      position: relative;
+    }
+    .cell:hover { background: #3d7a4e; }
+    .cell.drag-over { background: #52b788 !important; outline: 3px solid #b7e4c7 inset; }
+    .cell.occupied { background: #3a2010; pointer-events: none; }
+    .cell.occupied-right { background: #3a2010; pointer-events: none; }
+
+    .plant {
+      font-size: 30px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 5;
+      background: rgba(60, 30, 10, 0.45);
+      border: 1.5px solid rgba(120, 70, 20, 0.7);
+      border-radius: 3px;
+      transition: background 0.12s;
+      position: relative;
+    }
+    .plant:hover { background: rgba(90, 50, 15, 0.7); }
+
+    /* sensor badge on plant */
+    .sensor-dot {
+      position: absolute; top: 3px; right: 3px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #52b788; border: 1px solid #b7e4c7;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      background: #1a3a26; border-top: 2px solid #2d5a3a;
+      padding: 12px 0; flex-shrink: 0; display: flex; justify-content: center;
+    }
+    #toolbar-inner { display: flex; gap: 20px; align-items: center; }
+
+    .crop-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      cursor: grab; user-select: none;
+      padding: 10px 14px; border-radius: 10px;
+      border: 2px solid transparent;
+      background: rgba(82, 183, 136, 0.12);
+      transition: all 0.15s;
+      color: #b7e4c7; font-size: 11px;
+    }
+    .crop-btn:hover { background: rgba(82, 183, 136, 0.28); border-color: #52b788; }
+    .crop-btn:active { cursor: grabbing; }
+    .crop-btn .icon { font-size: 28px; line-height: 1; }
+    .crop-btn.selected { border-color: #52b788; background: rgba(82, 183, 136, 0.3); }
+
+    #toolbar-hint {
+      font-size: 11px; color: #4a7c59; font-style: italic;
+    }
+
+    /* ── Modals ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65); z-index: 100;
+      justify-content: center; align-items: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-card {
+      background: #1a3a26; border: 1px solid #3d8a65;
+      border-radius: 12px; padding: 24px; min-width: 320px; max-width: 420px;
+      position: relative; color: #d8f3dc;
+    }
+    .modal-card h3 { color: #74c69d; font-size: 15px; margin-bottom: 16px; }
+    .modal-close {
+      position: absolute; top: 12px; right: 14px;
+      background: none; border: none; color: #74c69d;
+      font-size: 18px; cursor: pointer; line-height: 1;
+    }
+    .modal-close:hover { color: white; }
+
+    .modal-field { margin-bottom: 14px; }
+    .modal-field label { display: block; font-size: 12px; color: #95d5b2; margin-bottom: 5px; }
+    .modal-field input {
+      width: 100%; padding: 8px 10px; border-radius: 6px;
+      border: 1px solid #3d8a65; background: #0d2418;
+      color: #d8f3dc; font-size: 13px;
+    }
+    .modal-field input:focus { outline: none; border-color: #52b788; }
+
+    .modal-btn {
+      width: 100%; padding: 10px; border-radius: 6px; border: none;
+      background: #52b788; color: #0d1f14; font-size: 13px;
+      font-weight: bold; cursor: pointer; margin-top: 4px;
+    }
+    .modal-btn:hover { background: #74c69d; }
+    .modal-btn-danger {
+      background: transparent; color: #e76f51;
+      border: 1px solid #e76f51; margin-top: 8px;
+    }
+    .modal-btn-danger:hover { background: #e76f51; color: white; }
+    .modal-btn-cancel {
+      background: transparent; color: #95d5b2;
+      border: 1px solid #3d8a65; margin-top: 8px;
+    }
+    .modal-btn-cancel:hover { background: rgba(82,183,136,0.1); }
+
+    /* plant detail info rows */
+    .plant-info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid #2d5a3a; font-size: 13px;
+    }
+    .plant-info-row:last-of-type { border-bottom: none; }
+    .plant-info-key { color: #95d5b2; }
+    .plant-info-val { color: #d8f3dc; font-weight: bold; }
+
+    .sensor-linked {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(82,183,136,0.15); border: 1px solid #52b788;
+      border-radius: 6px; padding: 8px 10px; margin-top: 10px; font-size: 12px;
+    }
+    .sensor-linked .dot { width: 8px; height: 8px; border-radius: 50%; background: #52b788; flex-shrink: 0; }
+    .sensor-linked span { color: #95d5b2; flex: 1; word-break: break-all; }
+
+    select.modal-select {
+      width: 100%; padding: 8px 10px; border-radius: 6px;
+      border: 1px solid #3d8a65; background: #0d2418;
+      color: #d8f3dc; font-size: 13px; margin-top: 8px;
+    }
+
+    .empty-state {
+      text-align: center; color: #4a7c59; padding: 32px 16px;
+    }
+    .empty-state .big { font-size: 42px; margin-bottom: 12px; }
+    .empty-state p { font-size: 13px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>🌱 AgroMonitor</span>
+  <div>
+    <a href="/mapa">Mis parcelas</a>
+    <a href="/home-assistant">Home Assistant</a>
+    <a href="/logout">Cerrar sesión</a>
+  </div>
+</header>
+
+<!-- Top bar -->
+<div id="top-bar">
+  <select id="gh-select" onchange="selectGreenhouse(this.value)">
+    <option value="">— Selecciona un invernadero —</option>
+  </select>
+  <button class="btn-top btn-new" onclick="openNewGhModal()">+ Nuevo</button>
+  <button class="btn-top btn-del" id="btn-del-gh" style="display:none" onclick="deleteGreenhouse()">Eliminar</button>
+  <span id="no-gh-msg" style="display:none">Crea tu primer invernadero para empezar</span>
+</div>
+
+<!-- Grid area -->
+<div id="grid-area">
+  <div id="empty-grid-msg" class="empty-state" style="display:none">
+    <div class="big">🌿</div>
+    <p>Selecciona un invernadero o crea uno nuevo.<br>Luego arrastra cultivos al grid para plantarlos.</p>
+  </div>
+  <div class="grid-scene">
+    <div id="iso-grid"></div>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <div id="toolbar-inner">
+    <div class="crop-btn" draggable="true" data-crop="tomate"
+         ondragstart="onCropDragStart(event,'tomate')" onclick="selectCrop('tomate')">
+      <span class="icon">🍅</span><span>Tomate</span>
+    </div>
+    <div class="crop-btn" draggable="true" data-crop="pepino"
+         ondragstart="onCropDragStart(event,'pepino')" onclick="selectCrop('pepino')">
+      <span class="icon">🥒</span><span>Pepino</span>
+    </div>
+    <div class="crop-btn" draggable="true" data-crop="pimiento"
+         ondragstart="onCropDragStart(event,'pimiento')" onclick="selectCrop('pimiento')">
+      <span class="icon">🌶️</span><span>Pimiento</span>
+    </div>
+    <div class="crop-btn" draggable="true" data-crop="fresa"
+         ondragstart="onCropDragStart(event,'fresa')" onclick="selectCrop('fresa')">
+      <span class="icon">🍓</span><span>Fresa</span>
+    </div>
+    <span id="toolbar-hint">Arrastra o selecciona un cultivo y haz clic en la cuadrícula</span>
+  </div>
+</div>
+
+<!-- Modal: new greenhouse -->
+<div id="new-gh-modal" class="modal-overlay">
+  <div class="modal-card" style="max-width:340px">
+    <button class="modal-close" onclick="closeNewGhModal()">✕</button>
+    <h3>Nuevo invernadero</h3>
+    <div class="modal-field">
+      <label>Nombre</label>
+      <input type="text" id="new-gh-name" placeholder="Ej: Invernadero norte" maxlength="60"/>
+    </div>
+    <div id="new-gh-err" style="color:#e76f51;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+    <button class="modal-btn" onclick="createGreenhouse()">Crear</button>
+    <button class="modal-btn modal-btn-cancel" onclick="closeNewGhModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal: plant detail -->
+<div id="plant-modal" class="modal-overlay">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closePlantModal()">✕</button>
+    <div id="plant-modal-content"></div>
+  </div>
+</div>
+
+<script>
+const CROPS = {
+  tomate:   { icon: '🍅', label: 'Tomate',   color: '#c0392b' },
+  pepino:   { icon: '🥒', label: 'Pepino',   color: '#27ae60' },
+  pimiento: { icon: '🌶️', label: 'Pimiento', color: '#e67e22' },
+  fresa:    { icon: '🍓', label: 'Fresa',    color: '#e91e63' }
+};
+
+const GRID_COLS = 10;
+const GRID_ROWS = 6;
+
+let greenhouses = [];
+let currentGhId = null;
+let plants = [];
+let dragCrop = null;
+let selectedCrop = null;
+
+// ── Init ──────────────────────────────────────────────
+async function init() {
+  await loadGreenhouses();
+}
+
+async function loadGreenhouses() {
+  try {
+    const r = await fetch('/mis-invernaderos');
+    greenhouses = r.ok ? await r.json() : [];
+  } catch { greenhouses = []; }
+
+  const sel = document.getElementById('gh-select');
+  sel.innerHTML = '<option value="">— Selecciona un invernadero —</option>';
+  greenhouses.forEach(gh => {
+    const opt = document.createElement('option');
+    opt.value = gh.id;
+    opt.textContent = gh.nombre;
+    sel.appendChild(opt);
+  });
+
+  const noMsg = document.getElementById('no-gh-msg');
+  noMsg.style.display = greenhouses.length === 0 ? 'inline' : 'none';
+
+  if (greenhouses.length > 0) {
+    sel.value = greenhouses[0].id;
+    await selectGreenhouse(greenhouses[0].id);
+  } else {
+    currentGhId = null;
+    renderGrid();
+    document.getElementById('empty-grid-msg').style.display = 'flex';
+    document.querySelector('.grid-scene').style.display = 'none';
+  }
+}
+
+async function selectGreenhouse(id) {
+  if (!id) return;
+  currentGhId = parseInt(id);
+  document.getElementById('btn-del-gh').style.display = 'inline-block';
+  document.getElementById('empty-grid-msg').style.display = 'none';
+  document.querySelector('.grid-scene').style.display = '';
+  await loadPlantas();
+}
+
+async function loadPlantas() {
+  if (!currentGhId) return;
+  try {
+    const r = await fetch(`/plantas-invernadero/${currentGhId}`);
+    plants = r.ok ? await r.json() : [];
+  } catch { plants = []; }
+  renderGrid();
+}
+
+// ── Grid rendering ────────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('iso-grid');
+  grid.innerHTML = '';
+
+  // Determine occupied cells from plants
+  const occupied = new Set();
+  plants.forEach(p => {
+    occupied.add(`${p.grid_row},${p.grid_col}`);
+    occupied.add(`${p.grid_row},${p.grid_col + 1}`);
+  });
+
+  // Render base cells
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.gridRow = row + 1;
+      cell.style.gridColumn = col + 1;
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+
+      if (occupied.has(`${row},${col}`)) {
+        cell.classList.add('occupied');
+      } else {
+        cell.addEventListener('dragover', e => { e.preventDefault(); cell.classList.add('drag-over'); });
+        cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+        cell.addEventListener('drop', e => {
+          e.preventDefault();
+          cell.classList.remove('drag-over');
+          placePlant(parseInt(cell.dataset.row), parseInt(cell.dataset.col));
+        });
+        cell.addEventListener('click', () => {
+          if (selectedCrop) placePlant(parseInt(cell.dataset.row), parseInt(cell.dataset.col));
+        });
+      }
+      grid.appendChild(cell);
+    }
+  }
+
+  // Render plants on top
+  plants.forEach(plant => {
+    // Check if plant fits (needs col+1 within bounds)
+    if (plant.grid_col + 1 >= GRID_COLS) return;
+
+    const el = document.createElement('div');
+    el.className = 'plant';
+    el.style.gridRow = plant.grid_row + 1;
+    el.style.gridColumn = `${plant.grid_col + 1} / span 2`;
+    el.style.zIndex = 5;
+    el.innerHTML = CROPS[plant.tipo] ? CROPS[plant.tipo].icon : '🌱';
+
+    if (plant.sensor_entity_id) {
+      const dot = document.createElement('div');
+      dot.className = 'sensor-dot';
+      dot.title = 'Sensor conectado';
+      el.appendChild(dot);
+    }
+
+    el.addEventListener('click', () => openPlantModal(plant));
+    grid.appendChild(el);
+  });
+}
+
+// ── Plant placement ───────────────────────────────────
+function canPlace(row, col) {
+  if (col + 1 >= GRID_COLS) return false;
+  const occupied = new Set();
+  plants.forEach(p => {
+    occupied.add(`${p.grid_row},${p.grid_col}`);
+    occupied.add(`${p.grid_row},${p.grid_col + 1}`);
+  });
+  return !occupied.has(`${row},${col}`) && !occupied.has(`${row},${col + 1}`);
+}
+
+async function placePlant(row, col) {
+  const tipo = dragCrop || selectedCrop;
+  if (!tipo) return;
+  if (!currentGhId) return;
+  if (!canPlace(row, col)) return;
+
+  try {
+    const r = await fetch(`/anadir-planta/${currentGhId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo, grid_col: col, grid_row: row })
+    });
+    if (r.ok) {
+      const plant = await r.json();
+      plants.push(plant);
+      renderGrid();
+    }
+  } catch {}
+
+  dragCrop = null;
+}
+
+// ── Crop selection (click mode) ───────────────────────
+function selectCrop(tipo) {
+  selectedCrop = selectedCrop === tipo ? null : tipo;
+  document.querySelectorAll('.crop-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.crop === selectedCrop);
+  });
+  document.getElementById('toolbar-hint').textContent = selectedCrop
+    ? `${CROPS[selectedCrop].icon} ${CROPS[selectedCrop].label} seleccionado — clic en la cuadrícula para plantar`
+    : 'Arrastra o selecciona un cultivo y haz clic en la cuadrícula';
+  document.getElementById('iso-grid').style.cursor = selectedCrop ? 'crosshair' : '';
+}
+
+function onCropDragStart(e, tipo) {
+  dragCrop = tipo;
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', tipo);
+  selectedCrop = null;
+  document.querySelectorAll('.crop-btn').forEach(b => b.classList.remove('selected'));
+}
+
+// ── Greenhouse CRUD ───────────────────────────────────
+function openNewGhModal() {
+  document.getElementById('new-gh-name').value = '';
+  document.getElementById('new-gh-err').textContent = '';
+  document.getElementById('new-gh-modal').classList.add('open');
+  setTimeout(() => document.getElementById('new-gh-name').focus(), 80);
+}
+
+function closeNewGhModal() {
+  document.getElementById('new-gh-modal').classList.remove('open');
+}
+
+async function createGreenhouse() {
+  const nombre = document.getElementById('new-gh-name').value.trim();
+  if (!nombre) {
+    document.getElementById('new-gh-err').textContent = 'Escribe un nombre.';
+    return;
+  }
+  try {
+    const r = await fetch('/crear-invernadero', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre })
+    });
+    if (r.ok) {
+      closeNewGhModal();
+      await loadGreenhouses();
+      const gh = greenhouses[greenhouses.length - 1];
+      if (gh) {
+        document.getElementById('gh-select').value = gh.id;
+        await selectGreenhouse(gh.id);
+      }
+    } else {
+      const d = await r.json();
+      document.getElementById('new-gh-err').textContent = d.error || 'Error al crear.';
+    }
+  } catch {
+    document.getElementById('new-gh-err').textContent = 'Error de conexión.';
+  }
+}
+
+async function deleteGreenhouse() {
+  if (!currentGhId) return;
+  const gh = greenhouses.find(g => g.id === currentGhId);
+  if (!confirm(`¿Eliminar "${gh ? gh.nombre : 'este invernadero'}" y todas sus plantas?`)) return;
+  try {
+    await fetch(`/eliminar-invernadero/${currentGhId}`, { method: 'DELETE' });
+  } catch {}
+  currentGhId = null;
+  await loadGreenhouses();
+}
+
+// ── Plant modal ───────────────────────────────────────
+let modalPlant = null;
+
+function openPlantModal(plant) {
+  modalPlant = plant;
+  const crop = CROPS[plant.tipo] || { icon: '🌱', label: plant.tipo };
+  let html = `
+    <h3>${crop.icon} ${crop.label}</h3>
+    <div class="plant-info-row">
+      <span class="plant-info-key">Posición</span>
+      <span class="plant-info-val">Fila ${plant.grid_row + 1}, Col ${plant.grid_col + 1}</span>
+    </div>
+    <div class="plant-info-row">
+      <span class="plant-info-key">Tipo</span>
+      <span class="plant-info-val">${crop.label}</span>
+    </div>
+  `;
+
+  if (plant.sensor_entity_id) {
+    html += `
+      <div class="sensor-linked">
+        <div class="dot"></div>
+        <span>${plant.sensor_entity_id}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="modal-btn" style="flex:1" onclick="openLinkSensor()">Cambiar sensor</button>
+        <button class="modal-btn modal-btn-danger" style="flex:1" onclick="unlinkSensor()">Desconectar</button>
+      </div>
+    `;
+  } else {
+    html += `
+      <p style="font-size:12px;color:#4a7c59;margin:10px 0 4px">Sin sensor conectado</p>
+      <button class="modal-btn" onclick="openLinkSensor()">Conectar sensor de Home Assistant</button>
+    `;
+  }
+
+  html += `<button class="modal-btn modal-btn-danger" style="margin-top:14px" onclick="removePlant()">Eliminar planta</button>`;
+
+  document.getElementById('plant-modal-content').innerHTML = html;
+  document.getElementById('plant-modal').classList.add('open');
+}
+
+function closePlantModal() {
+  document.getElementById('plant-modal').classList.remove('open');
+  modalPlant = null;
+}
+
+async function removePlant() {
+  if (!modalPlant || !currentGhId) return;
+  try {
+    await fetch(`/eliminar-planta/${currentGhId}/${modalPlant.id}`, { method: 'DELETE' });
+    plants = plants.filter(p => p.id !== modalPlant.id);
+    renderGrid();
+    closePlantModal();
+  } catch {}
+}
+
+async function openLinkSensor() {
+  const content = document.getElementById('plant-modal-content');
+  content.innerHTML += `<div id="sensor-picker-section" style="margin-top:14px">
+    <p style="font-size:12px;color:#95d5b2;margin-bottom:4px">Cargando tus conexiones HA...</p>
+  </div>`;
+
+  let connections = [];
+  try {
+    const r = await fetch('/mis-conexiones-ha');
+    connections = r.ok ? await r.json() : [];
+  } catch {}
+
+  const picker = document.getElementById('sensor-picker-section');
+  if (!connections.length) {
+    picker.innerHTML = `<p style="font-size:12px;color:#e76f51">No tienes conexiones de Home Assistant.
+      <a href="/home-assistant" style="color:#74c69d">Configura una aquí</a>.</p>`;
+    return;
+  }
+
+  let opts = connections.map(c =>
+    `<option value="${c.connection_id}">${c.display_name || c.ha_url}</option>`
+  ).join('');
+  picker.innerHTML = `
+    <label style="font-size:12px;color:#95d5b2">Conexión HA</label>
+    <select class="modal-select" id="ha-conn-select">${opts}</select>
+    <button class="modal-btn" style="margin-top:8px" onclick="discoverAndPickSensor()">Buscar sensores</button>
+    <div id="sensor-list-section" style="margin-top:10px"></div>
+  `;
+}
+
+async function discoverAndPickSensor() {
+  const connId = document.getElementById('ha-conn-select').value;
+  const section = document.getElementById('sensor-list-section');
+  section.innerHTML = '<p style="font-size:12px;color:#95d5b2">Buscando sensores...</p>';
+
+  let sensores = [];
+  try {
+    const r = await fetch(`/iot/descubrir-sensores?connection_id=${connId}`);
+    sensores = r.ok ? await r.json() : [];
+  } catch {}
+
+  if (!sensores.length) {
+    section.innerHTML = '<p style="font-size:12px;color:#e76f51">No se encontraron sensores en esta conexión.</p>';
+    return;
+  }
+
+  const typeLabel = { soil_moisture: 'Humedad suelo', temperature: 'Temperatura', ambient_humidity: 'Humedad ambiente' };
+  const opts = sensores.map(s =>
+    `<option value="${s.sensor_id}">${s.display_name} (${typeLabel[s.sensor_type] || s.sensor_type}) — ${s.state}${s.unit || ''}</option>`
+  ).join('');
+  section.innerHTML = `
+    <label style="font-size:12px;color:#95d5b2">Sensor</label>
+    <select class="modal-select" id="sensor-entity-select">${opts}</select>
+    <button class="modal-btn" style="margin-top:8px" onclick="linkSensor()">Vincular sensor</button>
+  `;
+}
+
+async function linkSensor() {
+  const entityId = document.getElementById('sensor-entity-select').value;
+  if (!entityId || !modalPlant || !currentGhId) return;
+  try {
+    const r = await fetch(`/actualizar-sensor-planta/${currentGhId}/${modalPlant.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor_entity_id: entityId })
+    });
+    if (r.ok) {
+      modalPlant.sensor_entity_id = entityId;
+      const idx = plants.findIndex(p => p.id === modalPlant.id);
+      if (idx !== -1) plants[idx].sensor_entity_id = entityId;
+      renderGrid();
+      openPlantModal(modalPlant);
+    }
+  } catch {}
+}
+
+async function unlinkSensor() {
+  if (!modalPlant || !currentGhId) return;
+  try {
+    await fetch(`/actualizar-sensor-planta/${currentGhId}/${modalPlant.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor_entity_id: null })
+    });
+    modalPlant.sensor_entity_id = null;
+    const idx = plants.findIndex(p => p.id === modalPlant.id);
+    if (idx !== -1) plants[idx].sensor_entity_id = null;
+    renderGrid();
+    openPlantModal(modalPlant);
+  } catch {}
+}
+
+// ── Keyboard & modal close ────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeNewGhModal();
+    closePlantModal();
+    if (selectedCrop) selectCrop(selectedCrop);
+  }
+});
+
+document.getElementById('new-gh-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') createGreenhouse();
+});
+
+// close modals on overlay click
+document.getElementById('new-gh-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('new-gh-modal')) closeNewGhModal();
+});
+document.getElementById('plant-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('plant-modal')) closePlantModal();
+});
+
+init();
+</script>
+</body>
+</html>
