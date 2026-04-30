@@ -5,6 +5,12 @@ resource "google_artifact_registry_repository" "login" {
   format        = "DOCKER"
 }
 
+resource "google_artifact_registry_repository" "frontend" {
+  location      = var.region
+  repository_id = "frontend-repo"
+  format        = "DOCKER"
+}
+
 # --- Service Account para Cloud Run ---
 resource "google_service_account" "cloudrun" {
   account_id   = "cloudrun-login"
