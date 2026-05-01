@@ -21,7 +21,8 @@
     /* ── Top bar ── */
     #top-bar {
       background: #1a3a26; border-bottom: 1px solid #2d5a3a;
-      padding: 8px 16px; display: flex; align-items: center; gap: 12px;
+      padding: 8px 16px; display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
       flex-shrink: 0; z-index: 9;
     }
     #gh-select {
@@ -191,6 +192,26 @@
     }
     .empty-state .big { font-size: 42px; margin-bottom: 12px; }
     .empty-state p { font-size: 13px; line-height: 1.6; }
+
+    /* ── Invernadero sensor widget ── */
+    #inv-sensor-widget {
+      display: none; align-items: center; gap: 18px;
+      background: rgba(82,183,136,0.12); border: 1px solid #3d8a65;
+      border-radius: 8px; padding: 6px 16px;
+    }
+    .inv-reading { text-align: center; }
+    .inv-reading-lbl { display: block; font-size: 10px; color: #4a7c59; }
+    .inv-reading-val { font-size: 15px; font-weight: bold; color: #74c69d; }
+
+    /* ── Soil moisture chip on plants ── */
+    .soil-chip {
+      position: absolute; bottom: 3px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.6); color: #7ee8a2;
+      font-size: 9px; font-weight: bold;
+      padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+      pointer-events: none; line-height: 1.4;
+    }
   </style>
 </head>
 <body>
@@ -206,12 +227,27 @@
 
 <!-- Top bar -->
 <div id="top-bar">
-  <select id="gh-select" onchange="selectGreenhouse(this.value)">
-    <option value="">— Selecciona un invernadero —</option>
-  </select>
-  <button class="btn-top btn-new" onclick="openNewGhModal()">+ Nuevo</button>
-  <button class="btn-top btn-del" id="btn-del-gh" style="display:none" onclick="deleteGreenhouse()">Eliminar</button>
-  <span id="no-gh-msg" style="display:none">Crea tu primer invernadero para empezar</span>
+  <div style="display:flex;align-items:center;gap:12px">
+    <select id="gh-select" onchange="selectGreenhouse(this.value)">
+      <option value="">— Selecciona un invernadero —</option>
+    </select>
+    <button class="btn-top btn-new" onclick="openNewGhModal()">+ Nuevo</button>
+    <button class="btn-top btn-del" id="btn-del-gh" style="display:none" onclick="deleteGreenhouse()">Eliminar</button>
+    <span id="no-gh-msg" style="display:none">Crea tu primer invernadero para empezar</span>
+  </div>
+
+  <div id="inv-sensor-widget">
+    <div class="inv-reading">
+      <span class="inv-reading-lbl">Temperatura</span>
+      <span class="inv-reading-val" id="inv-temp">—</span>
+    </div>
+    <div class="inv-reading">
+      <span class="inv-reading-lbl">Hum. ambiental</span>
+      <span class="inv-reading-val" id="inv-hum">—</span>
+    </div>
+  </div>
+
+  <button class="btn-top btn-new" id="btn-sensor-gh" style="display:none" onclick="openGhSensorModal()">⚙ Sensor</button>
 </div>
 
 <!-- Grid area -->
@@ -271,6 +307,18 @@
   </div>
 </div>
 
+<!-- Modal: invernadero sensor -->
+<div id="gh-sensor-modal" class="modal-overlay">
+  <div class="modal-card" style="max-width:380px">
+    <button class="modal-close" onclick="closeGhSensorModal()">✕</button>
+    <h3>Sensor del invernadero</h3>
+    <p style="font-size:12px;color:#95d5b2;margin-bottom:14px">
+      Sensor que mide temperatura y humedad ambiental de todo el invernadero.
+    </p>
+    <div id="gh-sensor-modal-content"></div>
+  </div>
+</div>
+
 <!-- Modal: plant detail -->
 <div id="plant-modal" class="modal-overlay">
   <div class="modal-card">
@@ -302,6 +350,8 @@ let currentGhId = null;
 let plants = [];
 let dragCrop = null;
 let selectedCrop = null;
+let ghSensorData = { invernadero: {}, plantas: {} };
+let ghStream = null;
 
 // ── Init ──────────────────────────────────────────────
 async function init() {
@@ -330,7 +380,11 @@ async function loadGreenhouses() {
     sel.value = greenhouses[0].id;
     await selectGreenhouse(greenhouses[0].id);
   } else {
+    if (ghStream) { ghStream.close(); ghStream = null; }
     currentGhId = null;
+    ghSensorData = { invernadero: {}, plantas: {} };
+    document.getElementById('inv-sensor-widget').style.display = 'none';
+    document.getElementById('btn-sensor-gh').style.display = 'none';
     renderGrid();
     document.getElementById('empty-grid-msg').style.display = 'flex';
     document.querySelector('.grid-scene').style.display = 'none';
@@ -341,9 +395,20 @@ async function selectGreenhouse(id) {
   if (!id) return;
   currentGhId = parseInt(id);
   document.getElementById('btn-del-gh').style.display = 'inline-block';
+  document.getElementById('btn-sensor-gh').style.display = 'inline-block';
   document.getElementById('empty-grid-msg').style.display = 'none';
   document.querySelector('.grid-scene').style.display = '';
   await loadPlantas();
+  if (ghStream) { ghStream.close(); ghStream = null; }
+  ghSensorData = { invernadero: {}, plantas: {} };
+  ghStream = new EventSource(`/stream/invernadero/${currentGhId}`);
+  ghStream.onmessage = (e) => {
+    try {
+      ghSensorData = JSON.parse(e.data);
+      updateSensorWidget();
+      renderGrid();
+    } catch {}
+  };
 }
 
 async function loadPlantas() {
@@ -413,6 +478,14 @@ function renderGrid() {
       dot.className = 'sensor-dot';
       dot.title = 'Sensor conectado';
       el.appendChild(dot);
+    }
+
+    const plantaData = ghSensorData.plantas && ghSensorData.plantas[String(plant.id)];
+    if (plantaData && plantaData.humedad_suelo_actual != null) {
+      const chip = document.createElement('div');
+      chip.className = 'soil-chip';
+      chip.textContent = `💧 ${parseFloat(plantaData.humedad_suelo_actual).toFixed(0)}%`;
+      el.appendChild(chip);
     }
 
     el.addEventListener('click', () => openPlantModal(plant));
@@ -551,6 +624,8 @@ async function deleteGreenhouse() {
   if (!currentGhId) return;
   const gh = greenhouses.find(g => g.id === currentGhId);
   if (!confirm(`¿Eliminar "${gh ? gh.nombre : 'este invernadero'}" y todas sus plantas?`)) return;
+  if (ghStream) { ghStream.close(); ghStream = null; }
+  ghSensorData = { invernadero: {}, plantas: {} };
   try {
     await fetch(`/eliminar-invernadero/${currentGhId}`, { method: 'DELETE' });
   } catch {}
@@ -708,12 +783,136 @@ async function unlinkSensor() {
   } catch {}
 }
 
+// ── Sensor widget ─────────────────────────────────────
+
+function updateSensorWidget() {
+  const inv = ghSensorData.invernadero || {};
+  const temp = inv.temperatura_actual;
+  const hum  = inv.humedad_ambiental_actual;
+  const widget = document.getElementById('inv-sensor-widget');
+  if (temp == null && hum == null) {
+    widget.style.display = 'none';
+    return;
+  }
+  document.getElementById('inv-temp').textContent = temp != null ? `${parseFloat(temp).toFixed(1)} °C` : '—';
+  document.getElementById('inv-hum').textContent  = hum  != null ? `${parseFloat(hum).toFixed(1)} %`  : '—';
+  widget.style.display = 'flex';
+}
+
+// ── Greenhouse sensor modal ───────────────────────────
+
+function openGhSensorModal() {
+  const gh = greenhouses.find(g => g.id === currentGhId);
+  const content = document.getElementById('gh-sensor-modal-content');
+  if (gh && gh.sensor_entity_id) {
+    content.innerHTML = `
+      <div class="sensor-linked">
+        <div class="dot"></div>
+        <span>${gh.sensor_entity_id}</span>
+      </div>
+      <button class="modal-btn" style="margin-top:10px" onclick="openGhSensorPicker()">Cambiar sensor</button>
+      <button class="modal-btn modal-btn-danger" style="margin-top:8px" onclick="unlinkGhSensor()">Desconectar</button>
+    `;
+  } else {
+    content.innerHTML = `
+      <p style="font-size:12px;color:#4a7c59;margin-bottom:10px">Sin sensor configurado.</p>
+      <button class="modal-btn" onclick="openGhSensorPicker()">Seleccionar sensor de Home Assistant</button>
+    `;
+  }
+  document.getElementById('gh-sensor-modal').classList.add('open');
+}
+
+function closeGhSensorModal() {
+  document.getElementById('gh-sensor-modal').classList.remove('open');
+}
+
+async function openGhSensorPicker() {
+  const content = document.getElementById('gh-sensor-modal-content');
+  content.innerHTML = '<p style="font-size:12px;color:#95d5b2">Cargando conexiones...</p>';
+  let connections = [];
+  try {
+    const r = await fetch('/mis-conexiones-ha');
+    connections = r.ok ? await r.json() : [];
+  } catch {}
+  if (!connections.length) {
+    content.innerHTML = `<p style="font-size:12px;color:#e76f51">No tienes conexiones HA. <a href="/home-assistant" style="color:#74c69d">Configura una aquí</a>.</p>`;
+    return;
+  }
+  const opts = connections.map(c =>
+    `<option value="${c.connection_id}">${c.display_name || c.ha_url}</option>`
+  ).join('');
+  content.innerHTML = `
+    <label style="font-size:12px;color:#95d5b2">Conexión HA</label>
+    <select class="modal-select" id="gh-ha-conn-select">${opts}</select>
+    <button class="modal-btn" style="margin-top:8px" onclick="discoverGhSensors()">Buscar sensores</button>
+    <div id="gh-sensor-list" style="margin-top:10px"></div>
+  `;
+}
+
+async function discoverGhSensors() {
+  const connId = document.getElementById('gh-ha-conn-select').value;
+  const list = document.getElementById('gh-sensor-list');
+  list.innerHTML = '<p style="font-size:12px;color:#95d5b2">Buscando sensores...</p>';
+  let sensores = [];
+  try {
+    const r = await fetch(`/iot/descubrir-sensores?connection_id=${connId}`);
+    sensores = r.ok ? await r.json() : [];
+  } catch {}
+  const relevant = sensores.filter(s => s.sensor_type === 'temperature' || s.sensor_type === 'ambient_humidity');
+  if (!relevant.length) {
+    list.innerHTML = '<p style="font-size:12px;color:#e76f51">No se encontraron sensores de temperatura/humedad.</p>';
+    return;
+  }
+  const typeLabel = { temperature: 'Temperatura', ambient_humidity: 'Humedad amb.' };
+  const opts = relevant.map(s =>
+    `<option value="${s.sensor_id}">${s.display_name} (${typeLabel[s.sensor_type]}) — ${s.state}${s.unit || ''}</option>`
+  ).join('');
+  list.innerHTML = `
+    <label style="font-size:12px;color:#95d5b2">Sensor</label>
+    <select class="modal-select" id="gh-sensor-entity-select">${opts}</select>
+    <button class="modal-btn" style="margin-top:8px" onclick="linkGhSensor()">Vincular</button>
+  `;
+}
+
+async function linkGhSensor() {
+  const entityId = document.getElementById('gh-sensor-entity-select').value;
+  if (!entityId || !currentGhId) return;
+  try {
+    const r = await fetch(`/actualizar-sensor-invernadero/${currentGhId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor_entity_id: entityId })
+    });
+    if (r.ok) {
+      const idx = greenhouses.findIndex(g => g.id === currentGhId);
+      if (idx !== -1) greenhouses[idx].sensor_entity_id = entityId;
+      closeGhSensorModal();
+    }
+  } catch {}
+}
+
+async function unlinkGhSensor() {
+  if (!currentGhId) return;
+  try {
+    await fetch(`/actualizar-sensor-invernadero/${currentGhId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor_entity_id: null })
+    });
+    const idx = greenhouses.findIndex(g => g.id === currentGhId);
+    if (idx !== -1) greenhouses[idx].sensor_entity_id = null;
+    document.getElementById('inv-sensor-widget').style.display = 'none';
+    closeGhSensorModal();
+  } catch {}
+}
+
 // ── Keyboard & modal close ────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeNewGhModal();
     closePlantModal();
     closeVarietyModal();
+    closeGhSensorModal();
     if (selectedCrop) selectCrop(selectedCrop);
   }
 });
@@ -731,6 +930,9 @@ document.getElementById('plant-modal').addEventListener('click', e => {
 });
 document.getElementById('variety-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('variety-modal')) closeVarietyModal();
+});
+document.getElementById('gh-sensor-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('gh-sensor-modal')) closeGhSensorModal();
 });
 
 init();

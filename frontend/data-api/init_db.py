@@ -40,9 +40,11 @@ cur.execute("""
         id SERIAL PRIMARY KEY,
         usuario_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         nombre VARCHAR(100) NOT NULL,
+        sensor_entity_id VARCHAR(200),
         created_at TIMESTAMP DEFAULT NOW()
     )
 """)
+cur.execute("ALTER TABLE invernaderos ADD COLUMN IF NOT EXISTS sensor_entity_id VARCHAR(200)")
 
 cur.execute("""
     CREATE TABLE IF NOT EXISTS plantas_invernadero (

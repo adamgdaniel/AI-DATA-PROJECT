@@ -111,13 +111,13 @@ def get_invernaderos():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, nombre, created_at FROM invernaderos
+        SELECT id, nombre, sensor_entity_id, created_at FROM invernaderos
         WHERE usuario_id = %s ORDER BY created_at ASC
     """, (usuario_id,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    return jsonify([{'id': r[0], 'nombre': r[1], 'created_at': r[2].isoformat()} for r in rows])
+    return jsonify([{'id': r[0], 'nombre': r[1], 'sensor_entity_id': r[2], 'created_at': r[3].isoformat()} for r in rows])
 
 
 @app.route('/invernaderos', methods=['POST'])
@@ -137,6 +137,20 @@ def crear_invernadero():
     cur.close()
     conn.close()
     return jsonify({'id': new_id, 'nombre': nombre}), 201
+
+
+@app.route('/invernaderos/<int:invernadero_id>/sensor', methods=['PUT'])
+def update_invernadero_sensor(invernadero_id):
+    data = request.json
+    sensor_entity_id = data.get('sensor_entity_id')
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE invernaderos SET sensor_entity_id = %s WHERE id = %s",
+                (sensor_entity_id, invernadero_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'success': True})
 
 
 @app.route('/invernaderos/<int:invernadero_id>', methods=['DELETE'])
