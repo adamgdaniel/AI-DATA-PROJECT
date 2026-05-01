@@ -478,14 +478,18 @@
             const color = CROP_COLORS[p.cultivo] || '#95a5a6';
 
             if (p.geometria) {
-              const layer = L.geoJSON(p.geometria, {
-                style: { color, weight: 2.5, fillColor: color, fillOpacity: 0.35 }
-              });
-              layer.on('click', (e) => {
-                L.DomEvent.stopPropagation(e);
-                mostrarDetalleParcela(p);
-              });
-              layer.addTo(misParcelasLayer);
+              try {
+                const layer = L.geoJSON(p.geometria, {
+                  style: { color, weight: 2.5, fillColor: color, fillOpacity: 0.35 }
+                });
+                layer.on('click', (e) => {
+                  L.DomEvent.stopPropagation(e);
+                  mostrarDetalleParcela(p);
+                });
+                layer.addTo(misParcelasLayer);
+              } catch (err) {
+                console.error("Error dibujando geometría de parcela:", err);
+              }
             }
 
             if (p.lat && p.lng) {
