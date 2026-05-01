@@ -23,6 +23,7 @@ cur.execute("""
         parcela INTEGER,
         recinto INTEGER,
         cultivo VARCHAR(100),
+        variedad VARCHAR(100),
         superficie NUMERIC(10,4),
         lat NUMERIC(10,6),
         lng NUMERIC(10,6),
@@ -32,6 +33,7 @@ cur.execute("""
     )
 """)
 cur.execute("ALTER TABLE parcelas_usuario ADD COLUMN IF NOT EXISTS geometria JSONB")
+cur.execute("ALTER TABLE parcelas_usuario ADD COLUMN IF NOT EXISTS variedad VARCHAR(100)")
 
 cur.execute("""
     CREATE TABLE IF NOT EXISTS invernaderos (
@@ -47,12 +49,14 @@ cur.execute("""
         id SERIAL PRIMARY KEY,
         invernadero_id INTEGER NOT NULL REFERENCES invernaderos(id) ON DELETE CASCADE,
         tipo VARCHAR(50) NOT NULL,
+        variedad VARCHAR(100),
         grid_col INTEGER NOT NULL,
         grid_row INTEGER NOT NULL,
         sensor_entity_id VARCHAR(200),
         created_at TIMESTAMP DEFAULT NOW()
     )
 """)
+cur.execute("ALTER TABLE plantas_invernadero ADD COLUMN IF NOT EXISTS variedad VARCHAR(100)")
 
 conn.commit()
 cur.close()

@@ -114,6 +114,7 @@
     #empty-msg { font-size: 13px; color: #888; }
 
     .crop-marker { background: none !important; border: none !important; }
+    .parcela-glow { filter: drop-shadow(0 0 6px #4ade80) drop-shadow(0 0 14px #4ade8088); }
 
     /* Sensor section */
     .dp-section h4 { display: flex; align-items: center; justify-content: space-between; }
@@ -199,20 +200,19 @@
         <div class="field"><label>Uso SIGPAC</label><span id="f-uso">-</span></div>
         <div class="field">
           <label>Cultivo</label>
-          <select id="f-cultivo">
+          <select id="f-cultivo" onchange="onCultivoChange()">
             <option value="">-- Seleccionar cultivo --</option>
-            <option>Trigo</option>
-            <option>Cebada</option>
-            <option>Maíz</option>
-            <option>Girasol</option>
-            <option>Naranjos</option>
-            <option>Limoneros</option>
-            <option>Olivos</option>
-            <option>Vid</option>
-            <option>Almendros</option>
-            <option>Tomate</option>
-            <option>Pimiento</option>
-            <option>Otro</option>
+            <option>Maiz</option>
+            <option>Naranjo</option>
+            <option>Mandarino</option>
+            <option>Melocotonero</option>
+            <option>Limonero</option>
+          </select>
+        </div>
+        <div class="field" id="f-variedad-field" style="display:none;">
+          <label>Variedad</label>
+          <select id="f-variedad">
+            <option value="">-- Seleccionar variedad --</option>
           </select>
         </div>
         <button class="btn" onclick="registrarParcela()">Registrar como mía</button>
@@ -279,16 +279,25 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const CROP_COLORS = {
-      'Trigo':    '#d4a843', 'Cebada':   '#c8933f', 'Maíz':     '#27ae60',
-      'Girasol':  '#f39c12', 'Naranjos': '#e67e22', 'Limoneros':'#f1c40f',
-      'Olivos':   '#6d8c3f', 'Vid':      '#8e44ad', 'Almendros':'#d4917a',
-      'Tomate':   '#c0392b', 'Pimiento': '#e74c3c', 'Otro':     '#7f8c8d'
+      'Maiz':         '#27ae60',
+      'Naranjo':      '#e67e22',
+      'Mandarino':    '#f39c12',
+      'Melocotonero': '#e8987a',
+      'Limonero':     '#f1c40f'
     };
-    const CROP_ICONS = {
-      'Trigo':    '🌾', 'Cebada':   '🌾', 'Maíz':     '🌽',
-      'Girasol':  '🌻', 'Naranjos': '🍊', 'Limoneros':'🍋',
-      'Olivos':   '🫒', 'Vid':      '🍇', 'Almendros':'🌰',
-      'Tomate':   '🍅', 'Pimiento': '🌶️', 'Otro':     '🌿'
+    const CROP_IMGS = {
+      'Maiz':         '/icons/corn.webp',
+      'Naranjo':      '/icons/orange.webp',
+      'Mandarino':    '/icons/Tangerine.webp',
+      'Melocotonero': '/icons/peach.png',
+      'Limonero':     '/icons/lemon.png'
+    };
+    const VARIETIES = {
+      'Maiz':         ['Híbrida ciclo largo', 'Grano'],
+      'Naranjo':      ['Navelate', 'Navelina', 'Valencia late'],
+      'Mandarino':    ['Clemenules', 'Híbrido tardío'],
+      'Melocotonero': ['Amarillo/Pavía', 'Nectarina', 'Paraguayo'],
+      'Limonero':     ['Primofiori']
     };
 
     const map = L.map('map').setView([40.0, -3.7], 6);
@@ -306,6 +315,7 @@
     }).addTo(map);
 
     let selectedParcel = null;
+    let selectionLayer = null;
     let misParcelasData = [];
     const misParcelasLayer = L.layerGroup().addTo(map);
 
@@ -333,6 +343,7 @@
 
           // Si es una parcela propia, mostrar detalle en vez de registro
           const propia = misParcelasData.find(mp => mp.parcela_id === parcelaId);
+          if (selectionLayer) { selectionLayer.remove(); selectionLayer = null; }
           if (propia) {
             mostrarDetalleParcela(propia);
             return;
@@ -346,11 +357,22 @@
             lat: p.lat ?? e.latlng.lat, lng: p.lng ?? e.latlng.lng,
             geometria: p.geometry ?? null
           };
+
+          if (p.geometry) {
+            const glowOuter = L.geoJSON(p.geometry, {
+              style: { color: '#4ade80', weight: 10, opacity: 0.18, fillColor: '#4ade80', fillOpacity: 0.12, className: 'parcela-glow' }
+            });
+            const glowInner = L.geoJSON(p.geometry, {
+              style: { color: '#22c55e', weight: 2, opacity: 0.9, dashArray: '6,4', fillColor: '#86efac', fillOpacity: 0.28, className: 'parcela-glow' }
+            });
+            selectionLayer = L.layerGroup([glowOuter, glowInner]).addTo(map);
+          }
           document.getElementById('f-ref').textContent = parcelaId;
           document.getElementById('f-sup').textContent = p.superficie ?? '-';
           document.getElementById('f-uso').textContent = p.uso_sigpac ?? '-';
           document.getElementById('msg').textContent = '';
           document.getElementById('f-cultivo').value = '';
+          document.getElementById('f-variedad-field').style.display = 'none';
           document.getElementById('detail-panel').style.display = 'none';
           document.getElementById('info-panel').style.display = 'block';
           if (window.innerWidth <= 768) {
@@ -362,22 +384,42 @@
         });
     });
 
+    function onCultivoChange() {
+      const cultivo = document.getElementById('f-cultivo').value;
+      const variedadField = document.getElementById('f-variedad-field');
+      const variedadSel = document.getElementById('f-variedad');
+      if (!cultivo) {
+        variedadField.style.display = 'none';
+        return;
+      }
+      const vars = VARIETIES[cultivo] || [];
+      variedadSel.innerHTML = '<option value="">-- Seleccionar variedad --</option>' +
+        vars.map(v => `<option value="${v}">${v}</option>`).join('');
+      variedadField.style.display = 'block';
+    }
+
     function registrarParcela() {
       const cultivo = document.getElementById('f-cultivo').value;
+      const variedad = document.getElementById('f-variedad').value;
       if (!cultivo) {
         document.getElementById('msg').textContent = 'Selecciona un cultivo primero.';
+        return;
+      }
+      if (!variedad) {
+        document.getElementById('msg').textContent = 'Selecciona una variedad.';
         return;
       }
       fetch('/registrar-parcela', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...selectedParcel, cultivo })
+        body: JSON.stringify({ ...selectedParcel, cultivo, variedad })
       })
       .then(r => r.json())
       .then(data => {
         if (data.success) {
           document.getElementById('msg').textContent = '✓ Parcela registrada.';
           document.getElementById('info-panel').style.display = 'none';
+          if (selectionLayer) { selectionLayer.remove(); selectionLayer = null; }
           selectedParcel = null;
           cargarParcelas();
         } else {
@@ -409,8 +451,11 @@
           emptyMsg.textContent = '';
           lista.innerHTML = parcelas.map(p => `
             <div class="parcela-item" onclick="focusParcela('${p.parcela_id}')">
-              <strong>${CROP_ICONS[p.cultivo] || '🌿'} ${p.parcela_id}</strong>
-              ${p.cultivo}${p.superficie ? ' · ' + p.superficie + ' ha' : ''}
+              <strong>
+                <img src="${CROP_IMGS[p.cultivo] || ''}" style="width:16px;height:16px;vertical-align:middle;object-fit:contain">
+                ${p.parcela_id}
+              </strong>
+              ${p.cultivo}${p.variedad ? ' · ' + p.variedad : ''}${p.superficie ? ' · ' + p.superficie + ' ha' : ''}
             </div>
           `).join('');
 
@@ -431,9 +476,9 @@
 
             if (p.lat && p.lng) {
               const cropIcon = L.divIcon({
-                html: `<span style="font-size:20px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">${CROP_ICONS[p.cultivo] || '🌿'}</span>`,
+                html: `<img src="${CROP_IMGS[p.cultivo] || ''}" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">`,
                 className: 'crop-marker',
-                iconAnchor: [10, 10]
+                iconAnchor: [12, 12]
               });
               const marker = L.marker([p.lat, p.lng], { icon: cropIcon });
               marker.on('click', (e) => {
@@ -456,9 +501,9 @@
     function mostrarDetalleParcela(p) {
       currentParcela = p;
       document.getElementById('info-panel').style.display = 'none';
-      document.getElementById('dp-icon').textContent = CROP_ICONS[p.cultivo] || '🌿';
+      document.getElementById('dp-icon').innerHTML = `<img src="${CROP_IMGS[p.cultivo] || ''}" style="width:34px;height:34px;object-fit:contain">`;
       document.getElementById('dp-id').textContent = p.parcela_id;
-      document.getElementById('dp-cultivo').textContent = p.cultivo;
+      document.getElementById('dp-cultivo').textContent = p.cultivo + (p.variedad ? ' · ' + p.variedad : '');
       document.getElementById('dp-sup').textContent = p.superficie ?? '-';
       document.getElementById('detail-panel').style.display = 'block';
       cerrarPanelSensor();

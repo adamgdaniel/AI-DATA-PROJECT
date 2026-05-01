@@ -109,7 +109,7 @@
     }
     .crop-btn:hover { background: rgba(82, 183, 136, 0.28); border-color: #52b788; }
     .crop-btn:active { cursor: grabbing; }
-    .crop-btn .icon { font-size: 28px; line-height: 1; }
+    .crop-btn .icon { width: 36px; height: 36px; object-fit: contain; }
     .crop-btn.selected { border-color: #52b788; background: rgba(82, 183, 136, 0.3); }
 
     #toolbar-hint {
@@ -230,19 +230,19 @@
   <div id="toolbar-inner">
     <div class="crop-btn" draggable="true" data-crop="tomate"
          ondragstart="onCropDragStart(event,'tomate')" onclick="selectCrop('tomate')">
-      <span class="icon">🍅</span><span>Tomate</span>
+      <img class="icon" src="/icons/Tomato.webp"/><span>Tomate</span>
     </div>
     <div class="crop-btn" draggable="true" data-crop="pepino"
          ondragstart="onCropDragStart(event,'pepino')" onclick="selectCrop('pepino')">
-      <span class="icon">🥒</span><span>Pepino</span>
+      <img class="icon" src="/icons/cucumber.png"/><span>Pepino</span>
     </div>
     <div class="crop-btn" draggable="true" data-crop="pimiento"
          ondragstart="onCropDragStart(event,'pimiento')" onclick="selectCrop('pimiento')">
-      <span class="icon">🌶️</span><span>Pimiento</span>
+      <img class="icon" src="/icons/Bell_Pepper.webp"/><span>Pimiento</span>
     </div>
-    <div class="crop-btn" draggable="true" data-crop="fresa"
-         ondragstart="onCropDragStart(event,'fresa')" onclick="selectCrop('fresa')">
-      <span class="icon">🍓</span><span>Fresa</span>
+    <div class="crop-btn" draggable="true" data-crop="calabacin"
+         ondragstart="onCropDragStart(event,'calabacin')" onclick="selectCrop('calabacin')">
+      <img class="icon" src="/icons/Zucchini.webp"/><span>Calabacín</span>
     </div>
     <span id="toolbar-hint">Arrastra o selecciona un cultivo y haz clic en la cuadrícula</span>
   </div>
@@ -263,6 +263,14 @@
   </div>
 </div>
 
+<!-- Modal: variety picker -->
+<div id="variety-modal" class="modal-overlay">
+  <div class="modal-card" style="max-width:300px">
+    <button class="modal-close" onclick="closeVarietyModal()">✕</button>
+    <div id="variety-modal-content"></div>
+  </div>
+</div>
+
 <!-- Modal: plant detail -->
 <div id="plant-modal" class="modal-overlay">
   <div class="modal-card">
@@ -273,10 +281,17 @@
 
 <script>
 const CROPS = {
-  tomate:   { icon: '🍅', label: 'Tomate',   color: '#c0392b' },
-  pepino:   { icon: '🥒', label: 'Pepino',   color: '#27ae60' },
-  pimiento: { icon: '🌶️', label: 'Pimiento', color: '#e67e22' },
-  fresa:    { icon: '🍓', label: 'Fresa',    color: '#e91e63' }
+  tomate:    { img: '/icons/Tomato.webp',      label: 'Tomate',    color: '#c0392b' },
+  pepino:    { img: '/icons/cucumber.png',     label: 'Pepino',    color: '#27ae60' },
+  pimiento:  { img: '/icons/Bell_Pepper.webp', label: 'Pimiento',  color: '#e67e22' },
+  calabacin: { img: '/icons/Zucchini.webp',    label: 'Calabacín', color: '#2ecc71' }
+};
+
+const VARIETIES = {
+  tomate:    ['Rama/LongLife', 'Pera', 'Cherry'],
+  pimiento:  ['California', 'Lamuyo'],
+  pepino:    ['Holandés'],
+  calabacin: ['Verde oscuro']
 };
 
 const GRID_COLS = 10;
@@ -390,7 +405,8 @@ function renderGrid() {
     el.style.gridRow = plant.grid_row + 1;
     el.style.gridColumn = `${plant.grid_col + 1} / span 2`;
     el.style.zIndex = 5;
-    el.innerHTML = CROPS[plant.tipo] ? CROPS[plant.tipo].icon : '🌱';
+    const cropImg = CROPS[plant.tipo] ? `<img src="${CROPS[plant.tipo].img}" style="width:48px;height:48px;object-fit:contain;pointer-events:none">` : '🌱';
+    el.innerHTML = cropImg;
 
     if (plant.sensor_entity_id) {
       const dot = document.createElement('div');
@@ -415,26 +431,59 @@ function canPlace(row, col) {
   return !occupied.has(`${row},${col}`) && !occupied.has(`${row},${col + 1}`);
 }
 
-async function placePlant(row, col) {
-  const tipo = dragCrop || selectedCrop;
-  if (!tipo) return;
-  if (!currentGhId) return;
-  if (!canPlace(row, col)) return;
+let pendingPlant = null;
 
+function placePlant(row, col) {
+  const tipo = dragCrop || selectedCrop;
+  if (!tipo || !currentGhId || !canPlace(row, col)) return;
+  dragCrop = null;
+
+  const varieties = VARIETIES[tipo] || [];
+  if (varieties.length === 1) {
+    confirmPlacePlant(row, col, tipo, varieties[0]);
+    return;
+  }
+  openVarietyModal(row, col, tipo);
+}
+
+function openVarietyModal(row, col, tipo) {
+  pendingPlant = { row, col, tipo };
+  const crop = CROPS[tipo];
+  const cropIcon = crop.img ? `<img src="${crop.img}" style="width:32px;height:32px;object-fit:contain;vertical-align:middle;margin-right:8px">` : '';
+  let html = `<h3 style="margin-bottom:14px">${cropIcon}${crop.label} — Variedad</h3>`;
+  (VARIETIES[tipo] || []).forEach(v => {
+    html += `<button class="modal-btn" style="margin-top:8px" onclick="selectVariety('${v}')">${v}</button>`;
+  });
+  html += `<button class="modal-btn modal-btn-cancel" style="margin-top:8px" onclick="closeVarietyModal()">Cancelar</button>`;
+  document.getElementById('variety-modal-content').innerHTML = html;
+  document.getElementById('variety-modal').classList.add('open');
+}
+
+function closeVarietyModal() {
+  document.getElementById('variety-modal').classList.remove('open');
+  pendingPlant = null;
+}
+
+async function selectVariety(variedad) {
+  if (!pendingPlant) return;
+  const { row, col, tipo } = pendingPlant;
+  closeVarietyModal();
+  await confirmPlacePlant(row, col, tipo, variedad);
+}
+
+async function confirmPlacePlant(row, col, tipo, variedad) {
+  if (!currentGhId || !canPlace(row, col)) return;
   try {
     const r = await fetch(`/anadir-planta/${currentGhId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tipo, grid_col: col, grid_row: row })
+      body: JSON.stringify({ tipo, variedad, grid_col: col, grid_row: row })
     });
     if (r.ok) {
-      const plant = await r.json();
-      plants.push(plant);
+      plants.push(await r.json());
       renderGrid();
     }
   } catch {}
-
-  dragCrop = null;
 }
 
 // ── Crop selection (click mode) ───────────────────────
@@ -514,16 +563,17 @@ let modalPlant = null;
 
 function openPlantModal(plant) {
   modalPlant = plant;
-  const crop = CROPS[plant.tipo] || { icon: '🌱', label: plant.tipo };
+  const crop = CROPS[plant.tipo] || { img: '', label: plant.tipo };
+  const cropIcon = crop.img ? `<img src="${crop.img}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:6px">` : '';
   let html = `
-    <h3>${crop.icon} ${crop.label}</h3>
+    <h3>${cropIcon}${crop.label}</h3>
     <div class="plant-info-row">
       <span class="plant-info-key">Posición</span>
       <span class="plant-info-val">Fila ${plant.grid_row + 1}, Col ${plant.grid_col + 1}</span>
     </div>
     <div class="plant-info-row">
-      <span class="plant-info-key">Tipo</span>
-      <span class="plant-info-val">${crop.label}</span>
+      <span class="plant-info-key">Variedad</span>
+      <span class="plant-info-val">${plant.variedad || '—'}</span>
     </div>
   `;
 
@@ -663,6 +713,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeNewGhModal();
     closePlantModal();
+    closeVarietyModal();
     if (selectedCrop) selectCrop(selectedCrop);
   }
 });
@@ -677,6 +728,9 @@ document.getElementById('new-gh-modal').addEventListener('click', e => {
 });
 document.getElementById('plant-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('plant-modal')) closePlantModal();
+});
+document.getElementById('variety-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('variety-modal')) closeVarietyModal();
 });
 
 init();

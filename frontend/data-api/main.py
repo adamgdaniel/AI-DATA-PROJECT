@@ -39,13 +39,13 @@ def registrar_parcela():
         cur.execute("""
             INSERT INTO parcelas_usuario
                 (usuario_id, parcela_id, provincia, municipio, poligono, parcela, recinto,
-                cultivo, superficie, lat, lng, geometria)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                cultivo, variedad, superficie, lat, lng, geometria)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             usuario_id, parcela_id,
             data.get('provincia'), data.get('municipio'), data.get('poligono'),
             data.get('parcela'), data.get('recinto'),
-            data.get('cultivo'), data.get('superficie'),
+            data.get('cultivo'), data.get('variedad'), data.get('superficie'),
             data.get('lat'), data.get('lng'),
             json.dumps(geometria) if geometria else None
         ))
@@ -69,7 +69,7 @@ def obtener_parcelas():
     cur = conn.cursor()
     cur.execute("""
         SELECT id, parcela_id, provincia, municipio, poligono, parcela, recinto,
-            cultivo, superficie, lat, lng, geometria, fecha_registro
+            cultivo, variedad, superficie, lat, lng, geometria, fecha_registro
         FROM parcelas_usuario
         WHERE usuario_id = %s
         ORDER BY fecha_registro DESC
@@ -90,11 +90,12 @@ def obtener_parcelas():
             'provincia': r[2], 'municipio': r[3], 'poligono': r[4],
             'parcela': r[5], 'recinto': r[6],
             'cultivo': r[7],
-            'superficie': float(r[8]) if r[8] else None,
-            'lat': float(r[9]) if r[9] else None,
-            'lng': float(r[10]) if r[10] else None,
-            'geometria': _geom(r[11]),
-            'fecha_registro': r[12].isoformat()
+            'variedad': r[8],
+            'superficie': float(r[9]) if r[9] else None,
+            'lat': float(r[10]) if r[10] else None,
+            'lng': float(r[11]) if r[11] else None,
+            'geometria': _geom(r[12]),
+            'fecha_registro': r[13].isoformat()
         }
         for r in rows
     ])
@@ -157,14 +158,14 @@ def get_plantas(invernadero_id):
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, tipo, grid_col, grid_row, sensor_entity_id
+        SELECT id, tipo, variedad, grid_col, grid_row, sensor_entity_id
         FROM plantas_invernadero WHERE invernadero_id = %s ORDER BY id ASC
     """, (invernadero_id,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
     return jsonify([{
-        'id': r[0], 'tipo': r[1], 'grid_col': r[2], 'grid_row': r[3], 'sensor_entity_id': r[4]
+        'id': r[0], 'tipo': r[1], 'variedad': r[2], 'grid_col': r[3], 'grid_row': r[4], 'sensor_entity_id': r[5]
     } for r in rows])
 
 
@@ -172,6 +173,7 @@ def get_plantas(invernadero_id):
 def anadir_planta(invernadero_id):
     data = request.json
     tipo = data.get('tipo')
+    variedad = data.get('variedad')
     grid_col = data.get('grid_col')
     grid_row = data.get('grid_row')
     if tipo is None or grid_col is None or grid_row is None:
@@ -179,14 +181,14 @@ def anadir_planta(invernadero_id):
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO plantas_invernadero (invernadero_id, tipo, grid_col, grid_row)
-        VALUES (%s, %s, %s, %s) RETURNING id
-    """, (invernadero_id, tipo, grid_col, grid_row))
+        INSERT INTO plantas_invernadero (invernadero_id, tipo, variedad, grid_col, grid_row)
+        VALUES (%s, %s, %s, %s, %s) RETURNING id
+    """, (invernadero_id, tipo, variedad, grid_col, grid_row))
     new_id = cur.fetchone()[0]
     conn.commit()
     cur.close()
     conn.close()
-    return jsonify({'id': new_id, 'tipo': tipo, 'grid_col': grid_col, 'grid_row': grid_row}), 201
+    return jsonify({'id': new_id, 'tipo': tipo, 'variedad': variedad, 'grid_col': grid_col, 'grid_row': grid_row}), 201
 
 
 @app.route('/invernaderos/<int:invernadero_id>/plantas/<int:planta_id>', methods=['DELETE'])
