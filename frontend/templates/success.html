@@ -449,6 +449,7 @@
       fetch('/mis-parcelas')
         .then(r => r.json())
         .then(parcelas => {
+          if (!Array.isArray(parcelas)) parcelas = [];
           misParcelasData = parcelas;
           misParcelasLayer.clearLayers();
           misParcelasIds.clear();
@@ -502,6 +503,9 @@
               marker.addTo(misParcelasLayer);
             }
           });
+        })
+        .catch(() => {
+          document.getElementById('empty-msg').textContent = 'Error cargando parcelas.';
         });
     }
 
@@ -760,6 +764,7 @@
     }
 
     cargarParcelas();
+    setTimeout(() => map.invalidateSize(), 100);
   </script>
 </body>
 </html>
