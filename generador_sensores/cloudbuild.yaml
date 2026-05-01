@@ -1,0 +1,24 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - build
+      - -t
+      - europe-west1-docker.pkg.dev/$PROJECT_ID/fake-sensors-repo/fake-sensors:latest
+      - .
+    dir: 'generador_sensores'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - push
+      - europe-west1-docker.pkg.dev/$PROJECT_ID/fake-sensors-repo/fake-sensors:latest
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - run
+      - jobs
+      - deploy
+      - fake-sensors
+      - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/fake-sensors-repo/fake-sensors:latest
+      - --region=europe-west1
+      - --platform=managed
+options:
+  logging: CLOUD_LOGGING_ONLY
