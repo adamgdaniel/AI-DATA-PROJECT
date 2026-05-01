@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+requests
+google-cloud-aiplatform[preview]

@@ -109,8 +109,6 @@ def obtener_parcelas():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, parcela_id, provincia, municipio, poligono, parcela, recinto,
-            cultivo, superficie, lat, lng, geometria, fecha_registro
         SELECT parcela_id, provincia, municipio, poligono, parcela, recinto,
             cultivo, superficie, lat, lng, geometria, zonas, grid, fecha_registro
         FROM parcelas_usuario
@@ -128,16 +126,6 @@ def obtener_parcelas():
 
     parcelas = [
         {
-            'id': r[0],
-            'parcela_id': r[1],
-            'provincia': r[2], 'municipio': r[3], 'poligono': r[4],
-            'parcela': r[5], 'recinto': r[6],
-            'cultivo': r[7],
-            'superficie': float(r[8]) if r[8] else None,
-            'lat': float(r[9]) if r[9] else None,
-            'lng': float(r[10]) if r[10] else None,
-            'geometria': _geom(r[11]),
-            'fecha_registro': r[12].isoformat()
             'parcela_id': r[0],
             'provincia': r[1], 'municipio': r[2], 'poligono': r[3],
             'parcela': r[4], 'recinto': r[5],

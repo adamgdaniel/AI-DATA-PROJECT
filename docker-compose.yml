@@ -1,0 +1,114 @@
+services:
+
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+    user: root
+    command:
+      - "--unix-socket=/cloudsql"
+      - "project-7f8b4dee-2b72-40f2-941:europe-west1:login-db"
+    volumes:
+      - cloudsql:/cloudsql
+      - ./gcloud_credentials.json:/gcloud_credentials.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcloud_credentials.json
+    restart: unless-stopped
+
+  api:
+    build: ./logging/api
+    ports:
+      - "8080:8080"
+    environment:
+      - INSTANCE_CONNECTION_NAME=project-7f8b4dee-2b72-40f2-941:europe-west1:login-db
+      - DB_NAME=logindb
+      - DB_USER=loginuser
+      - DB_PASSWORD=Edem2526
+      - TEST_USERNAME=testuser
+      - TEST_PASSWORD=testpassword
+    volumes:
+      - cloudsql:/cloudsql
+    depends_on:
+      - cloud-sql-proxy
+    restart: unless-stopped
+
+  data-api:
+    build: ./frontend/data-api
+    ports:
+      - "8082:8080"
+    environment:
+      - INSTANCE_CONNECTION_NAME=project-7f8b4dee-2b72-40f2-941:europe-west1:login-db
+      - DB_NAME=logindb
+      - DB_USER=loginuser
+      - DB_PASSWORD=Edem2526
+    volumes:
+      - cloudsql:/cloudsql
+    depends_on:
+      - cloud-sql-proxy
+    restart: unless-stopped
+
+  rag-api:
+    build: ./RAG_api
+    ports:
+      - "8083:8080"
+    environment:
+      - GCP_PROJECT_ID=project-7f8b4dee-2b72-40f2-941
+      - GCP_REGION=europe-west1
+      - GCS_BUCKET=project-7f8b4dee-2b72-40f2-941-agro-docs
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcloud_credentials.json
+    volumes:
+      - ./gcloud_credentials.json:/gcloud_credentials.json:ro
+    restart: unless-stopped
+
+  sensor-api:
+    build: ./sensor-api
+    ports:
+      - "8084:8080"
+    environment:
+      - INSTANCE_CONNECTION_NAME=project-7f8b4dee-2b72-40f2-941:europe-west1:login-db
+      - DB_NAME=logindb
+      - DB_USER=loginuser
+      - DB_PASSWORD=Edem2526
+      - GCP_PROJECT_ID=project-7f8b4dee-2b72-40f2-941
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcloud_credentials.json
+    volumes:
+      - cloudsql:/cloudsql
+      - ./gcloud_credentials.json:/gcloud_credentials.json:ro
+    depends_on:
+      - cloud-sql-proxy
+    restart: unless-stopped
+
+  agent:
+    build: ./agent
+    ports:
+      - "8085:8080"
+    environment:
+      - GCP_PROJECT_ID=project-7f8b4dee-2b72-40f2-941
+      - GCP_REGION=europe-west1
+      - SENSOR_API_URL=http://sensor-api:8080
+      - RAG_API_URL=http://rag-api:8080
+      - MODEL_SERVING_URL=http://model-serving:8080
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcloud_credentials.json
+    volumes:
+      - ./gcloud_credentials.json:/gcloud_credentials.json:ro
+    depends_on:
+      - sensor-api
+      - rag-api
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8081:8080"
+    environment:
+      - API_URL=http://api:8080
+      - DATA_API_URL=http://data-api:8080
+      - RAG_API_URL=http://rag-api:8080
+      - AGENT_URL=http://agent:8080
+      - SECRET_KEY=local-dev-secret
+    depends_on:
+      - api
+      - data-api
+      - agent
+    restart: unless-stopped
+
+volumes:
+  cloudsql:
