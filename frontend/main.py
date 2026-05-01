@@ -228,9 +228,15 @@ def mis_parcelas():
         return jsonify({'error': 'no autenticado'}), 401
     try:
         resp = requests.get(f'{DATA_API_URL}/parcelas', params={'user_id': session['user_id']}, timeout=10)
+
+        if resp.status_code != 200:
+            print(f"[ERROR mis-parcelas API] Status: {resp.status_code}, Body: {resp.text}")
+            return jsonify({'error': f'Error de la API de datos: {resp.status_code}'}), resp.status_code
         return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify([]), 200
+    except Exception as e:
+
+        print(f"[ERROR FATAL mis-parcelas] {e}") 
+        return jsonify({'error': str(e)}), 502
 
 
 @app.route('/registrar-parcela', methods=['POST'])
