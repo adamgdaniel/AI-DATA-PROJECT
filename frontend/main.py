@@ -89,7 +89,7 @@ def login():
         resp = requests.post(f'{API_URL}/login', json={
             'username': request.form['username'],
             'password': request.form['password']
-        })
+        }, timeout=10)
         if resp.status_code == 200:
             session['user_id'] = resp.json().get('user_id', 1)
             return redirect(url_for('mapa'))
@@ -111,7 +111,7 @@ def register():
         return render_template('register.html', errors=errors)
     resp = requests.post(f'{API_URL}/register', json={
         'username': username, 'email': email, 'password': password
-    })
+    }, timeout=10)
     if resp.status_code == 201 or resp.status_code == 200:
         return redirect(url_for('login'))
     data = resp.json()
@@ -231,7 +231,7 @@ def mis_parcelas():
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        resp = requests.get(f'{DATA_API_URL}/parcelas', params={'user_id': session['user_id']})
+        resp = requests.get(f'{DATA_API_URL}/parcelas', params={'user_id': session['user_id']}, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify([]), 200
@@ -243,7 +243,7 @@ def registrar_parcela():
         return jsonify({'error': 'no autenticado'}), 401
     data = request.json
     data['user_id'] = session['user_id']
-    resp = requests.post(f'{DATA_API_URL}/parcelas', json=data)
+    resp = requests.post(f'{DATA_API_URL}/parcelas', json=data, timeout=10)
     try:
         return jsonify(resp.json()), resp.status_code
     except Exception:
@@ -338,7 +338,7 @@ def home_assistant():
     connections = []
     if IOT_API_URL:
         try:
-            resp = requests.get(f'{IOT_API_URL}/ha/connections', params={'user_id': session['user_id']})
+            resp = requests.get(f'{IOT_API_URL}/ha/connections', params={'user_id': session['user_id']}, timeout=10)
             if resp.status_code == 200:
                 connections = resp.json()
         except Exception:
@@ -368,7 +368,7 @@ def ha_conectar():
             'ha_url': ha_url,
             'ha_token': ha_token,
             'display_name': display_name
-        })
+        }, timeout=10)
         if resp.status_code == 201:
             return redirect(url_for('home_assistant', success='1'))
         form_error = resp.json().get('error', 'Error al conectar.')
@@ -384,7 +384,7 @@ def ha_eliminar_conexion(connection_id):
     if IOT_API_URL:
         try:
             requests.delete(f'{IOT_API_URL}/ha/connections/{connection_id}',
-                            params={'user_id': session['user_id']})
+                            params={'user_id': session['user_id']}, timeout=10)
         except Exception:
             pass
     return redirect(url_for('home_assistant'))
@@ -397,7 +397,7 @@ def mis_conexiones_ha():
     if not IOT_API_URL:
         return jsonify([]), 200
     try:
-        resp = requests.get(f'{IOT_API_URL}/ha/connections', params={'user_id': session['user_id']})
+        resp = requests.get(f'{IOT_API_URL}/ha/connections', params={'user_id': session['user_id']}, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify([]), 200
@@ -427,7 +427,7 @@ def iot_registrar_sensor():
     data = request.json
     data['user_id'] = session['user_id']
     try:
-        resp = requests.post(f'{IOT_API_URL}/ha/sensores', json=data)
+        resp = requests.post(f'{IOT_API_URL}/ha/sensores', json=data, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'Error contactando IoT API'}), 502
@@ -443,7 +443,7 @@ def iot_mis_sensores():
     params = {'parcela_usuario_id': parcela_usuario_id} if parcela_usuario_id \
              else {'user_id': session['user_id']}
     try:
-        resp = requests.get(f'{IOT_API_URL}/ha/sensores', params=params)
+        resp = requests.get(f'{IOT_API_URL}/ha/sensores', params=params, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify([]), 200
@@ -458,7 +458,7 @@ def iot_eliminar_sensor():
     sensor_id = request.json.get('sensor_id')
     try:
         resp = requests.delete(f'{IOT_API_URL}/ha/sensores',
-                               params={'sensor_id': sensor_id, 'user_id': session['user_id']})
+                               params={'sensor_id': sensor_id, 'user_id': session['user_id']}, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'Error contactando IoT API'}), 502
@@ -476,7 +476,7 @@ def mis_invernaderos():
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        resp = requests.get(f'{DATA_API_URL}/invernaderos', params={'user_id': session['user_id']})
+        resp = requests.get(f'{DATA_API_URL}/invernaderos', params={'user_id': session['user_id']}, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify([]), 200
@@ -489,7 +489,7 @@ def crear_invernadero():
     data = request.json
     data['user_id'] = session['user_id']
     try:
-        resp = requests.post(f'{DATA_API_URL}/invernaderos', json=data)
+        resp = requests.post(f'{DATA_API_URL}/invernaderos', json=data, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'API no disponible'}), 502
@@ -500,7 +500,7 @@ def eliminar_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        requests.delete(f'{DATA_API_URL}/invernaderos/{inv_id}', params={'user_id': session['user_id']})
+        requests.delete(f'{DATA_API_URL}/invernaderos/{inv_id}', params={'user_id': session['user_id']}, timeout=10)
     except Exception:
         pass
     return jsonify({'success': True})
@@ -511,7 +511,7 @@ def plantas_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        resp = requests.get(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas')
+        resp = requests.get(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas', timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify([]), 200
@@ -522,7 +522,7 @@ def anadir_planta(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        resp = requests.post(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas', json=request.json)
+        resp = requests.post(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas', json=request.json, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'API no disponible'}), 502
@@ -533,7 +533,7 @@ def eliminar_planta(inv_id, planta_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
     try:
-        requests.delete(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas/{planta_id}')
+        requests.delete(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas/{planta_id}', timeout=10)
     except Exception:
         pass
     return jsonify({'success': True})
@@ -546,7 +546,7 @@ def actualizar_sensor_planta(inv_id, planta_id):
     try:
         resp = requests.put(
             f'{DATA_API_URL}/invernaderos/{inv_id}/plantas/{planta_id}/sensor',
-            json=request.json
+            json=request.json, timeout=10
         )
         return jsonify(resp.json()), resp.status_code
     except Exception:
@@ -679,4 +679,4 @@ def stream_invernadero(invernadero_id):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8080, threaded=True)
