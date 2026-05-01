@@ -239,11 +239,6 @@
           <button class="dp-close" onclick="cerrarDetalle()">✕</button>
         </div>
 
-        <div class="dp-section" id="dp-sensor-section" style="display:none">
-          <h4>Lecturas del sensor</h4>
-          <div id="dp-sensor-content"></div>
-        </div>
-
         <div class="dp-section">
           <h4>Previsión 7 días</h4>
           <div id="dp-weather-cards">
@@ -522,8 +517,6 @@
       document.getElementById('dp-icon').innerHTML = `<img src="${CROP_IMGS[p.cultivo] || ''}" style="width:34px;height:34px;object-fit:contain">`;
       document.getElementById('dp-id').textContent = p.parcela_id;
       document.getElementById('dp-cultivo').textContent = p.cultivo + (p.variedad ? ' · ' + p.variedad : '');
-      document.getElementById('dp-sensor-section').style.display = 'none';
-      cargarLecturasSensor(p.parcela_id);
       document.getElementById('dp-sup').textContent = p.superficie ?? '-';
       document.getElementById('detail-panel').style.display = 'block';
       cerrarPanelSensor();
@@ -545,8 +538,6 @@
     }
 
     function cerrarDetalle() {
-      if (parcelaStream) { parcelaStream.close(); parcelaStream = null; }
-      document.getElementById('dp-sensor-section').style.display = 'none';
       document.getElementById('detail-panel').style.display = 'none';
     }
 
@@ -597,38 +588,6 @@
 
     function registrarAccion(tipo) {
       alert(`Acción "${tipo}" registrada (próximamente se guardará en la BD).`);
-    }
-
-    // ---- Sensor readings (SSE) ----
-    let parcelaStream = null;
-
-    function cargarLecturasSensor(parcelaId) {
-      if (parcelaStream) { parcelaStream.close(); parcelaStream = null; }
-      parcelaStream = new EventSource(`/stream/parcela/${encodeURIComponent(parcelaId)}`);
-      parcelaStream.onmessage = (e) => {
-        try { actualizarLecturasUI(JSON.parse(e.data)); } catch {}
-      };
-      parcelaStream.onerror = () => {
-        document.getElementById('dp-sensor-section').style.display = 'none';
-      };
-    }
-
-    function actualizarLecturasUI(data) {
-      const section = document.getElementById('dp-sensor-section');
-      const content = document.getElementById('dp-sensor-content');
-      const temp  = data.temperatura_actual;
-      const hum   = data.humedad_ambiental_actual;
-      const suelo = data.humedad_suelo_actual;
-      if (temp == null && hum == null && suelo == null) {
-        section.style.display = 'none';
-        return;
-      }
-      let html = '';
-      if (temp  != null) html += `<div class="dp-reading"><span class="dp-reading-label">🌡️ Temperatura</span><span class="dp-reading-val">${parseFloat(temp).toFixed(1)} °C</span></div>`;
-      if (hum   != null) html += `<div class="dp-reading"><span class="dp-reading-label">💧 Hum. ambiental</span><span class="dp-reading-val">${parseFloat(hum).toFixed(1)} %</span></div>`;
-      if (suelo != null) html += `<div class="dp-reading"><span class="dp-reading-label">🌱 Hum. del suelo</span><span class="dp-reading-val">${parseFloat(suelo).toFixed(1)} %</span></div>`;
-      content.innerHTML = html;
-      section.style.display = 'block';
     }
 
     // ---- Sensor management ----
