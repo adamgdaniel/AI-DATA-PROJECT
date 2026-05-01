@@ -21,9 +21,9 @@ services:
       - INSTANCE_CONNECTION_NAME=project-7f8b4dee-2b72-40f2-941:europe-west1:login-db
       - DB_NAME=logindb
       - DB_USER=loginuser
-      - DB_PASSWORD=Edem2526
-      - TEST_USERNAME=testuser
-      - TEST_PASSWORD=testpassword
+      - DB_PASSWORD=${DB_PASSWORD}
+      - TEST_USERNAME=${TEST_USERNAME}
+      - TEST_PASSWORD=${TEST_PASSWORD}
     volumes:
       - cloudsql:/cloudsql
     depends_on:
@@ -38,7 +38,7 @@ services:
       - INSTANCE_CONNECTION_NAME=project-7f8b4dee-2b72-40f2-941:europe-west1:login-db
       - DB_NAME=logindb
       - DB_USER=loginuser
-      - DB_PASSWORD=Edem2526
+      - DB_PASSWORD=${DB_PASSWORD}
     volumes:
       - cloudsql:/cloudsql
     depends_on:
@@ -50,9 +50,9 @@ services:
     ports:
       - "8083:8080"
     environment:
-      - GCP_PROJECT_ID=project-7f8b4dee-2b72-40f2-941
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GCP_REGION=europe-west1
-      - GCS_BUCKET=project-7f8b4dee-2b72-40f2-941-agro-docs
+      - GCS_BUCKET=${GCS_BUCKET}
       - GOOGLE_APPLICATION_CREDENTIALS=/gcloud_credentials.json
     volumes:
       - ./gcloud_credentials.json:/gcloud_credentials.json:ro
@@ -66,8 +66,8 @@ services:
       - INSTANCE_CONNECTION_NAME=project-7f8b4dee-2b72-40f2-941:europe-west1:login-db
       - DB_NAME=logindb
       - DB_USER=loginuser
-      - DB_PASSWORD=Edem2526
-      - GCP_PROJECT_ID=project-7f8b4dee-2b72-40f2-941
+      - DB_PASSWORD=${DB_PASSWORD}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/gcloud_credentials.json
     volumes:
       - cloudsql:/cloudsql
@@ -81,7 +81,7 @@ services:
     ports:
       - "8085:8080"
     environment:
-      - GCP_PROJECT_ID=project-7f8b4dee-2b72-40f2-941
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GCP_REGION=europe-west1
       - SENSOR_API_URL=http://sensor-api:8080
       - RAG_API_URL=http://rag-api:8080
@@ -103,7 +103,7 @@ services:
       - DATA_API_URL=http://data-api:8080
       - RAG_API_URL=http://rag-api:8080
       - AGENT_URL=http://agent:8080
-      - SECRET_KEY=local-dev-secret
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - api
       - data-api
