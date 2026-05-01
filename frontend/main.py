@@ -1,11 +1,7 @@
-from flask import Flask, render_template, request, session, jsonify, redirect, url_for, send_from_directory, Response, stream_with_context
+from flask import Flask, render_template, request, session, jsonify, redirect, url_for, send_from_directory
 import requests
 import math
 import os
-import queue
-import threading
-import json
-from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = os.environ['SECRET_KEY']
@@ -565,117 +561,6 @@ def actualizar_sensor_invernadero(inv_id):
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'API no disponible'}), 502
-
-
-# ── Firestore / SSE ────────────────────────────────────
-
-_fs_client = None
-_fs_ready = False
-
-def _get_firestore():
-    global _fs_client, _fs_ready
-    if _fs_ready:
-        return _fs_client
-    try:
-        from google.cloud import firestore
-        _fs_client = firestore.Client(database='ultimas-lecturas')
-    except Exception:
-        _fs_client = None
-    _fs_ready = True
-    return _fs_client
-
-
-class _DatetimeEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
-
-
-_SSE_HEADERS = {'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
-
-
-@app.route('/stream/parcela/<parcela_id>')
-def stream_parcela(parcela_id):
-    if 'user_id' not in session:
-        return Response(status=401)
-    db = _get_firestore()
-    if not db:
-        return Response(': no-firestore\n\n', mimetype='text/event-stream', headers=_SSE_HEADERS)
-    uid = str(session['user_id'])
-    q = queue.Queue()
-
-    def on_snapshot(docs, changes, read_time):
-        for doc in docs:
-            q.put(doc.to_dict() or {})
-
-    watch = db.collection('usuarios').document(uid) \
-               .collection('parcelas').document(parcela_id) \
-               .on_snapshot(on_snapshot)
-
-    def generate():
-        try:
-            yield ': keepalive\n\n'
-            while True:
-                try:
-                    data = q.get(timeout=25)
-                    yield f'data: {json.dumps(data, cls=_DatetimeEncoder)}\n\n'
-                except queue.Empty:
-                    yield ': keepalive\n\n'
-        except GeneratorExit:
-            pass
-        finally:
-            watch.unsubscribe()
-
-    return Response(stream_with_context(generate()), mimetype='text/event-stream', headers=_SSE_HEADERS)
-
-
-@app.route('/stream/invernadero/<int:invernadero_id>')
-def stream_invernadero(invernadero_id):
-    if 'user_id' not in session:
-        return Response(status=401)
-    db = _get_firestore()
-    if not db:
-        return Response(': no-firestore\n\n', mimetype='text/event-stream', headers=_SSE_HEADERS)
-    uid = str(session['user_id'])
-    q = queue.Queue()
-    state = {'invernadero': {}, 'plantas': {}}
-    lock = threading.Lock()
-
-    def on_inv(docs, changes, read_time):
-        for doc in docs:
-            with lock:
-                state['invernadero'] = doc.to_dict() or {}
-                snap = {'invernadero': dict(state['invernadero']), 'plantas': dict(state['plantas'])}
-            q.put(snap)
-
-    def on_plantas(docs, changes, read_time):
-        with lock:
-            state['plantas'] = {d.id: d.to_dict() for d in docs}
-            snap = {'invernadero': dict(state['invernadero']), 'plantas': dict(state['plantas'])}
-        q.put(snap)
-
-    inv_ref = db.collection('usuarios').document(uid) \
-                .collection('invernaderos').document(str(invernadero_id))
-    watch_inv    = inv_ref.on_snapshot(on_inv)
-    watch_plantas = inv_ref.collection('plantas').on_snapshot(on_plantas)
-
-    def generate():
-        try:
-            yield ': keepalive\n\n'
-            while True:
-                try:
-                    data = q.get(timeout=25)
-                    yield f'data: {json.dumps(data, cls=_DatetimeEncoder)}\n\n'
-                except queue.Empty:
-                    yield ': keepalive\n\n'
-        except GeneratorExit:
-            pass
-        finally:
-            watch_inv.unsubscribe()
-            watch_plantas.unsubscribe()
-
-    return Response(stream_with_context(generate()), mimetype='text/event-stream', headers=_SSE_HEADERS)
 
 
 if __name__ == '__main__':
