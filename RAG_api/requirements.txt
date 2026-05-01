@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pymupdf
+google-cloud-aiplatform
+google-cloud-bigquery
+google-cloud-storage
+python-dotenv

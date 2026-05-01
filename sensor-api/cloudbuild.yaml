@@ -1,0 +1,26 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/rag-repo/sensor-api:$COMMIT_SHA'
+      - '.'
+    dir: 'sensor-api'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/rag-repo/sensor-api:$COMMIT_SHA'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'sensor-api'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/rag-repo/sensor-api:$COMMIT_SHA'
+      - '--region=europe-west1'
+      - '--platform=managed'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
