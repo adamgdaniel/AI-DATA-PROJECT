@@ -83,6 +83,63 @@ Lo que produce Dataflow por cada ventana de 1 hora y sensor: media, mínimo y m�
 | Registro de sensores (sensor_id, coordenadas, parcel_id) | Cloud SQL (PostgreSQL) | Datos relacionales, pocas escrituras, ya usado en el proyecto |
 | Lecturas agregadas por hora | BigQuery | Barato para series temporales, consumo directo por el modelo de IA |
 
+# ARQUITECTURA
+
+## Cloud Run
+Donde viven todos los servicios del proyecto. Cada servicio es un contenedor independiente que arranca bajo demanda.
+
+## Cloud SQL (PostgreSQL)
+Guarda los datos de usuario y configuración: cuentas, parcelas reclamadas, invernaderos, sensores registrados. **Entra:** escrituras de los servicios web cuando el usuario hace acciones. **Sale:** los servicios lo consultan para saber qué parcelas/sensores pertenecen a quién.
+
+## BigQuery
+Histórico completo de lecturas métricas. **Entra:** Dataflow IoT (lecturas del sensor agregadas por hora) y Dataflow Weather (datos meteorológicos por hora). **Sale:** el modelo de IA lo consulta para generar recomendaciones agrónomicas.
+
+## Pub/Sub
+Buffer entre el sensor y el procesamiento. **Entra:** el IoT API (Cloud Run) publica cada lectura cruda recibida de Home Assistant. **Sale:** Dataflow IoT las consume en batch cada hora. Garantiza que no se pierden lecturas aunque Dataflow no esté procesando en ese momento.
+
+## Dataflow (Apache Beam)
+Procesa y transforma datos en batch horario. Dos jobs:
+- **IoT** (`dataflow/`): **entra** lecturas crudas de Pub/Sub → agrega por hora → **sale** a BigQuery (histórico) y Firestore (estado actual).
+- **Weather** (`dataflow-weather/`, pendiente): **entra** datos de Open-Meteo y AEMET → **sale** a BigQuery (histórico) y Firestore (estado actual).
+
+## Firestore
+Almacena el **estado actual** de cada parcela como un único documento JSON. No es un histórico — cada escritura sobreescribe el estado anterior. Es la fuente de verdad para lo que el frontend muestra en tiempo real.
+
+**Estructura:** `usuarios/{usuario_id}/parcelas/{parcela_id}`
+
+```json
+{
+  "temperatura_actual": 22.5,
+  "humedad_ambiental_actual": 65.0,
+  "humedad_suelo_actual": 38.2,
+  "ultimo_riego": "2026-04-28T10:00:00Z",
+  "ultima_poda": "2026-03-15T00:00:00Z",
+  "ultimo_abonado": "2026-04-01T00:00:00Z",
+  "tipo_abono": "NPK 15-15-15",
+  "updated_at": "2026-04-30T12:00:00Z"
+}
+```
+
+**Input:**
+- **Dataflow IoT** (`dataflow/`): escribe temperatura, humedad ambiental y humedad del suelo desde el sensor Zigbee.
+- **Dataflow Weather** (`dataflow-weather/`, pendiente): escribe temperatura y humedad ambiental desde Open-Meteo y AEMET. No escribe `humedad_suelo_actual` (dato exclusivo de sensores físicos).
+
+**Output:**
+- El **frontend** se suscribe via WebSocket (SDK Firestore en browser). Cuando Firestore actualiza un documento, el navegador lo recibe automáticamente sin polling.
+
+No es un histórico — cada escritura sobreescribe el estado anterior. El histórico completo vive en BigQuery.
+
+## Artifact Registry
+Almacena las imágenes Docker de los servicios. **Entra:** Cloud Build sube una imagen nueva en cada deploy. **Sale:** Cloud Run descarga la imagen para arrancar el servicio. Repositorios: `login-repo` (auth API), `frontend-repo` (frontend, data-api), `iot-repo` (IoT API, IoT puller, Dataflow IoT), `aemet-repo` (AEMET ingest), `model-serving-repo` (modelo IA).
+
+## Secret Manager
+Guarda credenciales y claves sensibles (DB password, API keys, secret key de sesión). **Entra:** se crean manualmente o via Terraform. **Sale:** Cloud Run los inyecta como variables de entorno al arrancar los contenedores.
+
+## Cloud Build
+CI/CD del proyecto. **Entra:** un push a `main` en GitHub. **Sale:** construye la imagen Docker, la sube a Artifact Registry y redespliegua el servicio en Cloud Run. Cada carpeta de servicio tiene su propio `cloudbuild.yaml`.
+
+---
+
 # Contexto del Proyecto
 
 ## Stack

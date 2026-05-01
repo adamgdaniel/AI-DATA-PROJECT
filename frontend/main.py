@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, session, jsonify, redirect, url_for
+from flask import Flask, render_template, request, session, jsonify, redirect, url_for, send_from_directory
 import requests
 import math
 import os
@@ -123,6 +123,11 @@ def mapa():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('success.html')
+
+
+@app.route('/icons/<path:filename>')
+def serve_icon(filename):
+    return send_from_directory('icons', filename)
 
 
 @app.route('/logout')
