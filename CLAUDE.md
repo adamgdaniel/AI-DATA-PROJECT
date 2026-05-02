@@ -92,42 +92,84 @@ Donde viven todos los servicios del proyecto. Cada servicio es un contenedor ind
 Guarda los datos de usuario y configuración: cuentas, parcelas reclamadas, invernaderos, sensores registrados. **Entra:** escrituras de los servicios web cuando el usuario hace acciones. **Sale:** los servicios lo consultan para saber qué parcelas/sensores pertenecen a quién.
 
 ## BigQuery
-Histórico completo de lecturas métricas. **Entra:** Dataflow IoT (lecturas del sensor agregadas por hora) y Dataflow Weather (datos meteorológicos por hora). **Sale:** el modelo de IA lo consulta para generar recomendaciones agrónomicas.
+Histórico completo de lecturas métricas. **Sale:** el modelo de IA lo consulta para generar recomendaciones agronómicas. Tres tablas:
+
+### `lecturas_parcelas` — 1 fila por parcela por hora
+Particionada por `DATE(timestamp)`, clusterizada por `parcel_id`.
+- `user_id`, `parcel_id` — STRING
+- `timestamp` — DATETIME (hora UTC)
+- `temperatura`, `humedad_ambiental` — FLOAT (sensor si existe, sino Open-Meteo)
+- `humedad_suelo` — FLOAT, nullable (solo si hay sensor IoT)
+- `precipitacion_mm` — FLOAT (Open-Meteo, horaria; el modelo agrega)
+- `et0`, `radiacion_solar` — FLOAT (Open-Meteo)
+- `fuente_temperatura` — STRING (`'sensor'` / `'openmeteo'`)
+- `tipo_cultivo`, `variedad` — STRING
+- `fecha_plantacion_aprox` — DATE (para árboles: midpoint del rango de edad indicado por el agricultor en intervalos de 5 años, convertido a fecha restando años a la fecha de registro; para maíz: fecha exacta de siembra)
+
+### `lecturas_plantas` — 1 fila por planta por hora
+Particionada por `DATE(timestamp)`, clusterizada por `plant_id`.
+- `user_id`, `greenhouse_id`, `plant_id` — STRING
+- `timestamp` — DATETIME (hora UTC)
+- `temperatura`, `humedad_ambiental` — FLOAT (del invernadero, desnormalizado)
+- `humedad_suelo` — FLOAT, nullable (solo si hay sensor IoT en esa planta)
+- `tipo_cultivo`, `variedad` — STRING
+- `fecha_plantacion` — DATE (fecha exacta de siembra; el agricultor indica la semana)
+
+### `eventos_agricolas` — 1 fila por evento registrado
+Escrita por el frontend/API cuando el agricultor registra una acción. No es horaria.
+- `user_id`, `entity_type` (`'parcela'`/`'planta'`), `entity_id` — STRING
+- `timestamp` — DATETIME
+- `tipo_evento` — STRING (`'riego'`/`'poda'`/`'abonado'`)
+- `valor` — STRING, nullable (tipo de abono si aplica)
+
+El modelo obtiene la última acción por entidad con `MAX(timestamp)` agrupado.
 
 ## Pub/Sub
 Buffer entre el sensor y el procesamiento. **Entra:** el IoT API (Cloud Run) publica cada lectura cruda recibida de Home Assistant. **Sale:** Dataflow IoT las consume en batch cada hora. Garantiza que no se pierden lecturas aunque Dataflow no esté procesando en ese momento.
 
 ## Dataflow (Apache Beam)
-Procesa y transforma datos en batch horario. Dos jobs:
-- **IoT** (`dataflow/`): **entra** lecturas crudas de Pub/Sub → agrega por hora → **sale** a BigQuery (histórico) y Firestore (estado actual).
-- **Weather** (`dataflow-weather/`, pendiente): **entra** datos de Open-Meteo y AEMET → **sale** a BigQuery (histórico) y Firestore (estado actual).
+Un único job batch horario (`dataflow/`). Lee de dos fuentes en el mismo pipeline y hace merge antes de escribir:
+
+1. **Pub/Sub** → lecturas IoT de la última hora (agrega media/min/max por ventana).
+2. **HTTP** → Open-Meteo y AEMET para todas las parcelas.
+3. **Merge por entidad:**
+   - Parcelas: baseline meteorológico (Open-Meteo/AEMET) + override con sensor si existe.
+   - Invernaderos/plantas: solo sensor, sin fallback meteorológico (espacios cerrados).
+4. **Sale** → BigQuery (histórico) y Firestore (estado actual, una escritura atómica por entidad).
+
+Un solo job evita race conditions entre dos jobs escribiendo al mismo documento Firestore.
 
 ## Firestore
-Almacena el **estado actual** de cada parcela como un único documento JSON. No es un histórico — cada escritura sobreescribe el estado anterior. Es la fuente de verdad para lo que el frontend muestra en tiempo real.
+Estado actual de parcelas, invernaderos y plantas. No es un histórico — cada escritura sobreescribe el estado anterior. El histórico completo vive en BigQuery.
 
-**Estructura:** `usuarios/{usuario_id}/parcelas/{parcela_id}`
+**Reglas de estructura:**
+- Los campos que no aplican a una entidad se omiten (no se guarda `null`).
+- `humedad_suelo` solo existe si hay sensor IoT asociado.
+- Las plantas están anidadas dentro de su invernadero (subcollection), no a nivel de usuario.
 
-```json
-{
-  "temperatura_actual": 22.5,
-  "humedad_ambiental_actual": 65.0,
-  "humedad_suelo_actual": 38.2,
-  "ultimo_riego": "2026-04-28T10:00:00Z",
-  "ultima_poda": "2026-03-15T00:00:00Z",
-  "ultimo_abonado": "2026-04-01T00:00:00Z",
-  "tipo_abono": "NPK 15-15-15",
-  "updated_at": "2026-04-30T12:00:00Z"
-}
+**Árbol de colecciones:**
+```
+usuarios/{uid}/
+  parcelas/{parcela_id}
+    temperatura, humedad_ambiental, humedad_suelo
+    ultimo_riego, ultima_poda, ultimo_abonado, tipo_abono
+    updated_at
+
+  invernaderos/{inv_id}
+    temperatura, humedad_ambiental          ← sin humedad_suelo
+    updated_at
+
+    plantas/{planta_id}
+      humedad_suelo                          ← solo si tiene sensor IoT
+      ultimo_riego, ultima_poda, ultimo_abonado, tipo_abono
+      updated_at
 ```
 
-**Input:**
-- **Dataflow IoT** (`dataflow/`): escribe temperatura, humedad ambiental y humedad del suelo desde el sensor Zigbee.
-- **Dataflow Weather** (`dataflow-weather/`, pendiente): escribe temperatura y humedad ambiental desde Open-Meteo y AEMET. No escribe `humedad_suelo_actual` (dato exclusivo de sensores físicos).
+**Quién escribe qué:**
+- **Dataflow** (job único): temperatura, humedad_ambiental, humedad_suelo. Para parcelas usa Open-Meteo/AEMET como baseline y el sensor como override si existe. Para invernaderos/plantas, solo sensor.
+- **Frontend/API**: ultimo_riego, ultima_poda, ultimo_abonado, tipo_abono (acción manual del agricultor).
 
-**Output:**
-- El **frontend** se suscribe via WebSocket (SDK Firestore en browser). Cuando Firestore actualiza un documento, el navegador lo recibe automáticamente sin polling.
-
-No es un histórico — cada escritura sobreescribe el estado anterior. El histórico completo vive en BigQuery.
+**Output:** el frontend se suscribe via SDK Firestore (WebSocket). Cada cambio en un documento se recibe en tiempo real sin polling.
 
 ## Artifact Registry
 Almacena las imágenes Docker de los servicios. **Entra:** Cloud Build sube una imagen nueva en cada deploy. **Sale:** Cloud Run descarga la imagen para arrancar el servicio. Repositorios: `login-repo` (auth API), `frontend-repo` (frontend, data-api), `iot-repo` (IoT API, IoT puller, Dataflow IoT), `aemet-repo` (AEMET ingest), `model-serving-repo` (modelo IA).

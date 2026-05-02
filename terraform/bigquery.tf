@@ -49,41 +49,81 @@ resource "google_project_iam_member" "compute_cloudsql_client" {
 }
 
 # --- BigQuery Dataset ---
-resource "google_bigquery_dataset" "iot_data" {
-  dataset_id = "iot_data"
+resource "google_bigquery_dataset" "agri_data" {
+  dataset_id = "agri_data"
   location   = var.region
 }
 
-# --- BigQuery Table ---
-resource "google_bigquery_table" "sensor_aggregated" {
-  dataset_id          = google_bigquery_dataset.iot_data.dataset_id
-  table_id            = "sensor_aggregated"
+# --- lecturas_parcelas: 1 fila por parcela por hora ---
+resource "google_bigquery_table" "lecturas_parcelas" {
+  dataset_id          = google_bigquery_dataset.agri_data.dataset_id
+  table_id            = "lecturas_parcelas"
   deletion_protection = false
 
   time_partitioning {
     type  = "DAY"
-    field = "window_start"
+    field = "timestamp"
   }
 
+  clustering = ["parcel_id"]
+
   schema = jsonencode([
-    { name = "sensor_id",          type = "STRING",    mode = "REQUIRED" },
-    { name = "sensor_type",        type = "STRING",    mode = "REQUIRED" },
-    { name = "parcela_usuario_id", type = "INTEGER",   mode = "REQUIRED" },
-    { name = "parcela_id",         type = "STRING",    mode = "NULLABLE" },
-    { name = "user_id",            type = "INTEGER",   mode = "REQUIRED" },
-    { name = "cultivo",            type = "STRING",    mode = "NULLABLE" },
-    { name = "lat",                type = "FLOAT",     mode = "NULLABLE" },
-    { name = "lng",                type = "FLOAT",     mode = "NULLABLE" },
-    { name = "provincia",          type = "INTEGER",   mode = "NULLABLE" },
-    { name = "municipio",          type = "INTEGER",   mode = "NULLABLE" },
-    { name = "superficie",         type = "FLOAT",     mode = "NULLABLE" },
-    { name = "window_start",       type = "TIMESTAMP", mode = "REQUIRED" },
-    { name = "window_end",         type = "TIMESTAMP", mode = "REQUIRED" },
-    { name = "value_avg",          type = "FLOAT",     mode = "REQUIRED" },
-    { name = "value_min",          type = "FLOAT",     mode = "REQUIRED" },
-    { name = "value_max",          type = "FLOAT",     mode = "REQUIRED" },
-    { name = "reading_count",      type = "INTEGER",   mode = "REQUIRED" },
-    { name = "unit",               type = "STRING",    mode = "NULLABLE" }
+    { name = "user_id",                type = "STRING",   mode = "REQUIRED" },
+    { name = "parcel_id",              type = "STRING",   mode = "REQUIRED" },
+    { name = "timestamp",              type = "DATETIME", mode = "REQUIRED" },
+    { name = "temperatura",            type = "FLOAT",    mode = "NULLABLE" },
+    { name = "humedad_ambiental",      type = "FLOAT",    mode = "NULLABLE" },
+    { name = "humedad_suelo",          type = "FLOAT",    mode = "NULLABLE" },
+    { name = "precipitacion_mm",       type = "FLOAT",    mode = "NULLABLE" },
+    { name = "et0",                    type = "FLOAT",    mode = "NULLABLE" },
+    { name = "radiacion_solar",        type = "FLOAT",    mode = "NULLABLE" },
+    { name = "fuente_temperatura",     type = "STRING",   mode = "NULLABLE" },
+    { name = "tipo_cultivo",           type = "STRING",   mode = "NULLABLE" },
+    { name = "variedad",               type = "STRING",   mode = "NULLABLE" },
+    { name = "fecha_plantacion_aprox", type = "DATE",     mode = "NULLABLE" }
+  ])
+}
+
+# --- lecturas_plantas: 1 fila por planta por hora ---
+resource "google_bigquery_table" "lecturas_plantas" {
+  dataset_id          = google_bigquery_dataset.agri_data.dataset_id
+  table_id            = "lecturas_plantas"
+  deletion_protection = false
+
+  time_partitioning {
+    type  = "DAY"
+    field = "timestamp"
+  }
+
+  clustering = ["plant_id"]
+
+  schema = jsonencode([
+    { name = "user_id",           type = "STRING",   mode = "REQUIRED" },
+    { name = "greenhouse_id",     type = "STRING",   mode = "REQUIRED" },
+    { name = "plant_id",          type = "STRING",   mode = "REQUIRED" },
+    { name = "timestamp",         type = "DATETIME", mode = "REQUIRED" },
+    { name = "temperatura",       type = "FLOAT",    mode = "NULLABLE" },
+    { name = "humedad_ambiental", type = "FLOAT",    mode = "NULLABLE" },
+    { name = "humedad_suelo",     type = "FLOAT",    mode = "NULLABLE" },
+    { name = "tipo_cultivo",      type = "STRING",   mode = "NULLABLE" },
+    { name = "variedad",          type = "STRING",   mode = "NULLABLE" },
+    { name = "fecha_plantacion",  type = "DATE",     mode = "NULLABLE" }
+  ])
+}
+
+# --- eventos_agricolas: 1 fila por acción manual del agricultor ---
+resource "google_bigquery_table" "eventos_agricolas" {
+  dataset_id          = google_bigquery_dataset.agri_data.dataset_id
+  table_id            = "eventos_agricolas"
+  deletion_protection = false
+
+  schema = jsonencode([
+    { name = "user_id",     type = "STRING",   mode = "REQUIRED" },
+    { name = "entity_type", type = "STRING",   mode = "REQUIRED" },
+    { name = "entity_id",   type = "STRING",   mode = "REQUIRED" },
+    { name = "timestamp",   type = "DATETIME", mode = "REQUIRED" },
+    { name = "tipo_evento", type = "STRING",   mode = "REQUIRED" },
+    { name = "valor",       type = "STRING",   mode = "NULLABLE" }
   ])
 }
 
