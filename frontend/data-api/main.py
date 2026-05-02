@@ -59,6 +59,23 @@ def registrar_parcela():
         conn.close()
 
 
+@app.route('/parcelas/<int:parcela_id>', methods=['DELETE'])
+def eliminar_parcela(parcela_id):
+    usuario_id = request.args.get('user_id')
+    if not usuario_id:
+        return jsonify({'error': 'user_id requerido'}), 400
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM parcelas_usuario WHERE id = %s AND usuario_id = %s", (parcela_id, usuario_id))
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    if deleted == 0:
+        return jsonify({'error': 'Parcela no encontrada'}), 404
+    return jsonify({'success': True})
+
+
 @app.route('/parcelas', methods=['GET'])
 def obtener_parcelas():
     usuario_id = request.args.get('user_id')

@@ -168,6 +168,14 @@
     }
     .btn-cancel-small:hover { background: #f5f5f5; }
 
+    .btn-eliminar-parcela {
+      width: 100%; padding: 8px; margin-top: 4px;
+      background: none; border: 1.5px solid #c0392b;
+      border-radius: 6px; color: #c0392b;
+      cursor: pointer; font-size: 12px; font-weight: bold;
+    }
+    .btn-eliminar-parcela:hover { background: #c0392b; color: white; }
+
     /* --- Móvil --- */
     @media (max-width: 768px) {
       body { height: auto; min-height: 100vh; }
@@ -274,6 +282,8 @@
             <button class="btn-cancel-small" onclick="cerrarPanelSensor()">Cancelar</button>
           </div>
         </div>
+
+        <button class="btn-eliminar-parcela" onclick="eliminarParcela()">🗑 Eliminar esta parcela</button>
       </div>
 
       <!-- Lista de parcelas -->
@@ -713,6 +723,23 @@
         }
       })
       .catch(() => alert('Error de conexión.'));
+    }
+
+    function eliminarParcela() {
+      if (!currentParcela || !currentParcela.id) return;
+      if (!confirm(`¿Eliminar la parcela "${currentParcela.parcela_id}"? Esta acción no se puede deshacer.`)) return;
+      fetch(`/eliminar-parcela/${currentParcela.id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            document.getElementById('detail-panel').style.display = 'none';
+            currentParcela = null;
+            cargarParcelas();
+          } else {
+            alert(data.error || 'Error al eliminar la parcela.');
+          }
+        })
+        .catch(() => alert('Error de conexión.'));
     }
 
     function eliminarSensor(sensorId) {
