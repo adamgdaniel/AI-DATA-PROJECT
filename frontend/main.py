@@ -26,6 +26,12 @@ PROVINCE_CAPITALS = {
 }
 SIGPAC_HEADERS = {'Referer': 'https://sigpac.mapa.gob.es/fega/visor/', 'User-Agent': 'Mozilla/5.0'}
 
+# ── Dev-mode in-memory store (only used when DEV_MODE=1) ─────────────────────
+_DEV = bool(os.environ.get('DEV_MODE'))
+_dev_gh = {}        # id -> {id, nombre, sensor_entity_id}
+_dev_plants = {}    # inv_id -> [{id, tipo, variedad, grid_col, grid_row, sensor_entity_id}]
+_dev_seq = {'gh': 0, 'plant': 0}
+
 
 
 def _lat_lng_to_tile(lat, lng, zoom):
@@ -91,6 +97,14 @@ def login():
             return redirect(url_for('mapa'))
         error = 'Usuario o contraseña incorrectos'
     return render_template('login.html', error=error)
+
+
+@app.route('/dev-login')
+def dev_login():
+    if not os.environ.get('DEV_MODE'):
+        return 'Not available', 404
+    session['user_id'] = 1
+    return redirect(request.args.get('next', '/invernadero'))
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -246,6 +260,21 @@ def registrar_parcela():
     data = request.json
     data['user_id'] = session['user_id']
     resp = requests.post(f'{DATA_API_URL}/parcelas', json=data, timeout=10)
+    try:
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': f'API no disponible (status {resp.status_code})'}), 502
+
+
+@app.route('/eliminar-parcela/<int:parcela_id>', methods=['DELETE'])
+def eliminar_parcela(parcela_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    resp = requests.delete(
+        f'{DATA_API_URL}/parcelas/{parcela_id}',
+        params={'user_id': session['user_id']},
+        timeout=10
+    )
     try:
         return jsonify(resp.json()), resp.status_code
     except Exception:
@@ -477,6 +506,8 @@ def invernadero():
 def mis_invernaderos():
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    if _DEV:
+        return jsonify(list(_dev_gh.values())), 200
     try:
         resp = requests.get(f'{DATA_API_URL}/invernaderos', params={'user_id': session['user_id']}, timeout=10)
         return jsonify(resp.json()), resp.status_code
@@ -488,6 +519,12 @@ def mis_invernaderos():
 def crear_invernadero():
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    if _DEV:
+        _dev_seq['gh'] += 1
+        gh = {'id': _dev_seq['gh'], 'nombre': request.json.get('nombre', 'Invernadero'), 'sensor_entity_id': None}
+        _dev_gh[gh['id']] = gh
+        _dev_plants[gh['id']] = []
+        return jsonify(gh), 201
     data = request.json
     data['user_id'] = session['user_id']
     try:
@@ -501,6 +538,10 @@ def crear_invernadero():
 def eliminar_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    if _DEV:
+        _dev_gh.pop(inv_id, None)
+        _dev_plants.pop(inv_id, None)
+        return jsonify({'success': True})
     try:
         requests.delete(f'{DATA_API_URL}/invernaderos/{inv_id}', params={'user_id': session['user_id']}, timeout=10)
     except Exception:
@@ -512,6 +553,8 @@ def eliminar_invernadero(inv_id):
 def plantas_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    if _DEV:
+        return jsonify(_dev_plants.get(inv_id, [])), 200
     try:
         resp = requests.get(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas', timeout=10)
         return jsonify(resp.json()), resp.status_code
@@ -523,6 +566,15 @@ def plantas_invernadero(inv_id):
 def anadir_planta(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    if _DEV:
+        _dev_seq['plant'] += 1
+        d = request.json or {}
+        plant = {
+            'id': _dev_seq['plant'], 'tipo': d.get('tipo'), 'variedad': d.get('variedad'),
+            'grid_col': d.get('grid_col'), 'grid_row': d.get('grid_row'), 'sensor_entity_id': None
+        }
+        _dev_plants.setdefault(inv_id, []).append(plant)
+        return jsonify(plant), 201
     try:
         resp = requests.post(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas', json=request.json, timeout=10)
         return jsonify(resp.json()), resp.status_code
@@ -534,6 +586,9 @@ def anadir_planta(inv_id):
 def eliminar_planta(inv_id, planta_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    if _DEV:
+        _dev_plants[inv_id] = [p for p in _dev_plants.get(inv_id, []) if p['id'] != planta_id]
+        return jsonify({'success': True})
     try:
         requests.delete(f'{DATA_API_URL}/invernaderos/{inv_id}/plantas/{planta_id}', timeout=10)
     except Exception:
@@ -545,6 +600,11 @@ def eliminar_planta(inv_id, planta_id):
 def actualizar_sensor_planta(inv_id, planta_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    if _DEV:
+        for p in _dev_plants.get(inv_id, []):
+            if p['id'] == planta_id:
+                p['sensor_entity_id'] = (request.json or {}).get('sensor_entity_id')
+        return jsonify({'success': True})
     try:
         resp = requests.put(
             f'{DATA_API_URL}/invernaderos/{inv_id}/plantas/{planta_id}/sensor',
@@ -559,6 +619,10 @@ def actualizar_sensor_planta(inv_id, planta_id):
 def actualizar_sensor_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    if _DEV:
+        if inv_id in _dev_gh:
+            _dev_gh[inv_id]['sensor_entity_id'] = (request.json or {}).get('sensor_entity_id')
+        return jsonify({'success': True})
     try:
         resp = requests.put(
             f'{DATA_API_URL}/invernaderos/{inv_id}/sensor',
@@ -567,6 +631,17 @@ def actualizar_sensor_invernadero(inv_id):
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'API no disponible'}), 502
+
+
+@app.route('/stream/invernadero/<int:inv_id>')
+def stream_invernadero(inv_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    def empty_stream():
+        yield 'data: {"invernadero":{},"plantas":{}}\n\n'
+    if _DEV:
+        from flask import Response
+        return Response(empty_stream(), mimetype='text/event-stream')
 
 
 if __name__ == '__main__':

@@ -6,10 +6,24 @@
   <title>AgroMonitor — Invernaderos</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; background: #0d1f14; overflow: hidden; }
+
+    :root {
+      /* Tamaño de celda: escala con el viewport. Ajusta el valor central (5.2vw) si las celdas
+         no coinciden con las baldosas. Mín 34px, máx 60px. */
+      --cell: clamp(44px, 6.8vw, 78px);
+      /* Desplazamiento vertical del grid respecto al centro del área.
+         Positivo = baja el grid (hacia el suelo de la imagen). */
+      --grid-offset-y: 6vh;
+    }
+
+    body {
+      font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      background: url('/icons/invernadero_fondo.png') center center / cover no-repeat;
+      background-color: #0d1f14;
+    }
 
     header {
-      background: #2d6a4f; color: white;
+      background: rgba(45, 106, 79, 0.88); color: white;
       padding: 12px 20px; flex-shrink: 0;
       display: flex; justify-content: space-between; align-items: center;
       z-index: 10;
@@ -20,7 +34,7 @@
 
     /* ── Top bar ── */
     #top-bar {
-      background: #1a3a26; border-bottom: 1px solid #2d5a3a;
+      background: rgba(26, 58, 38, 0.88); border-bottom: 1px solid #2d5a3a;
       padding: 8px 16px; display: flex; align-items: center;
       justify-content: space-between; gap: 12px;
       flex-shrink: 0; z-index: 9;
@@ -45,36 +59,39 @@
     #grid-area {
       flex: 1; display: flex; justify-content: center; align-items: center;
       overflow: hidden; position: relative;
+      /* Desplaza el centro del grid hacia abajo para alinearlo con el suelo */
+      padding-top: var(--grid-offset-y);
     }
 
     .grid-scene {
-      perspective: 900px;
+      /* Sin perspectiva: proyección ortográfica, igual que el arte de fondo */
     }
+
     #iso-grid {
       display: grid;
-      grid-template-columns: repeat(10, 64px);
-      grid-template-rows: repeat(6, 64px);
-      transform: rotateX(52deg) rotateZ(45deg);
+      grid-template-columns: repeat(10, var(--cell));
+      grid-template-rows: repeat(7, var(--cell));
+      /* 60° / 45° = isométrico estándar que coincide con la imagen de fondo */
+      transform: rotateX(60deg) rotateZ(45deg);
       transform-origin: center center;
-      filter: drop-shadow(0 24px 60px rgba(0,0,0,0.8));
     }
 
     .cell {
-      width: 64px; height: 64px;
-      background: #2d5e3a;
-      border: 1px solid #1e4528;
+      width: var(--cell); height: var(--cell);
+      background: transparent;
+      border: 1px solid rgba(220, 255, 210, 0.28);
       display: flex; align-items: center; justify-content: center;
       cursor: crosshair;
       transition: background 0.12s;
       position: relative;
     }
-    .cell:hover { background: #3d7a4e; }
-    .cell.drag-over { background: #52b788 !important; outline: 3px solid #b7e4c7 inset; }
-    .cell.occupied { background: #3a2010; pointer-events: none; }
-    .cell.occupied-right { background: #3a2010; pointer-events: none; }
+    .cell:hover { background: rgba(82, 183, 136, 0.18); }
+    .cell.drag-over { background: rgba(82, 183, 136, 0.45) !important; outline: 3px solid #b7e4c7 inset; }
+    .cell.occupied { background: transparent; pointer-events: none; }
+    .cell.occupied-right { background: transparent; pointer-events: none; }
 
     .plant {
-      font-size: 30px; line-height: 1;
+      font-size: calc(var(--cell) * 0.47); line-height: 1;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; z-index: 5;
       background: rgba(60, 30, 10, 0.45);
@@ -84,6 +101,7 @@
       position: relative;
     }
     .plant:hover { background: rgba(90, 50, 15, 0.7); }
+    .plant img { width: calc(var(--cell) * 0.78); height: calc(var(--cell) * 0.78); object-fit: contain; pointer-events: none; }
 
     /* sensor badge on plant */
     .sensor-dot {
@@ -94,7 +112,7 @@
 
     /* ── Toolbar ── */
     #toolbar {
-      background: #1a3a26; border-top: 2px solid #2d5a3a;
+      background: rgba(26, 58, 38, 0.88); border-top: 2px solid #2d5a3a;
       padding: 12px 0; flex-shrink: 0; display: flex; justify-content: center;
     }
     #toolbar-inner { display: flex; gap: 20px; align-items: center; }
@@ -120,7 +138,7 @@
     /* ── Modals ── */
     .modal-overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.65); z-index: 100;
+      background: rgba(0,0,0,0.65); z-index: 300;
       justify-content: center; align-items: center;
     }
     .modal-overlay.open { display: flex; }
@@ -203,6 +221,54 @@
     .inv-reading-lbl { display: block; font-size: 10px; color: #4a7c59; }
     .inv-reading-val { font-size: 15px; font-weight: bold; color: #74c69d; }
 
+    /* ── Landing screen ── */
+    #landing {
+      position: fixed; inset: 0; z-index: 200;
+      background: url('/icons/fondo_inv_ipad.png') center center / cover no-repeat;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #landing::before {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(5, 18, 10, 0.62);
+    }
+    #landing-panel {
+      position: relative; z-index: 1;
+      background: rgba(8, 22, 12, 0.90);
+      border: 2px solid #3d8a65;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.55);
+      padding: 36px 44px;
+      min-width: 340px; max-width: 520px; width: 90%;
+      text-align: center;
+    }
+    #landing-logo {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      margin-bottom: 20px;
+    }
+    #landing-logo img { width: 38px; height: 38px; object-fit: contain; }
+    #landing-logo span { color: #74c69d; font-size: 20px; font-weight: bold; }
+    #landing-panel h2 { color: #52b788; font-size: 14px; margin-bottom: 20px; letter-spacing: 2px; text-transform: uppercase; }
+    #gh-cards { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; min-height: 48px; }
+    .gh-card {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(30, 70, 40, 0.75); border: 1px solid #3d8a65;
+      padding: 11px 16px; cursor: pointer; transition: background 0.12s;
+    }
+    .gh-card:hover { background: rgba(60, 130, 80, 0.5); }
+    .gh-card-name { color: #d8f3dc; font-size: 14px; font-weight: bold; text-align: left; }
+    .gh-card-btn {
+      background: #52b788; color: #0a1a0a; border: none;
+      padding: 5px 16px; font-size: 12px; font-weight: bold; cursor: pointer; flex-shrink: 0;
+    }
+    .gh-card-btn:hover { background: #74c69d; }
+    #gh-cards-empty { color: #4a7c59; font-size: 13px; padding: 12px 0; }
+    .btn-new-landing {
+      width: 100%; padding: 11px;
+      background: rgba(45, 106, 79, 0.85); color: #b7e4c7;
+      border: 1px solid #52b788; font-size: 13px; font-weight: bold;
+      cursor: pointer; letter-spacing: 1px; transition: background 0.12s;
+    }
+    .btn-new-landing:hover { background: rgba(82, 183, 136, 0.45); }
+
     /* ── Soil moisture chip on plants ── */
     .soil-chip {
       position: absolute; bottom: 3px; left: 50%;
@@ -213,8 +279,22 @@
       pointer-events: none; line-height: 1.4;
     }
   </style>
+  <link rel="stylesheet" href="/static/theme-override.css"/>
 </head>
 <body>
+
+<!-- Landing screen -->
+<div id="landing">
+  <div id="landing-panel">
+    <div id="landing-logo">
+      <img src="/icons/logo_png.png" alt="AgroMonitor">
+      <span>AgroMonitor</span>
+    </div>
+    <h2>Mis Invernaderos</h2>
+    <div id="gh-cards"><div id="gh-cards-empty">Cargando...</div></div>
+    <button class="btn-new-landing" onclick="openNewGhModal()">+ Nuevo invernadero</button>
+  </div>
+</div>
 
 <header>
   <span><img src="/icons/logo_png.png" alt="AgroMonitor" style="height:28px;vertical-align:middle;margin-right:8px;"> AgroMonitor</span>
@@ -228,12 +308,11 @@
 <!-- Top bar -->
 <div id="top-bar">
   <div style="display:flex;align-items:center;gap:12px">
+    <button class="btn-top" style="background:rgba(82,183,136,0.2);color:#74c69d;border:1px solid #3d8a65" onclick="exitToLanding()">← Invernaderos</button>
     <select id="gh-select" onchange="selectGreenhouse(this.value)">
       <option value="">— Selecciona un invernadero —</option>
     </select>
-    <button class="btn-top btn-new" onclick="openNewGhModal()">+ Nuevo</button>
     <button class="btn-top btn-del" id="btn-del-gh" style="display:none" onclick="deleteGreenhouse()">Eliminar</button>
-    <span id="no-gh-msg" style="display:none">Crea tu primer invernadero para empezar</span>
   </div>
 
   <div id="inv-sensor-widget">
@@ -343,7 +422,7 @@ const VARIETIES = {
 };
 
 const GRID_COLS = 10;
-const GRID_ROWS = 6;
+const GRID_ROWS = 7;
 
 let greenhouses = [];
 let currentGhId = null;
@@ -353,9 +432,25 @@ let selectedCrop = null;
 let ghSensorData = { invernadero: {}, plantas: {} };
 let ghStream = null;
 
+// ── Landing helpers ───────────────────────────────────
+function showLanding() { document.getElementById('landing').style.display = 'flex'; }
+function hideLanding() { document.getElementById('landing').style.display = 'none'; }
+
+async function exitToLanding() {
+  if (ghStream) { ghStream.close(); ghStream = null; }
+  ghSensorData = { invernadero: {}, plantas: {} };
+  currentGhId = null; plants = [];
+  document.getElementById('inv-sensor-widget').style.display = 'none';
+  document.getElementById('btn-sensor-gh').style.display = 'none';
+  document.getElementById('btn-del-gh').style.display = 'none';
+  await loadGreenhouses();
+  showLanding();
+}
+
 // ── Init ──────────────────────────────────────────────
 async function init() {
   await loadGreenhouses();
+  showLanding();
 }
 
 async function loadGreenhouses() {
@@ -364,50 +459,43 @@ async function loadGreenhouses() {
     greenhouses = r.ok ? await r.json() : [];
   } catch { greenhouses = []; }
 
+  // Populate landing cards
+  const cards = document.getElementById('gh-cards');
+  if (greenhouses.length === 0) {
+    cards.innerHTML = '<div id="gh-cards-empty">Aún no tienes invernaderos.</div>';
+  } else {
+    cards.innerHTML = greenhouses.map(gh => `
+      <div class="gh-card">
+        <span class="gh-card-name">🏡 ${gh.nombre}</span>
+        <button class="gh-card-btn" onclick="selectGreenhouse(${gh.id})">Entrar →</button>
+      </div>`).join('');
+  }
+
+  // Populate top-bar select
   const sel = document.getElementById('gh-select');
-  sel.innerHTML = '<option value="">— Selecciona un invernadero —</option>';
+  sel.innerHTML = '<option value="">— Selecciona —</option>';
   greenhouses.forEach(gh => {
     const opt = document.createElement('option');
-    opt.value = gh.id;
-    opt.textContent = gh.nombre;
+    opt.value = gh.id; opt.textContent = gh.nombre;
     sel.appendChild(opt);
   });
-
-  const noMsg = document.getElementById('no-gh-msg');
-  noMsg.style.display = greenhouses.length === 0 ? 'inline' : 'none';
-
-  if (greenhouses.length > 0) {
-    sel.value = greenhouses[0].id;
-    await selectGreenhouse(greenhouses[0].id);
-  } else {
-    if (ghStream) { ghStream.close(); ghStream = null; }
-    currentGhId = null;
-    ghSensorData = { invernadero: {}, plantas: {} };
-    document.getElementById('inv-sensor-widget').style.display = 'none';
-    document.getElementById('btn-sensor-gh').style.display = 'none';
-    renderGrid();
-    document.getElementById('empty-grid-msg').style.display = 'flex';
-    document.querySelector('.grid-scene').style.display = 'none';
-  }
 }
 
 async function selectGreenhouse(id) {
   if (!id) return;
+  hideLanding();
   currentGhId = parseInt(id);
+  document.getElementById('gh-select').value = id;
   document.getElementById('btn-del-gh').style.display = 'inline-block';
   document.getElementById('btn-sensor-gh').style.display = 'inline-block';
-  document.getElementById('empty-grid-msg').style.display = 'none';
+  document.getElementById('empty-grid-msg') && (document.getElementById('empty-grid-msg').style.display = 'none');
   document.querySelector('.grid-scene').style.display = '';
   await loadPlantas();
   if (ghStream) { ghStream.close(); ghStream = null; }
   ghSensorData = { invernadero: {}, plantas: {} };
   ghStream = new EventSource(`/stream/invernadero/${currentGhId}`);
   ghStream.onmessage = (e) => {
-    try {
-      ghSensorData = JSON.parse(e.data);
-      updateSensorWidget();
-      renderGrid();
-    } catch {}
+    try { ghSensorData = JSON.parse(e.data); updateSensorWidget(); renderGrid(); } catch {}
   };
 }
 
@@ -470,7 +558,7 @@ function renderGrid() {
     el.style.gridRow = plant.grid_row + 1;
     el.style.gridColumn = `${plant.grid_col + 1} / span 2`;
     el.style.zIndex = 5;
-    const cropImg = CROPS[plant.tipo] ? `<img src="${CROPS[plant.tipo].img}" style="width:48px;height:48px;object-fit:contain;pointer-events:none">` : '🌱';
+    const cropImg = CROPS[plant.tipo] ? `<img src="${CROPS[plant.tipo].img}">` : '🌱';
     el.innerHTML = cropImg;
 
     if (plant.sensor_entity_id) {
@@ -605,12 +693,10 @@ async function createGreenhouse() {
     });
     if (r.ok) {
       closeNewGhModal();
+      const gh = await r.json();
+      greenhouses.push(gh);
       await loadGreenhouses();
-      const gh = greenhouses[greenhouses.length - 1];
-      if (gh) {
-        document.getElementById('gh-select').value = gh.id;
-        await selectGreenhouse(gh.id);
-      }
+      await selectGreenhouse(gh.id);
     } else {
       const d = await r.json();
       document.getElementById('new-gh-err').textContent = d.error || 'Error al crear.';
@@ -626,11 +712,9 @@ async function deleteGreenhouse() {
   if (!confirm(`¿Eliminar "${gh ? gh.nombre : 'este invernadero'}" y todas sus plantas?`)) return;
   if (ghStream) { ghStream.close(); ghStream = null; }
   ghSensorData = { invernadero: {}, plantas: {} };
-  try {
-    await fetch(`/eliminar-invernadero/${currentGhId}`, { method: 'DELETE' });
-  } catch {}
+  try { await fetch(`/eliminar-invernadero/${currentGhId}`, { method: 'DELETE' }); } catch {}
   currentGhId = null;
-  await loadGreenhouses();
+  await exitToLanding();
 }
 
 // ── Plant modal ───────────────────────────────────────

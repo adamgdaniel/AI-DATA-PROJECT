@@ -10,11 +10,15 @@
     body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
     header {
       background: #2d6a4f; color: white;
-      padding: 12px 20px;
+      padding: 17px 28px;
       display: flex; justify-content: space-between; align-items: center;
     }
-    header span { font-weight: bold; font-size: 16px; }
-    header a { color: #b7e4c7; font-size: 13px; text-decoration: none; }
+    header span { font-weight: bold; font-size: 26px; }
+    header a {
+      color: #b7e4c7; font-size: 18px; text-decoration: none;
+      display: flex; align-items: center; gap: 7px;
+    }
+    header a img { height: 24px; width: 24px; object-fit: contain; flex-shrink: 0; }
 
     #container { display: flex; flex: 1; overflow: hidden; }
     #map { flex: 1; min-height: 0; }
@@ -168,6 +172,14 @@
     }
     .btn-cancel-small:hover { background: #f5f5f5; }
 
+    .btn-eliminar-parcela {
+      width: 100%; padding: 8px; margin-top: 4px;
+      background: none; border: 1.5px solid #c0392b;
+      border-radius: 6px; color: #c0392b;
+      cursor: pointer; font-size: 12px; font-weight: bold;
+    }
+    .btn-eliminar-parcela:hover { background: #c0392b; color: white; }
+
     /* --- Móvil --- */
     @media (max-width: 768px) {
       body { height: auto; min-height: 100vh; }
@@ -184,14 +196,15 @@
       .weather-card { min-width: 44px; }
     }
   </style>
+  <link rel="stylesheet" href="/static/theme-override.css"/>
 </head>
 <body>
   <header>
-    <span><img src="/icons/logo_png.png" alt="AgroMonitor" style="height:28px;vertical-align:middle;margin-right:8px;"> AgroMonitor</span>
-    <div style="display:flex;gap:16px;align-items:center;">
-      <a href="/invernadero">Invernaderos</a>
-      <a href="/home-assistant">Home Assistant</a>
-      <a href="/logout">Cerrar sesión</a>
+    <span><img src="/icons/logo_png.png" alt="AgroMonitor" style="height:45px;vertical-align:middle;margin-right:10px;"> AgroMonitor</span>
+    <div style="display:flex;gap:22px;align-items:center;">
+      <a href="/invernadero"><img src="/icons/logo_invernadero_boton.png" alt="">Invernaderos</a>
+      <a href="/home-assistant"><img src="/icons/home_assistant_logo.png" alt="">Home Assistant</a>
+      <a href="/logout"><img src="/icons/logout_icon.png" alt="">Cerrar sesión</a>
     </div>
   </header>
   <div id="container">
@@ -274,6 +287,8 @@
             <button class="btn-cancel-small" onclick="cerrarPanelSensor()">Cancelar</button>
           </div>
         </div>
+
+        <button class="btn-eliminar-parcela" onclick="eliminarParcela()">🗑 Eliminar esta parcela</button>
       </div>
 
       <!-- Lista de parcelas -->
@@ -713,6 +728,23 @@
         }
       })
       .catch(() => alert('Error de conexión.'));
+    }
+
+    function eliminarParcela() {
+      if (!currentParcela || !currentParcela.id) return;
+      if (!confirm(`¿Eliminar la parcela "${currentParcela.parcela_id}"? Esta acción no se puede deshacer.`)) return;
+      fetch(`/eliminar-parcela/${currentParcela.id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            document.getElementById('detail-panel').style.display = 'none';
+            currentParcela = null;
+            cargarParcelas();
+          } else {
+            alert(data.error || 'Error al eliminar la parcela.');
+          }
+        })
+        .catch(() => alert('Error de conexión.'));
     }
 
     function eliminarSensor(sensorId) {
