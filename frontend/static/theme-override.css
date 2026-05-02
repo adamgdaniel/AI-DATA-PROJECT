@@ -1,0 +1,637 @@
+/* ========================================================
+   AgroMonitor — theme-override.css
+   Dark navy design system: menus, buttons, interactive UI
+   ======================================================== */
+
+:root {
+  --bg-primary:        #1a1f2e;
+  --bg-secondary:      #242938;
+  --bg-tertiary:       #2d3347;
+  --btn-primary:       #4a9eff;
+  --btn-primary-hover: #3d8bff;
+  --accent-green:      #52c878;
+  --accent-red:        #ff6b4a;
+  --accent-red-hover:  #e85d3a;
+  --text-primary:      #ffffff;
+  --text-muted:        #8b9ab5;
+  --border-subtle:     rgba(255, 255, 255, 0.08);
+  --hover-blue:        rgba(74, 158, 255, 0.15);
+  --shadow-sm:         0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   HEADER / NAV
+   ══════════════════════════════════════════════════════ */
+header {
+  background: var(--bg-primary) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+header span,
+header strong {
+  color: var(--text-primary) !important;
+}
+header a {
+  color: var(--text-muted) !important;
+  transition: color 0.15s;
+}
+header a:hover {
+  color: var(--btn-primary) !important;
+}
+header > a:first-child {
+  color: var(--btn-primary) !important;
+}
+.h-badge {
+  background: rgba(74, 158, 255, 0.15) !important;
+  color: var(--btn-primary) !important;
+  border: 1px solid rgba(74, 158, 255, 0.3) !important;
+}
+.h-info span {
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR
+   ══════════════════════════════════════════════════════ */
+#sidebar {
+  background: var(--bg-primary) !important;
+  border-left: 1px solid var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   TOP BAR — greenhouse
+   ══════════════════════════════════════════════════════ */
+#top-bar {
+  background: var(--bg-primary) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+#gh-select {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid #3d4460 !important;
+  color: var(--text-primary) !important;
+}
+#gh-select option {
+  background: var(--bg-primary) !important;
+}
+#no-gh-msg {
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   TOOLBAR — greenhouse
+   ══════════════════════════════════════════════════════ */
+#toolbar {
+  background: var(--bg-primary) !important;
+  border-top: 1px solid var(--border-subtle) !important;
+}
+.crop-btn {
+  background: rgba(74, 158, 255, 0.08) !important;
+  border: 2px solid transparent !important;
+  color: var(--text-muted) !important;
+}
+.crop-btn:hover {
+  background: var(--hover-blue) !important;
+  border-color: var(--btn-primary) !important;
+  color: var(--text-primary) !important;
+}
+.crop-btn.selected {
+  border-color: var(--btn-primary) !important;
+  background: rgba(74, 158, 255, 0.2) !important;
+  color: var(--text-primary) !important;
+}
+#toolbar-hint {
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   FORM INPUTS
+   ══════════════════════════════════════════════════════ */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"] {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid #3d4460 !important;
+  border-radius: 6px !important;
+  color: var(--text-primary) !important;
+  transition: border-color 0.15s !important;
+}
+input[type="text"]::placeholder,
+input[type="password"]::placeholder,
+input[type="email"]::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1 !important;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus {
+  outline: none !important;
+  border-color: var(--btn-primary) !important;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.15) !important;
+}
+
+select {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid #3d4460 !important;
+  border-radius: 6px !important;
+  color: var(--text-primary) !important;
+  transition: border-color 0.15s !important;
+}
+select:focus {
+  outline: none !important;
+  border-color: var(--btn-primary) !important;
+}
+select option {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS — PRIMARY (blue)
+   ══════════════════════════════════════════════════════ */
+button[type="submit"] {
+  background: var(--btn-primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 600 !important;
+  border-radius: 4px !important;
+  transition: background 0.15s !important;
+}
+button[type="submit"]:hover {
+  background: var(--btn-primary-hover) !important;
+}
+
+.btn,
+.modal-btn,
+.btn-new,
+.gh-card-btn,
+.btn-add-small,
+.btn-add-row,
+.btn-new-landing {
+  background: var(--btn-primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 600 !important;
+  transition: background 0.15s !important;
+}
+.btn:hover,
+.modal-btn:hover,
+.btn-new:hover,
+.gh-card-btn:hover,
+.btn-add-small:hover,
+.btn-add-row:hover,
+.btn-new-landing:hover {
+  background: var(--btn-primary-hover) !important;
+  color: #ffffff !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS — BTN-TOP (greenhouse top bar)
+   ══════════════════════════════════════════════════════ */
+.btn-top {
+  background: rgba(74, 158, 255, 0.12) !important;
+  color: var(--btn-primary) !important;
+  border: 1px solid rgba(74, 158, 255, 0.3) !important;
+  font-weight: 600 !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+.btn-top:hover {
+  background: var(--btn-primary) !important;
+  color: #ffffff !important;
+  border-color: var(--btn-primary) !important;
+}
+/* compound selectors win over single-class rules */
+.btn-top.btn-new {
+  background: var(--btn-primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+.btn-top.btn-new:hover {
+  background: var(--btn-primary-hover) !important;
+}
+.btn-top.btn-del {
+  background: transparent !important;
+  border: 1px solid var(--accent-red) !important;
+  color: var(--accent-red) !important;
+}
+.btn-top.btn-del:hover {
+  background: var(--accent-red) !important;
+  color: #ffffff !important;
+  border-color: var(--accent-red) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS — SECONDARY (transparent outline)
+   ══════════════════════════════════════════════════════ */
+.btn-del,
+.modal-btn-cancel,
+.btn-cancel-small {
+  background: transparent !important;
+  border: 1px solid #4a4f6a !important;
+  color: var(--text-muted) !important;
+  font-weight: 500 !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+.btn-del:hover,
+.modal-btn-cancel:hover,
+.btn-cancel-small:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--text-primary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS — DANGER (red outline)
+   ══════════════════════════════════════════════════════ */
+.modal-btn-danger,
+.btn-delete,
+.btn-eliminar-parcela {
+  background: transparent !important;
+  border: 1px solid var(--accent-red) !important;
+  color: var(--accent-red) !important;
+  font-weight: 600 !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+.modal-btn-danger:hover,
+.btn-delete:hover,
+.btn-eliminar-parcela:hover {
+  background: var(--accent-red) !important;
+  color: #ffffff !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS — ACTION BAR (parcela_detail canvas view)
+   ══════════════════════════════════════════════════════ */
+.btn-act {
+  background: var(--bg-tertiary) !important;
+  border: 1.5px solid #4a4f6a !important;
+  color: var(--text-muted) !important;
+  font-weight: 600 !important;
+  transition: background 0.15s, color 0.15s, border-color 0.15s !important;
+}
+.btn-act:hover {
+  background: var(--hover-blue) !important;
+  border-color: var(--btn-primary) !important;
+  color: var(--btn-primary) !important;
+}
+.btn-act.danger {
+  background: transparent !important;
+  border: 1.5px solid var(--accent-red) !important;
+  color: var(--accent-red) !important;
+}
+.btn-act.danger:hover {
+  background: var(--accent-red) !important;
+  color: #ffffff !important;
+}
+#sel-label {
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS — PARCEL ACTIONS (success.html sidebar)
+   ══════════════════════════════════════════════════════ */
+.btn-accion {
+  background: transparent !important;
+  border: 1.5px solid #4a4f6a !important;
+  color: var(--text-muted) !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  transition: background 0.15s, color 0.15s, border-color 0.15s !important;
+}
+.btn-accion:hover {
+  background: var(--hover-blue) !important;
+  border-color: var(--btn-primary) !important;
+  color: var(--btn-primary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS — ICON / CLOSE
+   ══════════════════════════════════════════════════════ */
+.dp-close {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  transition: color 0.15s !important;
+}
+.dp-close:hover {
+  color: var(--text-primary) !important;
+}
+.modal-close {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  transition: color 0.15s !important;
+}
+.modal-close:hover {
+  color: var(--text-primary) !important;
+}
+.sensor-del {
+  background: transparent !important;
+  border: none !important;
+  color: var(--accent-red) !important;
+  transition: color 0.15s !important;
+}
+.sensor-del:hover {
+  color: var(--accent-red-hover) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   MODAL CARDS
+   ══════════════════════════════════════════════════════ */
+.modal-card {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+.modal-card h3 {
+  color: var(--btn-primary) !important;
+}
+.modal-field label {
+  color: var(--text-muted) !important;
+}
+.plant-info-row {
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+.plant-info-key {
+  color: var(--text-muted) !important;
+}
+.plant-info-val {
+  color: var(--text-primary) !important;
+}
+.sensor-linked {
+  background: rgba(74, 158, 255, 0.1) !important;
+  border: 1px solid var(--btn-primary) !important;
+}
+.sensor-linked span {
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   CARDS — ha_connect.html
+   ══════════════════════════════════════════════════════ */
+.card {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.card h2 {
+  color: var(--text-muted) !important;
+}
+/* Nested forms inside cards must not re-apply the card look */
+.card form,
+.connection-item form {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+.field label {
+  color: var(--text-muted) !important;
+}
+.field small {
+  color: #5a6a80 !important;
+}
+.page-title {
+  color: var(--text-primary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   ALERTS
+   ══════════════════════════════════════════════════════ */
+.alert-error {
+  background: rgba(255, 107, 74, 0.12) !important;
+  border: 1px solid rgba(255, 107, 74, 0.35) !important;
+  color: var(--accent-red) !important;
+}
+.alert-success {
+  background: rgba(82, 200, 120, 0.12) !important;
+  border: 1px solid rgba(82, 200, 120, 0.35) !important;
+  color: var(--accent-green) !important;
+}
+.error {
+  color: #ff8080 !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   CONNECTION ITEMS — ha_connect.html
+   ══════════════════════════════════════════════════════ */
+.connection-item {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+.connection-info strong {
+  color: var(--btn-primary) !important;
+}
+.connection-info span {
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   PANELS — success.html (registration & detail)
+   ══════════════════════════════════════════════════════ */
+#info-panel,
+#detail-panel {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+#info-panel h3 {
+  color: var(--text-primary) !important;
+}
+.dp-header {
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+.dp-section h4 {
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+.dp-info strong {
+  color: var(--btn-primary) !important;
+}
+.dp-info span {
+  color: var(--text-muted) !important;
+}
+.dp-reading {
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+.dp-reading-label {
+  color: var(--text-muted) !important;
+}
+.dp-reading-val {
+  color: var(--btn-primary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   WEATHER CARDS — success.html sidebar
+   ══════════════════════════════════════════════════════ */
+.weather-card {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+.wc-day {
+  color: var(--text-muted) !important;
+  font-weight: 700 !important;
+}
+.wc-max {
+  color: var(--accent-red) !important;
+}
+.wc-min {
+  color: var(--btn-primary) !important;
+}
+.wc-precip {
+  color: var(--btn-primary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   PARCEL LIST — success.html sidebar
+   ══════════════════════════════════════════════════════ */
+#mis-parcelas h3 {
+  color: var(--text-primary) !important;
+}
+.parcela-item {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-muted) !important;
+}
+.parcela-item:hover {
+  border-color: var(--btn-primary) !important;
+}
+.parcela-item strong {
+  color: var(--btn-primary) !important;
+}
+#empty-msg {
+  color: var(--text-muted) !important;
+}
+#zoom-hint {
+  background: rgba(74, 158, 255, 0.08) !important;
+  border: 1px solid rgba(74, 158, 255, 0.2) !important;
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   SENSOR ITEMS
+   ══════════════════════════════════════════════════════ */
+.sensor-item {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+.sensor-item-type {
+  color: var(--btn-primary) !important;
+}
+.sensor-item-id {
+  color: var(--text-muted) !important;
+}
+.discover-item {
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+.discover-name {
+  color: var(--text-primary) !important;
+}
+.discover-meta {
+  color: var(--text-muted) !important;
+}
+#add-sensor-panel {
+  border-top: 1px solid var(--border-subtle) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   GREENHOUSE LANDING PANEL
+   ══════════════════════════════════════════════════════ */
+#landing-panel {
+  background: rgba(26, 31, 46, 0.97) !important;
+  border: 2px solid rgba(74, 158, 255, 0.2) !important;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6) !important;
+}
+#landing-logo span {
+  color: var(--text-primary) !important;
+}
+#landing-panel h2 {
+  color: var(--text-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 2px !important;
+}
+.gh-card {
+  background: var(--bg-tertiary) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+.gh-card:hover {
+  background: var(--hover-blue) !important;
+  border-color: rgba(74, 158, 255, 0.4) !important;
+}
+.gh-card-name {
+  color: var(--text-primary) !important;
+}
+#gh-cards-empty {
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   SENSOR WIDGET — greenhouse top bar
+   ══════════════════════════════════════════════════════ */
+#inv-sensor-widget {
+  background: rgba(74, 158, 255, 0.08) !important;
+  border: 1px solid rgba(74, 158, 255, 0.2) !important;
+}
+.inv-reading-lbl {
+  color: var(--text-muted) !important;
+  font-size: 10px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+.inv-reading-val {
+  color: var(--btn-primary) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   EMPTY STATE
+   ══════════════════════════════════════════════════════ */
+.empty-state {
+  color: var(--text-muted) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN & REGISTER — top-level form card
+   ══════════════════════════════════════════════════════ */
+body > form {
+  background: rgba(26, 31, 46, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+}
+body > form a {
+  color: var(--btn-primary) !important;
+}
+.branding h1 {
+  color: var(--text-primary) !important;
+}
