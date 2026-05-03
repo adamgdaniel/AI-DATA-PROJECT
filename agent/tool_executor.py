@@ -21,11 +21,12 @@ def _search_docs(args: dict) -> dict:
             timeout=15,
         )
         resp.raise_for_status()
-        results = resp.json()
-        if not results:
+        data = resp.json()
+        chunks = data.get("chunks", [])
+        if not chunks:
             return {"resultado": "No se encontró documentación relevante para esta consulta."}
-        texto = "\n\n---\n\n".join(r["texto"] for r in results)
-        fuentes = list({r["doc_path"] for r in results})
+        texto = "\n\n---\n\n".join(c["texto"] for c in chunks)
+        fuentes = list({c.get("doc_path", c.get("titulo", "")) for c in chunks})
         return {"resultado": texto, "fuentes": fuentes}
     except Exception as e:
         return {"error": f"Error consultando documentación: {e}"}
