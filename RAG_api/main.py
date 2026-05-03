@@ -103,13 +103,19 @@ def query(req: QueryRequest):
     """
     Búsqueda semántica en BigQuery con ML.DISTANCE.
     Filtra por cultivo para evitar mezclar documentación de cultivos distintos.
+
+    Devuelve el formato estándar que consume el agente Vertex AI:
+    {"query": "...", "chunks": [...]}
     """
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="query no puede estar vacía")
 
     vector  = embed(req.query)
     results = bq_store.search(vector, cultivo=req.cultivo, tipo_doc=req.tipo_doc, top_k=req.top_k)
-    return results
+    return {
+        "query": req.query,
+        "chunks": results,
+    }
 
 
 # ── Gestión de documentos ──────────────────────────────────────────────────────

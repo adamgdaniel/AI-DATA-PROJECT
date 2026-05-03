@@ -1,144 +1,238 @@
+"""
+Sensor API — API 1: Contexto de Sensores
+=========================================
+Endpoint GET /sensores/contexto?parcela_id=X
+
+Lee métricas de BigQuery (agri_data.lecturas_parcelas) y acciones
+del agricultor (agri_data.eventos_agricolas) para devolver el contexto
+numérico que consume el Agente Vertex AI.
+"""
+
 import os
-import psycopg2
-from fastapi import FastAPI, HTTPException
+import logging
+from fastapi import FastAPI, HTTPException, Query
 from google.cloud import bigquery
 from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="Sensor API — AgroMétrica",
+    description="Devuelve contexto de parcela (métricas 24h/7d + acciones recientes) para el agente.",
+    version="1.0.0",
+)
 
 PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "project-7f8b4dee-2b72-40f2-941")
+BQ_DATASET = os.environ.get("BQ_DATASET", "agri_data")
+
+# ── CLIENTE BIGQUERY (singleton lazy) ──────────────────────────────────────────
 
 _bq = None
 
 
 def bq() -> bigquery.Client:
+    """Devuelve un cliente BQ reutilizable (stateless container friendly)."""
     global _bq
     if _bq is None:
         _bq = bigquery.Client(project=PROJECT_ID)
     return _bq
 
 
-def get_db():
-    return psycopg2.connect(
-        host=f"/cloudsql/{os.environ['INSTANCE_CONNECTION_NAME']}",
-        database=os.environ['DB_NAME'],
-        user=os.environ['DB_USER'],
-        password=os.environ['DB_PASSWORD']
-    )
+def _run_query(sql: str, params: list) -> list:
+    """Ejecuta una query parametrizada y devuelve las filas como dicts."""
+    job_cfg = bigquery.QueryJobConfig(query_parameters=params)
+    try:
+        results = bq().query(sql, job_config=job_cfg).result()
+        return [dict(row) for row in results]
+    except Exception as e:
+        logger.error("Error ejecutando query BQ: %s", e)
+        raise
 
 
-def get_parcela_info(parcela_usuario_id: str) -> dict | None:
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT parcela_id, cultivo, variedad, superficie, lat, lng
-        FROM parcelas_usuario WHERE parcela_id = %s
-    """, (parcela_usuario_id,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-    if not row:
-        return None
+def _safe_round(val, decimals=2):
+    """Redondea un valor numérico; devuelve None si es None."""
+    return round(float(val), decimals) if val is not None else None
+
+
+# ── MÉTRICAS ÚLTIMAS 24 HORAS ─────────────────────────────────────────────────
+
+def get_stats_24h(parcela_id: str) -> dict:
+    """
+    Calcula medias de temperatura, humedad_suelo y humedad_ambiental
+    de las últimas 24 horas para una parcela.
+    """
+    sql = f"""
+        SELECT
+            AVG(temperatura)       AS temp_media,
+            AVG(humedad_suelo)     AS humedad_suelo_media,
+            AVG(humedad_ambiental) AS humedad_ambiental_media
+        FROM `{PROJECT_ID}.{BQ_DATASET}.lecturas_parcelas`
+        WHERE parcel_id = @parcela_id
+          AND timestamp >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 24 HOUR)
+    """
+    params = [bigquery.ScalarQueryParameter("parcela_id", "STRING", parcela_id)]
+    rows = _run_query(sql, params)
+
+    if not rows or rows[0].get("temp_media") is None:
+        return {
+            "temp_media": None,
+            "humedad_suelo_media": None,
+            "humedad_ambiental_media": None,
+        }
+
+    row = rows[0]
     return {
-        "parcela_id": row[0],
-        "cultivo":    row[1],
-        "variedad":   row[2],
-        "superficie": float(row[3]) if row[3] else None,
-        "lat":        float(row[4]) if row[4] else None,
-        "lng":        float(row[5]) if row[5] else None,
+        "temp_media": _safe_round(row["temp_media"]),
+        "humedad_suelo_media": _safe_round(row["humedad_suelo_media"]),
+        "humedad_ambiental_media": _safe_round(row["humedad_ambiental_media"]),
     }
 
 
-def get_sensor_stats(parcel_id: str) -> dict:
-    params = [bigquery.ScalarQueryParameter("parcel_id", "STRING", parcel_id)]
-    job_cfg = bigquery.QueryJobConfig(query_parameters=params)
+# ── MÉTRICAS ÚLTIMOS 7 DÍAS ──────────────────────────────────────────────────
 
-    sql_24h = f"""
-        SELECT
-          AVG(temperatura)       AS temperatura_avg,
-          MIN(temperatura)       AS temperatura_min,
-          MAX(temperatura)       AS temperatura_max,
-          AVG(humedad_ambiental) AS humedad_ambiental_avg,
-          AVG(humedad_suelo)     AS humedad_suelo_avg
-        FROM `{PROJECT_ID}.agri_data.lecturas_parcelas`
-        WHERE parcel_id = @parcel_id
-          AND timestamp >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 24 HOUR)
+def get_stats_7d(parcela_id: str) -> dict:
     """
-    sql_7d = f"""
+    Calcula métricas acumuladas/medias de los últimos 7 días:
+    - temp_media, precipitacion_acumulada, et0_acumulado
+    """
+    sql = f"""
         SELECT
-          AVG(temperatura)       AS temperatura_avg,
-          AVG(humedad_ambiental) AS humedad_ambiental_avg,
-          AVG(humedad_suelo)     AS humedad_suelo_avg
-        FROM `{PROJECT_ID}.agri_data.lecturas_parcelas`
-        WHERE parcel_id = @parcel_id
+            AVG(temperatura)        AS temp_media,
+            SUM(precipitacion_mm)   AS precipitacion_acumulada,
+            SUM(et0)                AS et0_acumulado
+        FROM `{PROJECT_ID}.{BQ_DATASET}.lecturas_parcelas`
+        WHERE parcel_id = @parcela_id
           AND timestamp >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 168 HOUR)
     """
+    params = [bigquery.ScalarQueryParameter("parcela_id", "STRING", parcela_id)]
+    rows = _run_query(sql, params)
 
-    row_24h = next(iter(bq().query(sql_24h, job_config=job_cfg).result()), None)
-    row_7d  = next(iter(bq().query(sql_7d,  job_config=job_cfg).result()), None)
+    if not rows or rows[0].get("temp_media") is None:
+        return {
+            "temp_media": None,
+            "precipitacion_acumulada": None,
+            "et0_acumulado": None,
+        }
 
-    def _f(val):
-        return round(float(val), 2) if val is not None else None
-
-    stats_24h = {
-        "temperatura":       {"avg": _f(row_24h.temperatura_avg),       "min": _f(row_24h.temperatura_min), "max": _f(row_24h.temperatura_max)},
-        "humedad_ambiental": {"avg": _f(row_24h.humedad_ambiental_avg)},
-        "humedad_suelo":     {"avg": _f(row_24h.humedad_suelo_avg)},
-    } if row_24h else {}
-    stats_7d = {
-        "temperatura":       {"avg": _f(row_7d.temperatura_avg)},
-        "humedad_ambiental": {"avg": _f(row_7d.humedad_ambiental_avg)},
-        "humedad_suelo":     {"avg": _f(row_7d.humedad_suelo_avg)},
-    } if row_7d else {}
-
-    return {"ultimas_24h": stats_24h, "ultimos_7d": stats_7d}
+    row = rows[0]
+    return {
+        "temp_media": _safe_round(row["temp_media"]),
+        "precipitacion_acumulada": _safe_round(row["precipitacion_acumulada"]),
+        "et0_acumulado": _safe_round(row["et0_acumulado"]),
+    }
 
 
-def get_ultimas_acciones(parcela_usuario_id: str) -> list:
+# ── ACCIONES RECIENTES (BigQuery: eventos_agricolas) ──────────────────────────
+
+def get_acciones_recientes(parcela_id: str, limit: int = 5) -> list:
+    """
+    Lee las últimas acciones del agricultor (riego, abonado, poda)
+    desde BigQuery (agri_data.eventos_agricolas).
+    """
+    sql = f"""
+        SELECT
+            tipo_evento AS tipo,
+            timestamp   AS fecha,
+            valor       AS detalle
+        FROM `{PROJECT_ID}.{BQ_DATASET}.eventos_agricolas`
+        WHERE entity_type = 'parcela'
+          AND entity_id   = @parcela_id
+        ORDER BY timestamp DESC
+        LIMIT @limit
+    """
+    params = [
+        bigquery.ScalarQueryParameter("parcela_id", "STRING", parcela_id),
+        bigquery.ScalarQueryParameter("limit", "INT64", limit),
+    ]
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT tipo, fecha_accion, notas
-            FROM acciones
-            WHERE parcela_id = %s
-            ORDER BY fecha_accion DESC LIMIT 5
-        """, (parcela_usuario_id,))
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [{"tipo": r[0], "fecha": r[1].isoformat(), "notas": r[2]} for r in rows]
+        rows = _run_query(sql, params)
+        return [
+            {
+                "tipo": row["tipo"],
+                "fecha": row["fecha"].isoformat() if row.get("fecha") else None,
+                "detalle": row.get("detalle"),
+            }
+            for row in rows
+        ]
     except Exception:
-        # La tabla acciones puede no existir aún
+        # La tabla puede no tener datos aún
+        logger.warning("No se pudieron obtener acciones para parcela %s", parcela_id)
         return []
 
 
+# ── INFORMACIÓN DE CULTIVO (de la propia tabla de lecturas) ───────────────────
+
+def get_cultivo_info(parcela_id: str) -> str | None:
+    """
+    Obtiene el tipo de cultivo de la parcela leyendo la última fila
+    de lecturas_parcelas (campo tipo_cultivo).
+    """
+    sql = f"""
+        SELECT tipo_cultivo
+        FROM `{PROJECT_ID}.{BQ_DATASET}.lecturas_parcelas`
+        WHERE parcel_id = @parcela_id
+          AND tipo_cultivo IS NOT NULL
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """
+    params = [bigquery.ScalarQueryParameter("parcela_id", "STRING", parcela_id)]
+    rows = _run_query(sql, params)
+    if rows:
+        return rows[0].get("tipo_cultivo")
+    return None
+
+
+# ── ENDPOINT PRINCIPAL ────────────────────────────────────────────────────────
+
 @app.get("/sensores/contexto")
-def get_contexto(parcela_id: str):
+def get_contexto(
+    parcela_id: str = Query(..., description="ID de la parcela a consultar"),
+):
     """
-    Devuelve el estado actual de una parcela: métricas (24h y 7d)
-    y últimas acciones del agricultor. Usado como contexto por el agente.
+    Devuelve el contexto completo de una parcela:
+    - Métricas de las últimas 24h (temp, humedad suelo, humedad ambiental)
+    - Métricas de los últimos 7d (temp media, precipitación acumulada, ET₀ acumulado)
+    - Acciones recientes del agricultor (riego, abonado, poda)
+
+    Este contexto se inyecta en el system prompt del agente Vertex AI.
     """
-    parcela = get_parcela_info(parcela_id)
-    if not parcela:
-        raise HTTPException(status_code=404, detail="Parcela no encontrada")
+    # 1. Verificar que existen datos para esta parcela
+    stats_24h = get_stats_24h(parcela_id)
+    stats_7d = get_stats_7d(parcela_id)
 
-    sensor_stats = get_sensor_stats(parcela_id)
-    acciones     = get_ultimas_acciones(parcela_id)
-    fuente       = "sensores" if sensor_stats["ultimas_24h"] else "openmeteo"
+    # Si no hay datos en ninguna ventana temporal, la parcela no existe o no tiene datos
+    if stats_24h["temp_media"] is None and stats_7d["temp_media"] is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No se encontraron datos para parcela_id '{parcela_id}'",
+        )
 
+    # 2. Obtener cultivo y acciones
+    cultivo = get_cultivo_info(parcela_id)
+    acciones = get_acciones_recientes(parcela_id)
+
+    # 3. Construir respuesta alineada con el contrato del plan
     return {
-        "parcela_usuario_id": parcela_id,
-        "parcela_info":       parcela,
-        "fuente":             fuente,
-        "ultimas_24h":        sensor_stats["ultimas_24h"],
-        "ultimos_7d":         sensor_stats["ultimos_7d"],
-        "ultimas_acciones":   acciones,
+        "parcela_id": parcela_id,
+        "cultivo": cultivo,
+        "ultimas_24h": {
+            "temp_media": stats_24h["temp_media"],
+            "humedad_suelo_media": stats_24h["humedad_suelo_media"],
+            "humedad_ambiental_media": stats_24h["humedad_ambiental_media"],
+        },
+        "ultimos_7d": {
+            "temp_media": stats_7d["temp_media"],
+            "precipitacion_acumulada": stats_7d["precipitacion_acumulada"],
+            "et0_acumulado": stats_7d["et0_acumulado"],
+        },
+        "acciones_recientes": acciones,
     }
 
 
 @app.get("/health")
 def health():
+    """Health check para Cloud Run."""
     return {"status": "ok"}
