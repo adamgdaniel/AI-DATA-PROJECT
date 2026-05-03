@@ -80,13 +80,14 @@ def registrar_parcela():
         cur.execute("""
             INSERT INTO parcelas_usuario
                 (usuario_id, parcela_id, provincia, municipio, poligono, parcela, recinto,
-                cultivo, superficie, lat, lng, geometria)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                cultivo, variedad, edad_cultivo, superficie, lat, lng, geometria)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             usuario_id, parcela_id,
             data.get('provincia'), data.get('municipio'), data.get('poligono'),
             data.get('parcela'), data.get('recinto'),
-            data.get('cultivo'), data.get('superficie'),
+            data.get('cultivo'), data.get('variedad'), data.get('edad_cultivo'),
+            data.get('superficie'),
             data.get('lat'), data.get('lng'),
             json.dumps(geometria) if geometria else None
         ))
@@ -110,7 +111,7 @@ def obtener_parcelas():
     cur = conn.cursor()
     cur.execute("""
         SELECT parcela_id, provincia, municipio, poligono, parcela, recinto,
-            cultivo, superficie, lat, lng, geometria, zonas, grid, fecha_registro
+            cultivo, variedad, edad_cultivo, superficie, lat, lng, geometria, zonas, grid, fecha_registro
         FROM parcelas_usuario
         WHERE usuario_id = %s
         ORDER BY fecha_registro DESC
@@ -129,14 +130,14 @@ def obtener_parcelas():
             'parcela_id': r[0],
             'provincia': r[1], 'municipio': r[2], 'poligono': r[3],
             'parcela': r[4], 'recinto': r[5],
-            'cultivo': r[6],
-            'superficie': float(r[7]) if r[7] else None,
-            'lat': float(r[8]) if r[8] else None,
-            'lng': float(r[9]) if r[9] else None,
-            'geometria': _json(r[10]),
-            'zonas': _json(r[11]) or [],
-            'grid': _json(r[12]) or {},
-            'fecha_registro': r[13].isoformat()
+            'cultivo': r[6], 'variedad': r[7], 'edad_cultivo': r[8],
+            'superficie': float(r[9]) if r[9] else None,
+            'lat': float(r[10]) if r[10] else None,
+            'lng': float(r[11]) if r[11] else None,
+            'geometria': _json(r[12]),
+            'zonas': _json(r[13]) or [],
+            'grid': _json(r[14]) or {},
+            'fecha_registro': r[15].isoformat()
         }
         for r in rows
     ]

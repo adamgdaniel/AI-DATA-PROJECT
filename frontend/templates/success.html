@@ -10,15 +10,15 @@
     body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
     header {
       background: #2d6a4f; color: white;
-      padding: 17px 28px;
+      padding: 11px 17px;
       display: flex; justify-content: space-between; align-items: center;
     }
-    header span { font-weight: bold; font-size: 26px; }
+    header span { font-weight: bold; font-size: 17px; }
     header a {
-      color: #b7e4c7; font-size: 18px; text-decoration: none;
-      display: flex; align-items: center; gap: 7px;
+      color: #b7e4c7; font-size: 14px; text-decoration: none;
+      display: flex; align-items: center; gap: 5px;
     }
-    header a img { height: 24px; width: 24px; object-fit: contain; flex-shrink: 0; }
+    header a img { height: 18px; width: 18px; object-fit: contain; flex-shrink: 0; }
 
     #container { display: flex; flex: 1; overflow: hidden; }
     #map { flex: 1; min-height: 0; }
@@ -200,10 +200,10 @@
 </head>
 <body>
   <header>
-    <span><img src="/icons/logo_png.png" alt="AgroMonitor" style="height:45px;vertical-align:middle;margin-right:10px;"> AgroMonitor</span>
-    <div style="display:flex;gap:22px;align-items:center;">
-      <a href="/invernadero"><img src="/icons/logo_invernadero_boton.png" alt="">Invernaderos</a>
-      <a href="/home-assistant"><img src="/icons/home_assistant_logo.png" alt="">Home Assistant</a>
+    <span><span style="display:inline-flex;width:33px;height:40px;overflow:hidden;align-items:center;justify-content:center;vertical-align:middle;margin-right:8px;"><img src="/icons/logo_png.png" alt="" style="height:51px;width:auto;"></span> AgroMonitor</span>
+    <div style="display:flex;gap:17px;align-items:center;">
+      <a href="/invernadero"><span style="display:inline-flex;width:36px;height:36px;overflow:hidden;align-items:center;justify-content:center;flex-shrink:0;"><img src="/icons/logo_invernadero_boton.png" alt="" style="width:65px;height:65px;"></span>Invernaderos</a>
+      <a href="/home-assistant"><img src="/icons/home_assistant_logo.png" alt="" style="height:36px;width:36px;">Home Assistant</a>
       <a href="/logout"><img src="/icons/logout_icon.png" alt="">Cerrar sesión</a>
     </div>
   </header>
@@ -235,6 +235,16 @@
           <label>Variedad</label>
           <select id="f-variedad">
             <option value="">-- Seleccionar variedad --</option>
+          </select>
+        </div>
+        <div class="field" id="f-edad-field" style="display:none;">
+          <label>Edad del cultivo</label>
+          <select id="f-edad">
+            <option value="">-- Seleccionar edad --</option>
+            <option value="0-5">0-5 años</option>
+            <option value="5-10">5-10 años</option>
+            <option value="10-15">10-15 años</option>
+            <option value="+15">+15 años</option>
           </select>
         </div>
         <button class="btn" onclick="registrarParcela()">Registrar como mía</button>
@@ -326,8 +336,9 @@
 
     const map = L.map('map').setView([40.0, -3.7], 6);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics',
+      maxZoom: 19
     }).addTo(map);
 
     L.tileLayer.wms('https://wms.mapama.gob.es/wms/wms.aspx', {
@@ -416,19 +427,24 @@
       const cultivo = document.getElementById('f-cultivo').value;
       const variedadField = document.getElementById('f-variedad-field');
       const variedadSel = document.getElementById('f-variedad');
+      const edadField = document.getElementById('f-edad-field');
       if (!cultivo) {
         variedadField.style.display = 'none';
+        edadField.style.display = 'none';
         return;
       }
       const vars = VARIETIES[cultivo] || [];
       variedadSel.innerHTML = '<option value="">-- Seleccionar variedad --</option>' +
         vars.map(v => `<option value="${v}">${v}</option>`).join('');
       variedadField.style.display = 'block';
+      edadField.style.display = cultivo === 'Maiz' ? 'none' : 'block';
+      document.getElementById('f-edad').value = '';
     }
 
     function registrarParcela() {
       const cultivo = document.getElementById('f-cultivo').value;
       const variedad = document.getElementById('f-variedad').value;
+      const edad = cultivo !== 'Maiz' ? document.getElementById('f-edad').value : null;
       if (!cultivo) {
         document.getElementById('msg').textContent = 'Selecciona un cultivo primero.';
         return;
@@ -437,10 +453,14 @@
         document.getElementById('msg').textContent = 'Selecciona una variedad.';
         return;
       }
+      if (cultivo !== 'Maiz' && !edad) {
+        document.getElementById('msg').textContent = 'Selecciona la edad del cultivo.';
+        return;
+      }
       fetch('/registrar-parcela', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...selectedParcel, cultivo, variedad })
+        body: JSON.stringify({ ...selectedParcel, cultivo, variedad, edad_cultivo: edad })
       })
       .then(r => r.json())
       .then(data => {
