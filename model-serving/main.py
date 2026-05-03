@@ -35,7 +35,7 @@ class DiaMeteo(BaseModel):
 
 class SolicitudRiego(BaseModel):
     parcela_id: str
-    codigo_ine: str
+    codigo_ine: Optional[str] = None   # opcional: si no viene, se deduce de parcela_id
     cultivo: str
     fase: str
     prevision: Optional[List[DiaMeteo]] = None
@@ -59,7 +59,35 @@ def obtener_kc(cultivo: str, fase: str) -> float:
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error en Kc: {e}")
 
-# ── MÓDULO 2: LECTURA DE PREVISIÓN DESDE BD ────────────────────────────────────
+# ── MÓDULO 2a: LOOKUP codigo_ine DESDE parcela_id ─────────────────────────────
+def get_codigo_ine(parcela_id: str) -> str:
+    """
+    Obtiene el código INE del municipio a partir del parcela_id.
+    Lee la columna 'municipio' (INTEGER) de parcelas_usuario en Cloud SQL
+    y lo convierte a string de 5 dígitos con cero a la izquierda.
+    """
+    try:
+        with psycopg2.connect(DATABASE_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT municipio
+                    FROM parcelas_usuario
+                    WHERE parcela_id = %s
+                    LIMIT 1
+                """, (parcela_id,))
+                row = cur.fetchone()
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Parcela '{parcela_id}' no encontrada en la base de datos"
+            )
+        return str(row[0]).zfill(5)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error obteniendo municipio: {e}")
+
+# ── MÓDULO 2b: LECTURA DE PREVISIÓN DESDE BD ──────────────────────────────────
 def get_prevision_db(codigo_ine: str) -> List[DiaMeteo]:
     try:
         with psycopg2.connect(DATABASE_URL) as conn:
@@ -100,8 +128,8 @@ def get_prevision_db(codigo_ine: str) -> List[DiaMeteo]:
 def calcular_deficit(et0_mm: float, kc: float, precipitacion_mm: float) -> dict:
     """
     Balance hídrico FAO-56:
-      ETc  = ET0 * Kc          (necesidad hídrica real del cultivo)
-      Déficit = ETc - Lluvia   (agua que hay que aportar mediante riego)
+      ETc     = ET0 * Kc        (necesidad hídrica real del cultivo)
+      Déficit = ETc - Lluvia    (agua que hay que aportar mediante riego)
     """
     etc_mm = round(et0_mm * kc, 2)
     deficit_mm = round(max(etc_mm - precipitacion_mm, 0), 2)
@@ -111,27 +139,33 @@ def calcular_deficit(et0_mm: float, kc: float, precipitacion_mm: float) -> dict:
 @app.post("/recomendar")
 def recomendar_riego(solicitud: SolicitudRiego):
     kc = obtener_kc(solicitud.cultivo, solicitud.fase)
-    prevision = solicitud.prevision or get_prevision_db(solicitud.codigo_ine)
+
+    # Si no viene prevision inline ni codigo_ine, lo deducimos de parcela_id
+    if solicitud.prevision:
+        prevision = solicitud.prevision
+    else:
+        codigo_ine = solicitud.codigo_ine or get_codigo_ine(solicitud.parcela_id)
+        prevision = get_prevision_db(codigo_ine)
 
     resultados = []
     for dia in prevision:
         balance = calcular_deficit(dia.et0_mm, kc, dia.precipitacion_mm)
         resultados.append({
-            "fecha":             dia.fecha,
-            "et0_mm":            dia.et0_mm,
-            "etc_mm":            balance["etc_mm"],
-            "precipitacion_mm":  dia.precipitacion_mm,
-            "deficit_mm":        balance["deficit_mm"],
+            "fecha":              dia.fecha,
+            "et0_mm":             dia.et0_mm,
+            "etc_mm":             balance["etc_mm"],
+            "precipitacion_mm":   dia.precipitacion_mm,
+            "deficit_mm":         balance["deficit_mm"],
             "prob_precipitacion": dia.prob_precipitacion,
-            "estado_cielo":      dia.estado_cielo_desc,
-            "kc_aplicado":       kc,
+            "estado_cielo":       dia.estado_cielo_desc,
+            "kc_aplicado":        kc,
         })
 
     return {
-        "parcela_id":          solicitud.parcela_id,
-        "cultivo":             solicitud.cultivo,
-        "fase":                solicitud.fase,
-        "recomendacion_dias":  resultados,
+        "parcela_id":         solicitud.parcela_id,
+        "cultivo":            solicitud.cultivo,
+        "fase":               solicitud.fase,
+        "recomendacion_dias": resultados,
     }
 
 @app.get("/health")
