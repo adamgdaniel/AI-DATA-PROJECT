@@ -9,8 +9,6 @@ API_URL = os.environ['API_URL']
 DATA_API_URL = os.environ.get('DATA_API_URL', API_URL)
 IOT_API_URL = os.environ.get('IOT_API_URL', '')
 AGENT_URL = os.environ.get('AGENT_URL', '')
-AEMET_API_KEY = os.environ.get('AEMET_API_KEY', '')
-AEMET_BASE = 'https://opendata.aemet.es/openapi/api'
 
 # Código INE de la capital de cada provincia (fallback cuando el municipio no tiene previsión)
 PROVINCE_CAPITALS = {
