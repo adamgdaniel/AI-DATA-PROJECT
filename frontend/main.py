@@ -636,11 +636,10 @@ def actualizar_sensor_invernadero(inv_id):
 def stream_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
+    from flask import Response
     def empty_stream():
         yield 'data: {"invernadero":{},"plantas":{}}\n\n'
-    if _DEV:
-        from flask import Response
-        return Response(empty_stream(), mimetype='text/event-stream')
+    return Response(empty_stream(), mimetype='text/event-stream')
 
 
 @app.route('/registrar-accion', methods=['POST'])
