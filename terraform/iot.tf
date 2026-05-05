@@ -84,6 +84,14 @@ resource "google_cloud_run_v2_service" "iot_api" {
         value = var.db_password
       }
       env {
+        name  = "GCP_PROJECT"
+        value = var.project_id
+      }
+      env {
+        name  = "PUBSUB_TOPIC"
+        value = google_pubsub_topic.sensor_readings.name
+      }
+      env {
         name = "ENCRYPTION_KEY"
         value_source {
           secret_key_ref {

@@ -1,13 +1,24 @@
 from flask import Flask, request, jsonify
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
+from google.cloud import pubsub_v1
 import psycopg2
 import requests
+import json
 import os
+from datetime import datetime, timezone
 
 load_dotenv()
 
 app = Flask(__name__)
+
+_publisher = None
+
+def _get_publisher():
+    global _publisher
+    if _publisher is None:
+        _publisher = pubsub_v1.PublisherClient()
+    return _publisher
 
 def _encrypt(value: str) -> str:
     return Fernet(os.environ['ENCRYPTION_KEY'].encode()).encrypt(value.encode()).decode()
@@ -245,6 +256,56 @@ def ha_eliminar_sensor():
     if not deleted:
         return jsonify({'error': 'Sensor no encontrado'}), 404
     return jsonify({'success': True})
+
+
+@app.route('/ingest', methods=['POST'])
+def ingest():
+    """
+    Endpoint push: Home Assistant llama aquí cada vez que un sensor cambia.
+    Body: {"sensor_id": "sensor.soil_moisture_1", "value": "52.3"}
+    """
+    data = request.json or {}
+    sensor_id = data.get('sensor_id')
+    value = data.get('value')
+
+    if not sensor_id or value is None:
+        return jsonify({'error': 'sensor_id y value son requeridos'}), 400
+
+    gcp_project = os.environ.get('GCP_PROJECT')
+    pubsub_topic = os.environ.get('PUBSUB_TOPIC')
+    if not gcp_project or not pubsub_topic:
+        return jsonify({'error': 'Pub/Sub no configurado'}), 503
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT sensor_type, parcela_usuario_id, user_id
+        FROM sensors
+        WHERE sensor_id = %s AND active = TRUE
+        LIMIT 1
+    """, (sensor_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row:
+        return jsonify({'error': 'Sensor no registrado o inactivo'}), 404
+
+    sensor_type, parcela_usuario_id, user_id = row
+
+    message = {
+        'sensor_id':          sensor_id,
+        'sensor_type':        sensor_type,
+        'parcela_usuario_id': parcela_usuario_id,
+        'user_id':            user_id,
+        'value':              str(value),
+        'timestamp':          datetime.now(timezone.utc).isoformat(),
+    }
+
+    topic_path = _get_publisher().topic_path(gcp_project, pubsub_topic)
+    _get_publisher().publish(topic_path, json.dumps(message).encode('utf-8'))
+
+    return jsonify({'ok': True}), 200
 
 
 if __name__ == '__main__':
