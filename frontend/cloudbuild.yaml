@@ -14,8 +14,8 @@ steps:
       - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/frontend-repo/login-frontend:latest
       - --region=europe-west1
       - --platform=managed
-      - --update-secrets=SECRET_KEY=frontend-secret-key:latest,AEMET_API_KEY=aemet-api-key:latest
-      - --update-env-vars=DATA_API_URL=https://data-api-874385889107.europe-west1.run.app
+      - --update-secrets=SECRET_KEY=frontend-secret-key:latest
+      - --update-env-vars=DATA_API_URL=https://data-api-874385889107.europe-west1.run.app,AGENT_URL=$_AGENT_URL
       - --timeout=3600
   # --- Data API ---
   - name: 'gcr.io/cloud-builders/docker'

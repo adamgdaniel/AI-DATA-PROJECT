@@ -40,6 +40,12 @@ resource "google_secret_manager_secret_iam_member" "cloudrun_read_db_url" {
   member    = "serviceAccount:${google_service_account.cloudrun.email}"
 }
 
+resource "google_project_iam_member" "cloudrun_bigquery_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.cloudrun.email}"
+}
+
 # --- Cloud Run Job: ingesta de previsión AEMET (2x/día vía Cloud Scheduler) ---
 resource "google_cloud_run_v2_job" "aemet_ingest" {
   name     = "aemet-ingest"
@@ -71,6 +77,11 @@ resource "google_cloud_run_v2_job" "aemet_ingest" {
             }
           }
         }
+
+        env {
+          name  = "GCP_PROJECT_ID"
+          value = var.project_id
+        }
       }
 
       volumes {
@@ -89,6 +100,7 @@ resource "google_cloud_run_v2_job" "aemet_ingest" {
   depends_on = [
     google_secret_manager_secret_iam_member.cloudrun_read_aemet_key,
     google_secret_manager_secret_iam_member.cloudrun_read_db_url,
+    google_project_iam_member.cloudrun_bigquery_editor,
     google_sql_database.agro,
   ]
 }

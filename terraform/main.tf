@@ -86,6 +86,10 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "DB_PASSWORD"
         value = var.db_password
       }
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
 
       volume_mounts {
         name       = "cloudsql"
@@ -199,6 +203,10 @@ resource "google_cloud_run_v2_service" "frontend" {
         name  = "SECRET_KEY"
         value = var.secret_key
       }
+      env {
+        name  = "AGENT_URL"
+        value = google_cloud_run_v2_service.model_serving.uri
+      }
     }
   }
 
@@ -242,6 +250,10 @@ resource "google_cloudbuild_trigger" "login_frontend" {
   }
 
   filename = "frontend/cloudbuild.yaml"
+
+  substitutions = {
+    _AGENT_URL = google_cloud_run_v2_service.model_serving.uri
+  }
 
   service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
 }

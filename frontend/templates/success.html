@@ -195,6 +195,51 @@
       .parcela-item { padding: 12px; font-size: 13px; }
       .weather-card { min-width: 44px; }
     }
+
+    /* ── Chat flotante ── */
+    #chat-btn {
+      position: fixed; bottom: 22px; right: 22px; z-index: 1200;
+      background: #2d6a4f; color: white;
+      border: none; border-radius: 50px;
+      padding: 12px 18px; font-size: 15px; cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0,0,0,.25);
+      display: flex; align-items: center; gap: 7px;
+    }
+    #chat-panel {
+      position: fixed; bottom: 75px; right: 22px; z-index: 1200;
+      width: 340px; max-height: 480px;
+      background: white; border: 1px solid #ccc;
+      border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,.2);
+      display: none; flex-direction: column; overflow: hidden;
+    }
+    #chat-header {
+      background: #2d6a4f; color: white;
+      padding: 10px 14px; font-size: 14px; font-weight: bold;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #chat-header button {
+      background: none; border: none; color: white;
+      font-size: 18px; cursor: pointer; line-height: 1;
+    }
+    #chat-messages {
+      flex: 1; overflow-y: auto; padding: 12px;
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 200px;
+    }
+    .chat-msg { font-size: 13px; line-height: 1.45; max-width: 90%; }
+    .chat-msg.user { align-self: flex-end; background: #d8f3dc; border-radius: 8px 8px 2px 8px; padding: 7px 10px; }
+    .chat-msg.agent { align-self: flex-start; background: #f1f1f1; border-radius: 8px 8px 8px 2px; padding: 7px 10px; }
+    .chat-msg.error { align-self: flex-start; background: #fde; color: #c00; border-radius: 8px; padding: 7px 10px; }
+    #chat-footer { padding: 10px; border-top: 1px solid #eee; display: flex; gap: 7px; }
+    #chat-input {
+      flex: 1; resize: none; border: 1px solid #ccc; border-radius: 6px;
+      padding: 7px; font-size: 13px; font-family: inherit;
+    }
+    #chat-send {
+      background: #2d6a4f; color: white; border: none;
+      border-radius: 6px; padding: 7px 13px; cursor: pointer; font-size: 13px;
+    }
+    #chat-send:disabled { opacity: 0.5; cursor: default; }
   </style>
   <link rel="stylesheet" href="/static/theme-override.css"/>
 </head>
@@ -307,6 +352,20 @@
         <div id="empty-msg">Cargando...</div>
         <div id="lista-parcelas"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Chat flotante con el agente -->
+  <button id="chat-btn" onclick="toggleChat()">💬 Consultar al agente</button>
+  <div id="chat-panel">
+    <div id="chat-header">
+      <span>🤖 Agente AgroMonitor</span>
+      <button onclick="toggleChat()" title="Cerrar">✕</button>
+    </div>
+    <div id="chat-messages"></div>
+    <div id="chat-footer">
+      <textarea id="chat-input" rows="2" placeholder="Escribe tu pregunta..."></textarea>
+      <button id="chat-send" onclick="enviarMensaje()">Enviar</button>
     </div>
   </div>
 
@@ -630,7 +689,27 @@
     }
 
     function registrarAccion(tipo) {
-      alert(`Acción "${tipo}" registrada (próximamente se guardará en la BD).`);
+      if (!currentParcela) return;
+      const tipoMap = { riego: 'riego', abono: 'abonado', poda: 'poda' };
+      fetch('/registrar-accion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entity_type: 'parcela',
+          entity_id:   currentParcela.parcela_id,
+          tipo_evento: tipoMap[tipo] || tipo,
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const labels = { riego: 'Riego', abono: 'Abonado', poda: 'Poda' };
+          alert(`${labels[tipo] || tipo} registrado correctamente.`);
+        } else {
+          alert(data.error || 'Error al registrar la acción.');
+        }
+      })
+      .catch(() => alert('Error de conexión al registrar la acción.'));
     }
 
     // ---- Sensor management ----
@@ -781,6 +860,59 @@
       })
       .catch(() => alert('Error de conexión.'));
     }
+
+    // ── Chat con el agente ────────────────────────────────────────────────
+    function toggleChat() {
+      const panel = document.getElementById('chat-panel');
+      panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    function appendMsg(text, role) {
+      const div = document.createElement('div');
+      div.className = `chat-msg ${role}`;
+      div.textContent = text;
+      const msgs = document.getElementById('chat-messages');
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function enviarMensaje() {
+      const input = document.getElementById('chat-input');
+      const send  = document.getElementById('chat-send');
+      const texto = input.value.trim();
+      if (!texto) return;
+
+      appendMsg(texto, 'user');
+      input.value = '';
+      send.disabled = true;
+      appendMsg('...', 'agent');
+
+      const body = { mensaje: texto };
+      if (currentParcela && currentParcela.parcela_id) {
+        body.parcela_id = currentParcela.parcela_id;
+      }
+
+      fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      .then(r => r.json())
+      .then(data => {
+        const msgs = document.getElementById('chat-messages');
+        msgs.lastChild.remove();
+        appendMsg(data.respuesta || data.error || 'Sin respuesta', data.error ? 'error' : 'agent');
+      })
+      .catch(() => {
+        document.getElementById('chat-messages').lastChild.remove();
+        appendMsg('Error de conexión con el agente.', 'error');
+      })
+      .finally(() => { send.disabled = false; });
+    }
+
+    document.getElementById('chat-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje(); }
+    });
 
     cargarParcelas();
     setTimeout(() => map.invalidateSize(), 100);
