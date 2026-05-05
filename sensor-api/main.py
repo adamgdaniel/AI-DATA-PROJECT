@@ -10,7 +10,7 @@ numérico que consume el Agente Vertex AI.
 
 import os
 import logging
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Query
 from google.cloud import bigquery
 from dotenv import load_dotenv
 
@@ -199,16 +199,9 @@ def get_contexto(
 
     Este contexto se inyecta en el system prompt del agente Vertex AI.
     """
-    # 1. Verificar que existen datos para esta parcela
+    # 1. Obtener métricas (pueden ser None si aún no hay datos en BigQuery)
     stats_24h = get_stats_24h(parcela_id)
     stats_7d = get_stats_7d(parcela_id)
-
-    # Si no hay datos en ninguna ventana temporal, la parcela no existe o no tiene datos
-    if stats_24h["temp_media"] is None and stats_7d["temp_media"] is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No se encontraron datos para parcela_id '{parcela_id}'",
-        )
 
     # 2. Obtener cultivo y acciones
     cultivo = get_cultivo_info(parcela_id)
