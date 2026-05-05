@@ -8,6 +8,7 @@ app.secret_key = os.environ['SECRET_KEY']
 API_URL = os.environ['API_URL']
 DATA_API_URL = os.environ.get('DATA_API_URL', API_URL)
 IOT_API_URL = os.environ.get('IOT_API_URL', '')
+AGENT_URL = os.environ.get('AGENT_URL', '')
 AEMET_API_KEY = os.environ.get('AEMET_API_KEY', '')
 AEMET_BASE = 'https://opendata.aemet.es/openapi/api'
 
@@ -642,6 +643,28 @@ def stream_invernadero(inv_id):
     if _DEV:
         from flask import Response
         return Response(empty_stream(), mimetype='text/event-stream')
+
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    data = request.json or {}
+    if not AGENT_URL:
+        return jsonify({'error': 'Agente no configurado'}), 503
+    try:
+        resp = requests.post(
+            f'{AGENT_URL}/agent/chat',
+            json={
+                'user_id': str(session['user_id']),
+                'parcela_id': data.get('parcela_id'),
+                'mensaje': data.get('mensaje', ''),
+            },
+            timeout=30
+        )
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
 
 
 if __name__ == '__main__':
