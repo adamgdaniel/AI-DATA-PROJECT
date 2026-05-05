@@ -258,7 +258,7 @@ def registrar_parcela():
         return jsonify({'error': 'no autenticado'}), 401
     data = request.json
     data['user_id'] = session['user_id']
-    resp = requests.post(f'{DATA_API_URL}/parcelas', json=data, timeout=10)
+    resp = requests.post(f'{API_URL}/parcelas', json=data, timeout=10)
     try:
         return jsonify(resp.json()), resp.status_code
     except Exception:
