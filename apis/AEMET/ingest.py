@@ -8,12 +8,14 @@ from datetime import datetime, timezone
 
 import psycopg2
 from psycopg2.extras import execute_values
+from google.cloud import bigquery
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 AEMET_API_KEY = os.environ["AEMET_API_KEY"]
 DATABASE_URL  = os.environ["DATABASE_URL"]
+GCP_PROJECT_ID = os.environ["GCP_PROJECT_ID"]
 
 AEMET_URL      = "https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{codigo}?api_key={key}"
 OPENMETEO_URL  = (
@@ -141,6 +143,62 @@ def upsert(conn, rows):
     conn.commit()
 
 
+_bq_client = None
+
+
+def _bq():
+    global _bq_client
+    if _bq_client is None:
+        _bq_client = bigquery.Client(project=GCP_PROJECT_ID)
+    return _bq_client
+
+
+def write_bq_parcelas(conn, codigo_ine, om_data):
+    """Escribe una fila por parcela por día de previsión en BigQuery lecturas_parcelas."""
+    provincia = int(codigo_ine[:2])
+    municipio = int(codigo_ine[2:])
+
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT usuario_id::text, parcela_id, cultivo, variedad FROM parcelas_usuario WHERE provincia = %s AND municipio = %s",
+            (provincia, municipio)
+        )
+        parcelas = cur.fetchall()
+
+    if not parcelas:
+        log.info(f"{codigo_ine}: sin parcelas registradas, omitiendo escritura BQ")
+        return
+
+    table_id = f"{GCP_PROJECT_ID}.agri_data.lecturas_parcelas"
+    rows = []
+    for user_id, parcela_id, cultivo, variedad in parcelas:
+        for fecha, om in om_data.items():
+            tmax = om.get('temperature_2m_max')
+            tmin = om.get('temperature_2m_min')
+            temp = round((tmax + tmin) / 2, 2) if tmax is not None and tmin is not None else None
+            rows.append({
+                'user_id':              user_id,
+                'parcel_id':            parcela_id,
+                'timestamp':            f"{fecha}T00:00:00",
+                'temperatura':          temp,
+                'humedad_ambiental':    None,
+                'humedad_suelo':        None,
+                'precipitacion_mm':     om.get('precipitation_sum'),
+                'et0':                  om.get('et0_fao_evapotranspiration'),
+                'radiacion_solar':      om.get('shortwave_radiation_sum'),
+                'fuente_temperatura':   'openmeteo',
+                'tipo_cultivo':         cultivo,
+                'variedad':             variedad,
+                'fecha_plantacion_aprox': None,
+            })
+
+    errors = _bq().insert_rows_json(table_id, rows)
+    if errors:
+        log.error(f"{codigo_ine}: errores al insertar en BQ: {errors}")
+    else:
+        log.info(f"{codigo_ine}: {len(rows)} filas insertadas en BigQuery")
+
+
 def main():
     conn = psycopg2.connect(DATABASE_URL)
 
@@ -160,7 +218,8 @@ def main():
             aemet_data = fetch_aemet(codigo_ine)
             rows = build_rows(om_data, aemet_data, fecha_consulta, codigo_ine)
             upsert(conn, rows)
-            log.info(f"{codigo_ine}: {len(rows)} días insertados/actualizados")
+            log.info(f"{codigo_ine}: {len(rows)} días insertados/actualizados en Cloud SQL")
+            write_bq_parcelas(conn, codigo_ine, om_data)
         except Exception as e:
             conn.rollback()
             log.error(f"{codigo_ine}: {e}")
