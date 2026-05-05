@@ -1,14 +1,26 @@
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
+from google.cloud import bigquery
 import psycopg2
 import bcrypt
 import json
 import uuid
 import os
+from datetime import datetime, timezone
 
 load_dotenv()
 
 app = Flask(__name__)
+
+GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID', '')
+
+_bq = None
+
+def _bq_client():
+    global _bq
+    if _bq is None and GCP_PROJECT_ID:
+        _bq = bigquery.Client(project=GCP_PROJECT_ID)
+    return _bq
 
 
 def get_db():
@@ -215,6 +227,40 @@ def eliminar_zona(parcela_id, zona_id):
     conn.close()
     zonas = (row[0] if isinstance(row[0], list) else json.loads(row[0])) if row else []
     return jsonify({'success': True, 'zonas': zonas})
+
+
+@app.route('/eventos', methods=['POST'])
+def registrar_evento():
+    data = request.json or {}
+    user_id = data.get('user_id')
+    entity_type = data.get('entity_type', 'parcela')
+    entity_id = data.get('entity_id')
+    tipo_evento = data.get('tipo_evento')
+
+    if not all([user_id, entity_id, tipo_evento]):
+        return jsonify({'error': 'user_id, entity_id y tipo_evento son requeridos'}), 400
+
+    if tipo_evento not in ('riego', 'abonado', 'poda'):
+        return jsonify({'error': 'tipo_evento debe ser riego, abonado o poda'}), 400
+
+    client = _bq_client()
+    if not client:
+        return jsonify({'error': 'BigQuery no configurado'}), 503
+
+    row = {
+        'user_id':     str(user_id),
+        'entity_type': entity_type,
+        'entity_id':   entity_id,
+        'timestamp':   datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S'),
+        'tipo_evento': tipo_evento,
+        'valor':       data.get('valor'),
+    }
+    table_id = f"{GCP_PROJECT_ID}.agri_data.eventos_agricolas"
+    errors = client.insert_rows_json(table_id, [row])
+    if errors:
+        return jsonify({'error': str(errors)}), 500
+
+    return jsonify({'success': True}), 201
 
 
 if __name__ == '__main__':

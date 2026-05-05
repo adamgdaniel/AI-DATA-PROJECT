@@ -86,6 +86,10 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "DB_PASSWORD"
         value = var.db_password
       }
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
 
       volume_mounts {
         name       = "cloudsql"

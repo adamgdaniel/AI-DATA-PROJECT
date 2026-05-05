@@ -643,6 +643,19 @@ def stream_invernadero(inv_id):
         return Response(empty_stream(), mimetype='text/event-stream')
 
 
+@app.route('/registrar-accion', methods=['POST'])
+def registrar_accion():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    data = request.json or {}
+    data['user_id'] = session['user_id']
+    try:
+        resp = requests.post(f'{API_URL}/eventos', json=data, timeout=10)
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
+
+
 @app.route('/chat', methods=['POST'])
 def chat():
     if 'user_id' not in session:

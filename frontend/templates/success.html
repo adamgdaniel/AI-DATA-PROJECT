@@ -689,7 +689,27 @@
     }
 
     function registrarAccion(tipo) {
-      alert(`Acción "${tipo}" registrada (próximamente se guardará en la BD).`);
+      if (!currentParcela) return;
+      const tipoMap = { riego: 'riego', abono: 'abonado', poda: 'poda' };
+      fetch('/registrar-accion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entity_type: 'parcela',
+          entity_id:   currentParcela.parcela_id,
+          tipo_evento: tipoMap[tipo] || tipo,
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const labels = { riego: 'Riego', abono: 'Abonado', poda: 'Poda' };
+          alert(`${labels[tipo] || tipo} registrado correctamente.`);
+        } else {
+          alert(data.error || 'Error al registrar la acción.');
+        }
+      })
+      .catch(() => alert('Error de conexión al registrar la acción.'));
     }
 
     // ---- Sensor management ----
