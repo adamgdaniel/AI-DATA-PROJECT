@@ -1,130 +1,145 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgroMonitor — Mis Parcelas</title>
+  <title>AgroManage – Mis Parcelas</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
-    header {
-      background: #2d6a4f; color: white;
-      padding: 17px 28px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    header span { font-weight: bold; font-size: 26px; }
-    header a {
-      color: #b7e4c7; font-size: 18px; text-decoration: none;
-      display: flex; align-items: center; gap: 7px;
-    }
-    header a img { height: 24px; width: 24px; object-fit: contain; flex-shrink: 0; }
+    body { font-family: 'Inter', sans-serif; display: flex; flex-direction: column; height: 100vh; }
 
+    /* ── HEADER ── */
+    header {
+      background: #061b0e; color: white;
+      padding: 14px 28px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-shrink: 0; z-index: 100;
+    }
+    .header-brand { display: flex; align-items: center; gap: 10px; }
+    .header-brand img { height: 34px; object-fit: contain; border-radius: 6px; }
+    .header-brand span { font-weight: 700; font-size: 20px; letter-spacing: -0.3px; }
+    .header-nav { display: flex; gap: 4px; align-items: center; }
+    .header-nav a {
+      color: #b4cdb8; font-size: 13px; font-weight: 500; text-decoration: none;
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 8px; transition: background .15s, color .15s;
+    }
+    .header-nav a:hover { background: rgba(255,255,255,.08); color: #d0e9d4; }
+    .header-nav a img { height: 18px; width: 18px; object-fit: contain; flex-shrink: 0; }
+    .header-nav .logout { color: #9db8a2; }
+
+    /* ── LAYOUT ── */
     #container { display: flex; flex: 1; overflow: hidden; }
     #map { flex: 1; min-height: 0; }
     #sidebar {
       width: 300px; overflow-y: auto;
-      border-left: 1px solid #ddd;
-      padding: 16px; background: #f9f9f9;
-      display: flex; flex-direction: column; gap: 16px;
+      border-left: 1px solid #c3c8c1;
+      padding: 14px; background: #f3f4f5;
+      display: flex; flex-direction: column; gap: 12px;
     }
 
     #zoom-hint {
-      font-size: 12px; color: #888; background: #fff3cd;
-      border: 1px solid #ffc107; border-radius: 4px; padding: 8px;
+      font-size: 12px; color: #434843;
+      background: #edeeef; border: 1px solid #c3c8c1;
+      border-radius: 8px; padding: 10px 12px; line-height: 1.4;
     }
 
-    /* --- Panel registro --- */
+    /* ── Panel registro ── */
     #info-panel {
-      background: white; border: 1px solid #ccc;
-      border-radius: 6px; padding: 14px; display: none;
+      background: white; border: 1px solid #c3c8c1;
+      border-radius: 10px; padding: 14px; display: none;
+      box-shadow: 0 2px 8px rgba(6,27,14,.06);
     }
-    #info-panel h3 { color: #2d6a4f; margin-bottom: 10px; font-size: 14px; }
-    .field { margin-bottom: 8px; font-size: 13px; }
-    .field label { font-weight: bold; display: block; margin-bottom: 2px; }
+    #info-panel h3 { color: #061b0e; margin-bottom: 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .field { margin-bottom: 10px; font-size: 13px; }
+    .field label { font-weight: 600; display: block; margin-bottom: 3px; color: #434843; font-size: 12px; }
     select {
-      width: 100%; padding: 7px; margin-top: 4px;
-      border-radius: 4px; border: 1px solid #ccc; font-size: 13px;
+      width: 100%; padding: 8px 10px; margin-top: 2px;
+      border-radius: 8px; border: 1px solid #c3c8c1; font-size: 13px;
+      background: white; color: #191c1d; font-family: inherit;
     }
+    select:focus { outline: none; border-color: #6ca200; box-shadow: 0 0 0 2px rgba(108,162,0,.15); }
     .btn {
-      width: 100%; padding: 9px; margin-top: 10px;
-      border-radius: 4px; border: none;
-      background: #2d6a4f; color: white;
-      cursor: pointer; font-size: 13px;
+      width: 100%; padding: 10px; margin-top: 8px;
+      border-radius: 8px; border: none;
+      background: #061b0e; color: white;
+      cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
+      transition: opacity .15s;
     }
-    .btn:hover { background: #1b4332; }
-    #msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+    .btn:hover { opacity: .85; }
+    #msg { font-size: 12px; margin-top: 6px; min-height: 16px; color: #434843; }
 
-    /* --- Panel detalle parcela propia --- */
+    /* ── Panel detalle parcela ── */
     #detail-panel {
-      background: white; border: 2px solid #2d6a4f;
-      border-radius: 8px; padding: 14px; display: none;
+      background: white; border: 1.5px solid #061b0e;
+      border-radius: 10px; padding: 14px; display: none;
+      box-shadow: 0 2px 8px rgba(6,27,14,.08);
     }
     .dp-header {
       display: flex; align-items: flex-start; gap: 10px;
       margin-bottom: 12px; padding-bottom: 10px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #edeeef;
     }
     .dp-emoji { font-size: 34px; line-height: 1; }
     .dp-info { flex: 1; }
-    .dp-info strong { display: block; color: #2d6a4f; font-size: 13px; margin-bottom: 2px; }
-    .dp-info span { font-size: 12px; color: #666; }
+    .dp-info strong { display: block; color: #061b0e; font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .dp-info span { font-size: 12px; color: #434843; }
     .dp-close {
-      background: none; border: none; font-size: 20px;
-      cursor: pointer; color: #aaa; padding: 0; line-height: 1;
+      background: none; border: none; font-size: 18px;
+      cursor: pointer; color: #737973; padding: 0; line-height: 1;
     }
-    .dp-close:hover { color: #333; }
+    .dp-close:hover { color: #191c1d; }
     .dp-section { margin-bottom: 14px; }
     .dp-section h4 {
-      font-size: 11px; color: #999; text-transform: uppercase;
-      letter-spacing: 0.5px; margin-bottom: 8px;
+      font-size: 10px; color: #737973; text-transform: uppercase;
+      letter-spacing: .8px; font-weight: 700; margin-bottom: 8px;
     }
 
     /* Weather widget */
-    #dp-weather-cards {
-      display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px;
-    }
+    #dp-weather-cards { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; }
     .weather-card {
-      min-width: 38px; flex-shrink: 0;
-      background: #f8faff; border: 1px solid #d0e4f7;
-      border-radius: 6px; padding: 6px 3px;
-      text-align: center;
+      min-width: 40px; flex-shrink: 0;
+      background: #f3f4f5; border: 1px solid #c3c8c1;
+      border-radius: 8px; padding: 6px 4px; text-align: center;
     }
-    .wc-day { font-size: 10px; font-weight: bold; color: #555; }
-    .wc-icon { font-size: 15px; margin: 3px 0; }
-    .wc-max { font-size: 12px; font-weight: bold; color: #c0392b; }
-    .wc-min { font-size: 11px; color: #2980b9; }
-    .wc-precip { font-size: 9px; color: #2980b9; margin-top: 2px; min-height: 11px; }
+    .wc-day { font-size: 10px; font-weight: 700; color: #434843; }
+    .wc-icon { font-size: 16px; margin: 3px 0; }
+    .wc-max { font-size: 12px; font-weight: 700; color: #ba1a1a; }
+    .wc-min { font-size: 11px; color: #434843; }
+    .wc-precip { font-size: 9px; color: #6ca200; margin-top: 2px; min-height: 11px; }
 
     /* Acción buttons */
-    .dp-actions { display: flex; gap: 8px; }
+    .dp-actions { display: flex; gap: 6px; }
     .btn-accion {
-      flex: 1; padding: 9px 4px;
-      background: white; border: 1.5px solid #2d6a4f;
-      border-radius: 6px; color: #2d6a4f;
-      cursor: pointer; font-size: 12px; font-weight: bold;
+      flex: 1; padding: 8px 4px;
+      background: white; border: 1.5px solid #c3c8c1;
+      border-radius: 8px; color: #061b0e;
+      cursor: pointer; font-size: 11px; font-weight: 600; font-family: inherit;
+      transition: all .15s;
     }
-    .btn-accion:hover { background: #2d6a4f; color: white; }
+    .btn-accion:hover { background: #061b0e; color: white; border-color: #061b0e; }
 
     /* Sensor readings */
     .dp-reading {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px;
+      padding: 6px 0; border-bottom: 1px solid #edeeef; font-size: 13px;
     }
     .dp-reading:last-of-type { border-bottom: none; }
-    .dp-reading-label { color: #888; }
-    .dp-reading-val { font-weight: bold; color: #2d6a4f; }
+    .dp-reading-label { color: #737973; }
+    .dp-reading-val { font-weight: 700; color: #061b0e; }
 
     /* Lista parcelas */
-    #mis-parcelas h3 { color: #333; font-size: 14px; margin-bottom: 10px; }
+    #mis-parcelas h3 { color: #191c1d; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
     .parcela-item {
-      background: white; border: 1px solid #ddd;
-      border-radius: 4px; padding: 10px; margin-bottom: 8px;
-      font-size: 12px; cursor: pointer; transition: border-color 0.15s;
+      background: white; border: 1px solid #c3c8c1;
+      border-radius: 8px; padding: 10px; margin-bottom: 6px;
+      font-size: 12px; cursor: pointer; transition: border-color .15s, box-shadow .15s;
     }
-    .parcela-item:hover { border-color: #2d6a4f; }
-    .parcela-item strong { display: block; color: #2d6a4f; margin-bottom: 4px; }
-    #empty-msg { font-size: 13px; color: #888; }
+    .parcela-item:hover { border-color: #6ca200; box-shadow: 0 2px 6px rgba(108,162,0,.15); }
+    .parcela-item strong { display: block; color: #061b0e; margin-bottom: 3px; font-size: 12px; }
+    #empty-msg { font-size: 12px; color: #737973; }
 
     .crop-marker { background: none !important; border: none !important; }
     .parcela-glow { filter: drop-shadow(0 0 6px #4ade80) drop-shadow(0 0 14px #4ade8088); }
@@ -132,80 +147,84 @@
     /* Sensor section */
     .dp-section h4 { display: flex; align-items: center; justify-content: space-between; }
     .btn-add-small {
-      padding: 2px 8px; background: #2d6a4f; color: white;
-      border: none; border-radius: 3px; cursor: pointer; font-size: 10px;
-      font-weight: normal; text-transform: none; letter-spacing: 0;
+      padding: 2px 8px; background: #061b0e; color: white;
+      border: none; border-radius: 4px; cursor: pointer; font-size: 10px;
+      font-weight: 600; text-transform: none; letter-spacing: 0; font-family: inherit;
     }
-    .btn-add-small:hover { background: #1b4332; }
+    .btn-add-small:hover { opacity: .8; }
 
     .sensor-item {
       display: flex; align-items: center; gap: 6px;
-      background: #f0f7f4; border: 1px solid #b7dcc8;
-      border-radius: 4px; padding: 6px 8px; margin-bottom: 4px;
+      background: #f3f4f5; border: 1px solid #c3c8c1;
+      border-radius: 6px; padding: 6px 8px; margin-bottom: 4px;
     }
     .sensor-item-info { flex: 1; min-width: 0; }
-    .sensor-item-type { font-size: 11px; font-weight: bold; color: #2d6a4f; }
-    .sensor-item-id { font-size: 10px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sensor-del { background: none; border: none; color: #c0392b; cursor: pointer; font-size: 14px; line-height: 1; flex-shrink: 0; }
-    .sensor-del:hover { color: #922b21; }
+    .sensor-item-type { font-size: 11px; font-weight: 700; color: #061b0e; }
+    .sensor-item-id { font-size: 10px; color: #737973; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sensor-del { background: none; border: none; color: #ba1a1a; cursor: pointer; font-size: 14px; line-height: 1; flex-shrink: 0; }
+    .sensor-del:hover { color: #8c0000; }
 
-    #add-sensor-panel {
-      border-top: 1px solid #eee; padding-top: 10px; margin-top: 8px;
-    }
+    #add-sensor-panel { border-top: 1px solid #edeeef; padding-top: 10px; margin-top: 8px; }
     .discover-item {
       display: flex; align-items: center; gap: 6px;
-      padding: 5px 0; border-bottom: 1px solid #f0f0f0; font-size: 12px;
+      padding: 5px 0; border-bottom: 1px solid #f3f4f5; font-size: 12px;
     }
     .discover-item:last-child { border-bottom: none; }
     .discover-info { flex: 1; min-width: 0; }
-    .discover-name { font-weight: bold; color: #333; }
-    .discover-meta { font-size: 10px; color: #888; }
+    .discover-name { font-weight: 600; color: #191c1d; }
+    .discover-meta { font-size: 10px; color: #737973; }
     .btn-add-row {
-      padding: 3px 8px; background: #2d6a4f; color: white;
-      border: none; border-radius: 3px; cursor: pointer; font-size: 11px; flex-shrink: 0;
+      padding: 4px 10px; background: #061b0e; color: white;
+      border: none; border-radius: 5px; cursor: pointer; font-size: 11px;
+      flex-shrink: 0; font-family: inherit; font-weight: 600;
     }
-    .btn-add-row:hover { background: #1b4332; }
+    .btn-add-row:hover { opacity: .8; }
     .btn-cancel-small {
       padding: 5px 10px; margin-top: 8px;
-      background: none; border: 1px solid #ccc;
-      border-radius: 3px; cursor: pointer; font-size: 11px; color: #666;
+      background: none; border: 1px solid #c3c8c1;
+      border-radius: 6px; cursor: pointer; font-size: 11px; color: #434843;
+      font-family: inherit;
     }
-    .btn-cancel-small:hover { background: #f5f5f5; }
+    .btn-cancel-small:hover { background: #edeeef; }
 
     .btn-eliminar-parcela {
       width: 100%; padding: 8px; margin-top: 4px;
-      background: none; border: 1.5px solid #c0392b;
-      border-radius: 6px; color: #c0392b;
-      cursor: pointer; font-size: 12px; font-weight: bold;
+      background: none; border: 1.5px solid #ba1a1a;
+      border-radius: 8px; color: #ba1a1a;
+      cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
+      transition: all .15s;
     }
-    .btn-eliminar-parcela:hover { background: #c0392b; color: white; }
+    .btn-eliminar-parcela:hover { background: #ba1a1a; color: white; }
 
-    /* --- Móvil --- */
+    /* ── Móvil ── */
     @media (max-width: 768px) {
       body { height: auto; min-height: 100vh; }
       #container { flex-direction: column; overflow: visible; }
       #map { height: 55vh; flex: none; width: 100%; }
       #sidebar {
         width: 100%; border-left: none;
-        border-top: 2px solid #2d6a4f;
+        border-top: 2px solid #061b0e;
         max-height: none; overflow-y: visible;
       }
       select, .btn { padding: 12px; font-size: 15px; }
       .field { font-size: 14px; }
       .parcela-item { padding: 12px; font-size: 13px; }
       .weather-card { min-width: 44px; }
+      .header-nav a span { display: none; }
     }
   </style>
-  <link rel="stylesheet" href="/static/theme-override.css"/>
 </head>
 <body>
   <header>
-    <span><img src="/icons/logo_png.png" alt="AgroMonitor" style="height:45px;vertical-align:middle;margin-right:10px;"> AgroMonitor</span>
-    <div style="display:flex;gap:22px;align-items:center;">
-      <a href="/invernadero"><img src="/icons/logo_invernadero_boton.png" alt="">Invernaderos</a>
-      <a href="/home-assistant"><img src="/icons/home_assistant_logo.png" alt="">Home Assistant</a>
-      <a href="/logout"><img src="/icons/logout_icon.png" alt="">Cerrar sesión</a>
+    <div class="header-brand">
+      <img src="/icons/logo_nuevo.png" alt="AgroManage"/>
+      <span>AgroManage</span>
     </div>
+    <nav class="header-nav">
+      <a href="/invernadero"><img src="/icons/logo_invernadero_boton.png" alt=""/>Invernaderos</a>
+      <a href="/home-assistant"><img src="/icons/home_assistant_logo.png" alt=""/>Home Assistant</a>
+      <a href="/logout" class="logout"><img src="/icons/logout_icon.png" alt=""/>Cerrar sesión</a>
+    </nav>
   </header>
   <div id="container">
     <div id="map"></div>
