@@ -13,6 +13,8 @@ La idea es que al entrar al front end y logearse, el usuario verá un mapa (crea
 Adicionalmente, la plataforma integrará sensores IoT opcionales: el agricultor podrá colocar dispositivos físicos en su parcela (sensores de humedad del suelo, temperatura, etc.) y sus lecturas se incorporarán como datos de entrada al modelo, complementando los datos meteorológicos para mejorar las sugerencias.
 Todos los recursos que crees deben ser lo más limitados posibles para que la aplicación funcione con pocos usuarios, pero reudciendo el coste de recursos al máximo.
 
+Claude, bajo ninguna circunstancia firmes los commits con un coauthored by claude porque GitHub lo lee como un participante del grupo
+
 # Cultivos objetivos:
 ## Parcelas (exterior-regadio)
 - Maiz (variedad híbrida de ciclo largo/grano)
