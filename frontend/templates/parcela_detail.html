@@ -1,48 +1,59 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>AgroMonitor — {{ parcela.parcela_id }}</title>
+  <title>AgroManage – {{ parcela.parcela_id }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: sans-serif; background: #0d1f16; color: white; overflow: hidden; }
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: #0d1f16; color: white; overflow: hidden; }
     body { display: flex; flex-direction: column; }
 
     /* HEADER */
     header {
-      background: #1a3a27; padding: 10px 14px;
+      background: #061b0e; padding: 10px 16px;
       display: flex; align-items: center; gap: 10px;
-      flex-shrink: 0; border-bottom: 1px solid #2d6a4f;
+      flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,.08);
     }
-    header a { color: #74c69d; font-size: 13px; text-decoration: none; flex-shrink: 0; }
-    .h-emoji { font-size: 26px; }
+    header a {
+      color: #b4cdb8; font-size: 13px; text-decoration: none; flex-shrink: 0;
+      display: flex; align-items: center; gap: 4px;
+      padding: 4px 8px; border-radius: 6px; transition: background .15s;
+    }
+    header a:hover { background: rgba(255,255,255,.08); color: #d0e9d4; }
+    .h-emoji { font-size: 24px; }
     .h-info { flex: 1; min-width: 0; }
-    .h-info strong { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .h-info span { font-size: 11px; color: #95d5b2; }
-    .h-badge { background: #2d6a4f; color: #b7e4c7; padding: 3px 9px; border-radius: 10px; font-size: 11px; flex-shrink: 0; }
+    .h-info strong { display: block; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .h-info span { font-size: 11px; color: #9db8a2; }
+    .h-badge {
+      background: rgba(178,247,70,.15); color: #b2f746;
+      border: 1px solid rgba(178,247,70,.25);
+      padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      flex-shrink: 0;
+    }
 
     /* WEATHER */
     #weather {
-      background: linear-gradient(135deg, #0d3b66 0%, #1a6fa8 100%);
+      background: linear-gradient(135deg, #0b2a47 0%, #0f4272 100%);
       padding: 10px 14px; flex-shrink: 0;
     }
-    #weather-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.55); margin-bottom: 7px; }
+    #weather-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.5); margin-bottom: 7px; font-weight: 600; }
     #weather-cards { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
     #weather-cards::-webkit-scrollbar { height: 2px; }
     #weather-cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); }
     .wc {
       min-width: 48px; flex-shrink: 0; text-align: center;
-      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+      background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18);
       border-radius: 8px; padding: 6px 4px;
     }
-    .wc.today { background: rgba(255,255,255,.28); border-color: rgba(255,255,255,.55); }
+    .wc.today { background: rgba(255,255,255,.25); border-color: rgba(255,255,255,.5); }
     .wc-d { font-size: 9px; font-weight: 700; opacity: .75; }
     .wc-i { font-size: 18px; margin: 3px 0; }
     .wc-h { font-size: 13px; font-weight: 700; }
-    .wc-l { font-size: 10px; opacity: .65; }
+    .wc-l { font-size: 10px; opacity: .6; }
     .wc-r { font-size: 9px; color: #90e0ef; min-height: 11px; margin-top: 2px; }
-    #weather-error { font-size: 11px; color: rgba(255,255,255,.45); padding: 4px 0; }
+    #weather-error { font-size: 11px; color: rgba(255,255,255,.4); padding: 4px 0; }
 
     /* CANVAS AREA */
     #canvas-wrap {
@@ -54,28 +65,28 @@
     /* HINT */
     #hint {
       position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,.55); color: rgba(255,255,255,.8);
+      background: rgba(0,0,0,.55); color: rgba(255,255,255,.75);
       padding: 5px 12px; border-radius: 14px; font-size: 11px;
       pointer-events: none; white-space: nowrap;
     }
 
     /* ACTION BAR */
     #action-bar {
-      background: #1a3a27; border-top: 1px solid #2d6a4f;
+      background: #061b0e; border-top: 1px solid rgba(255,255,255,.08);
       padding: 10px 14px; display: flex; gap: 8px; align-items: center;
       flex-shrink: 0;
     }
     .btn-act {
       flex: 1; padding: 10px 4px;
-      background: #2d6a4f; color: #b7e4c7;
-      border: 1.5px solid #40916c; border-radius: 8px;
-      cursor: pointer; font-size: 12px; font-weight: bold;
-      transition: background .15s;
+      background: rgba(255,255,255,.06); color: #d0e9d4;
+      border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+      cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
+      transition: all .15s;
     }
-    .btn-act:hover { background: #40916c; color: white; }
-    .btn-act.danger { background: #6b2121; border-color: #c0392b; color: #f1948a; }
-    .btn-act.danger:hover { background: #c0392b; color: white; }
-    #sel-label { font-size: 11px; color: #95d5b2; text-align: center; min-width: 70px; }
+    .btn-act:hover { background: rgba(178,247,70,.15); border-color: rgba(178,247,70,.3); color: #b2f746; }
+    .btn-act.danger { color: #f1948a; border-color: rgba(186,26,26,.4); }
+    .btn-act.danger:hover { background: rgba(186,26,26,.3); border-color: #ba1a1a; color: white; }
+    #sel-label { font-size: 11px; color: #9db8a2; text-align: center; min-width: 70px; font-weight: 500; }
 
     /* NO GEOMETRY */
     #no-geom {
@@ -84,14 +95,17 @@
       flex-direction: column; gap: 10px; text-align: center; padding: 30px;
     }
     #no-geom.show { display: flex; }
-    #no-geom p { color: rgba(255,255,255,.55); font-size: 13px; }
+    #no-geom p { color: rgba(255,255,255,.5); font-size: 13px; line-height: 1.5; }
   </style>
-  <link rel="stylesheet" href="/static/theme-override.css"/>
 </head>
 <body>
 
 <header>
   <a href="/mapa">← Volver</a>
+  <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
+    <img src="/icons/logo_nuevo.png" alt="AgroManage" style="height:24px;object-fit:contain;border-radius:4px;"/>
+    <span style="font-weight:700;font-size:14px;letter-spacing:-0.2px;">AgroManage</span>
+  </div>
   <div class="h-emoji" id="h-icon"></div>
   <div class="h-info">
     <strong>{{ parcela.parcela_id }}</strong>
@@ -101,7 +115,7 @@
 </header>
 
 <div id="weather">
-  <div id="weather-label">Previsión 7 días — Open-Meteo</div>
+  <div id="weather-label">Previsión 7 días · Open-Meteo</div>
   <div id="weather-cards"><p id="weather-error">Cargando...</p></div>
 </div>
 

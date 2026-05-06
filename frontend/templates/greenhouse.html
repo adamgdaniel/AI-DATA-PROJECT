@@ -1,56 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgroMonitor — Invernaderos</title>
+  <title>AgroManage – Invernaderos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      /* Tamaño de celda: escala con el viewport. Ajusta el valor central (5.2vw) si las celdas
-         no coinciden con las baldosas. Mín 34px, máx 60px. */
       --cell: clamp(44px, 6.8vw, 78px);
-      /* Desplazamiento vertical del grid respecto al centro del área.
-         Positivo = baja el grid (hacia el suelo de la imagen). */
       --grid-offset-y: 6vh;
     }
 
     body {
-      font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      font-family: 'Inter', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
       background: url('/icons/invernadero_fondo.png') center center / cover no-repeat;
       background-color: #0d1f14;
     }
 
     header {
-      background: rgba(45, 106, 79, 0.88); color: white;
-      padding: 12px 20px; flex-shrink: 0;
+      background: rgba(6, 27, 14, 0.94); color: white;
+      padding: 11px 20px; flex-shrink: 0;
       display: flex; justify-content: space-between; align-items: center;
-      z-index: 10;
+      z-index: 10; backdrop-filter: blur(6px);
     }
-    header span { font-weight: bold; font-size: 16px; }
-    header a { color: #b7e4c7; font-size: 13px; text-decoration: none; }
-    header div { display: flex; gap: 16px; align-items: center; }
+    .header-brand { display: flex; align-items: center; gap: 8px; }
+    .header-brand img { height: 28px; object-fit: contain; border-radius: 5px; }
+    .header-brand span { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; }
+    .header-nav { display: flex; gap: 4px; align-items: center; }
+    .header-nav a {
+      color: #b4cdb8; font-size: 13px; font-weight: 500; text-decoration: none;
+      padding: 5px 10px; border-radius: 7px; transition: background .15s, color .15s;
+    }
+    .header-nav a:hover { background: rgba(255,255,255,.08); color: #d0e9d4; }
 
     /* ── Top bar ── */
     #top-bar {
-      background: rgba(26, 58, 38, 0.88); border-bottom: 1px solid #2d5a3a;
+      background: rgba(6, 27, 14, 0.80); border-bottom: 1px solid rgba(255,255,255,.08);
       padding: 8px 16px; display: flex; align-items: center;
       justify-content: space-between; gap: 12px;
-      flex-shrink: 0; z-index: 9;
+      flex-shrink: 0; z-index: 9; backdrop-filter: blur(4px);
     }
     #gh-select {
-      padding: 6px 10px; border-radius: 6px;
-      background: #2d6a4f; color: white; border: 1px solid #3d8a65;
-      font-size: 13px; cursor: pointer; min-width: 180px;
+      padding: 6px 10px; border-radius: 8px;
+      background: rgba(255,255,255,.08); color: #d0e9d4;
+      border: 1px solid rgba(255,255,255,.15);
+      font-size: 13px; cursor: pointer; min-width: 180px; font-family: inherit;
     }
-    #gh-select option { background: #1a3a26; }
+    #gh-select option { background: #061b0e; }
     .btn-top {
-      padding: 6px 14px; border-radius: 6px; border: none;
-      font-size: 12px; cursor: pointer; font-weight: bold;
+      padding: 6px 14px; border-radius: 7px; border: none;
+      font-size: 12px; cursor: pointer; font-weight: 600; font-family: inherit;
     }
-    .btn-new { background: #52b788; color: #0d1f14; }
-    .btn-new:hover { background: #74c69d; }
+    .btn-new { background: #b2f746; color: #061b0e; }
+    .btn-new:hover { background: #98da27; }
     .btn-del { background: transparent; color: #e76f51; border: 1px solid #e76f51; }
     .btn-del:hover { background: #e76f51; color: white; }
     #no-gh-msg { color: #74c69d; font-size: 13px; font-style: italic; }
@@ -287,7 +291,7 @@
 <div id="landing">
   <div id="landing-panel">
     <div id="landing-logo">
-      <img src="/icons/logo_png.png" alt="AgroMonitor">
+      <img src="/icons/logo_nuevo.png" alt="AgroMonitor">
       <span>AgroMonitor</span>
     </div>
     <h2>Mis Invernaderos</h2>
@@ -297,12 +301,15 @@
 </div>
 
 <header>
-  <span><img src="/icons/logo_png.png" alt="AgroMonitor" style="height:28px;vertical-align:middle;margin-right:8px;"> AgroMonitor</span>
-  <div>
+  <div class="header-brand">
+    <img src="/icons/logo_nuevo.png" alt="AgroManage"/>
+    <span>AgroManage</span>
+  </div>
+  <nav class="header-nav">
     <a href="/mapa">Mis parcelas</a>
     <a href="/home-assistant">Home Assistant</a>
     <a href="/logout">Cerrar sesión</a>
-  </div>
+  </nav>
 </header>
 
 <!-- Top bar -->

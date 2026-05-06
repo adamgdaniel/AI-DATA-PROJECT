@@ -1,129 +1,190 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgroMonitor — Home Assistant</title>
+  <title>AgroManage – Home Assistant</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary":                  "#061b0e",
+            "on-primary":               "#ffffff",
+            "primary-container":        "#1b3022",
+            "on-primary-container":     "#819986",
+            "primary-fixed":            "#d0e9d4",
+            "primary-fixed-dim":        "#b4cdb8",
+            "on-primary-fixed-variant": "#364c3c",
+            "tertiary-fixed":           "#b2f746",
+            "tertiary-fixed-dim":       "#98da27",
+            "on-tertiary-fixed":        "#121f00",
+            "on-tertiary-container":    "#6ca200",
+            "tertiary-container":       "#1e3100",
+            "background":               "#f8f9fa",
+            "surface":                  "#ffffff",
+            "surface-container-low":    "#f3f4f5",
+            "surface-container":        "#edeeef",
+            "surface-container-high":   "#e7e8e9",
+            "on-surface":               "#191c1d",
+            "on-surface-variant":       "#434843",
+            "outline":                  "#737973",
+            "outline-variant":          "#c3c8c1",
+            "error":                    "#ba1a1a",
+            "error-container":          "#ffdad6",
+          },
+          fontFamily: { sans: ["Inter", "sans-serif"] }
+        }
+      }
+    }
+  </script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; min-height: 100vh; background: #f0f4f0; }
-    header {
-      background: #2d6a4f; color: white;
-      padding: 12px 20px;
-      display: flex; justify-content: space-between; align-items: center;
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     }
-    header span { font-weight: bold; font-size: 16px; }
-    header a { color: #b7e4c7; font-size: 13px; text-decoration: none; }
-    header div { display: flex; gap: 16px; align-items: center; }
-
-    .page { max-width: 560px; margin: 32px auto; padding: 0 16px; }
-    .page-title { font-size: 18px; color: #2d6a4f; margin-bottom: 20px; }
-
-    .card {
-      background: white; border: 1px solid #ddd;
-      border-radius: 8px; padding: 20px; margin-bottom: 20px;
-    }
-    .card h2 { color: #2d6a4f; font-size: 15px; margin-bottom: 16px; }
-
-    .field { margin-bottom: 14px; }
-    .field label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; color: #333; }
-    .field small { display: block; font-size: 11px; color: #888; margin-top: 3px; }
-    input[type="text"], input[type="password"] {
-      width: 100%; padding: 9px; border-radius: 4px;
-      border: 1px solid #ccc; font-size: 13px;
-    }
-    input:focus { outline: none; border-color: #2d6a4f; }
-
-    .btn {
-      width: 100%; padding: 10px; margin-top: 6px;
-      border-radius: 4px; border: none;
-      background: #2d6a4f; color: white;
-      cursor: pointer; font-size: 14px; font-weight: bold;
-    }
-    .btn:hover { background: #1b4332; }
-
-    .alert { padding: 10px 14px; border-radius: 4px; font-size: 13px; margin-bottom: 16px; }
-    .alert-error   { background: #fee; border: 1px solid #f99; color: #c00; }
-    .alert-success { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
-
-    .connection-item {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px;
-      margin-bottom: 8px; background: #fafafa;
-    }
-    .connection-info strong { display: block; font-size: 13px; color: #2d6a4f; }
-    .connection-info span { font-size: 11px; color: #888; }
-    .btn-delete {
-      background: none; border: 1px solid #e74c3c; color: #e74c3c;
-      border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 12px;
-      white-space: nowrap;
-    }
-    .btn-delete:hover { background: #e74c3c; color: white; }
   </style>
-  <link rel="stylesheet" href="/static/theme-override.css"/>
 </head>
-<body>
-  <header>
-    <span><img src="/icons/logo_png.png" alt="AgroMonitor" style="height:28px;vertical-align:middle;margin-right:8px;"> AgroMonitor</span>
-    <div>
-      <a href="/mapa">Volver al mapa</a>
-      <a href="/logout">Cerrar sesión</a>
+<body class="font-sans antialiased bg-background text-on-surface min-h-screen flex flex-col">
+
+  <!-- HEADER -->
+  <header class="bg-primary flex justify-between items-center px-8 py-4 sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <img src="/icons/logo_nuevo.png" alt="AgroManage" class="w-8 h-8 object-contain rounded"/>
+      <span class="text-xl font-bold text-on-primary tracking-tight">AgroManage</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <a href="/mapa"
+         class="flex items-center gap-1.5 text-primary-fixed-dim hover:text-primary-fixed transition-colors text-sm font-medium">
+        <span class="material-symbols-outlined text-lg">map</span>
+        Volver al mapa
+      </a>
+      <a href="/logout"
+         class="flex items-center gap-1.5 text-primary-fixed-dim hover:text-primary-fixed transition-colors text-sm font-medium">
+        <span class="material-symbols-outlined text-lg">logout</span>
+        Cerrar sesión
+      </a>
     </div>
   </header>
 
-  <div class="page">
-    <h1 class="page-title">Home Assistant</h1>
+  <main class="flex-1 px-6 py-10">
+    <div class="max-w-lg mx-auto">
 
-    {% if success %}
-    <div class="alert alert-success">Conexión añadida correctamente.</div>
-    {% endif %}
-
-    {% if connections %}
-    <div class="card">
-      <h2>Conexiones activas</h2>
-      {% for c in connections %}
-      <div class="connection-item">
-        <div class="connection-info">
-          <strong>{{ c.display_name or c.ha_url }}</strong>
-          <span>{{ c.ha_url }}</span>
-          {% if c.last_seen_at %}
-          <span> &middot; Última lectura: {{ c.last_seen_at[:10] }}</span>
-          {% endif %}
+      <div class="mb-8">
+        <div class="flex items-center gap-3 mb-2">
+          <img src="/icons/home_assistant_logo.png" alt="Home Assistant" class="w-7 h-7 object-contain"/>
+          <h1 class="text-2xl font-bold text-primary">Home Assistant</h1>
         </div>
-        <form method="POST" action="/home-assistant/eliminar/{{ c.connection_id }}"
-              onsubmit="return confirm('¿Eliminar esta conexión y todos sus sensores?')">
-          <button class="btn-delete" type="submit">Eliminar</button>
-        </form>
+        <p class="text-on-surface-variant text-sm">
+          Conecta tu instancia de Home Assistant para vincular sensores IoT a tus parcelas.
+        </p>
       </div>
-      {% endfor %}
-    </div>
-    {% endif %}
 
-    <div class="card">
-      <h2>Añadir conexión</h2>
-
-      {% if form_error %}
-      <div class="alert alert-error">{{ form_error }}</div>
+      {% if success %}
+      <div class="flex items-center gap-2 bg-tertiary-container/20 border border-on-tertiary-container/30 text-on-tertiary-container px-4 py-3 rounded-lg text-sm font-medium mb-6">
+        <span class="material-symbols-outlined text-lg flex-shrink-0">check_circle</span>
+        Conexión añadida correctamente.
+      </div>
       {% endif %}
 
-      <form method="POST" action="/home-assistant/conectar">
-        <div class="field">
-          <label>Nombre (opcional)</label>
-          <input type="text" name="display_name" placeholder="Ej: Casa, Finca Norte..."/>
+      <!-- Conexiones activas -->
+      {% if connections %}
+      <div class="bg-surface border border-outline-variant rounded-xl p-6 mb-6 shadow-[0px_2px_8px_rgba(27,48,34,0.05)]">
+        <h2 class="text-sm font-bold text-primary uppercase tracking-widest mb-4">Conexiones activas</h2>
+        <div class="flex flex-col gap-3">
+          {% for c in connections %}
+          <div class="flex items-center justify-between gap-4 bg-surface-container-low border border-outline-variant rounded-lg px-4 py-3">
+            <div class="min-w-0">
+              <div class="font-semibold text-sm text-on-surface truncate">{{ c.display_name or c.ha_url }}</div>
+              <div class="text-xs text-on-surface-variant truncate">{{ c.ha_url }}</div>
+              {% if c.last_seen_at %}
+              <div class="text-xs text-outline mt-0.5">Última lectura: {{ c.last_seen_at[:10] }}</div>
+              {% endif %}
+            </div>
+            <form method="POST" action="/home-assistant/eliminar/{{ c.connection_id }}"
+                  onsubmit="return confirm('¿Eliminar esta conexión y todos sus sensores?')"
+                  class="flex-shrink-0">
+              <button type="submit"
+                class="flex items-center gap-1 border border-error text-error px-3 py-1.5 rounded-lg text-xs font-semibold
+                       hover:bg-error hover:text-on-primary transition-all">
+                <span class="material-symbols-outlined text-sm">delete</span>
+                Eliminar
+              </button>
+            </form>
+          </div>
+          {% endfor %}
         </div>
-        <div class="field">
-          <label>URL de Nabu Casa</label>
-          <input type="text" name="ha_url" placeholder="https://abc123.ui.nabu.casa" required/>
-          <small>Ajustes → Home Assistant Cloud → Acceso remoto</small>
+      </div>
+      {% endif %}
+
+      <!-- Añadir conexión -->
+      <div class="bg-surface border border-outline-variant rounded-xl p-6 shadow-[0px_2px_8px_rgba(27,48,34,0.05)]">
+        <h2 class="text-sm font-bold text-primary uppercase tracking-widest mb-5">Añadir conexión</h2>
+
+        {% if form_error %}
+        <div class="flex items-center gap-2 bg-error-container text-error px-4 py-3 rounded-lg text-sm font-medium mb-5">
+          <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
+          {{ form_error }}
         </div>
-        <div class="field">
-          <label>Token de acceso</label>
-          <input type="password" name="ha_token" placeholder="Token de larga duración" required/>
-          <small>Perfil → Tokens de larga duración → Crear token</small>
-        </div>
-        <button class="btn" type="submit">Conectar</button>
-      </form>
+        {% endif %}
+
+        <form method="POST" action="/home-assistant/conectar" class="flex flex-col gap-4">
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">
+              Nombre (opcional)
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">label</span>
+              <input type="text" name="display_name" placeholder="Ej: Casa, Finca Norte..."
+                class="w-full pl-10 pr-4 py-3 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface placeholder:text-outline
+                       focus:outline-none focus:border-on-tertiary-container focus:ring-2 focus:ring-on-tertiary-container/20 transition-all"/>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">
+              URL de Nabu Casa
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">link</span>
+              <input type="text" name="ha_url" placeholder="https://abc123.ui.nabu.casa" required
+                class="w-full pl-10 pr-4 py-3 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface placeholder:text-outline
+                       focus:outline-none focus:border-on-tertiary-container focus:ring-2 focus:ring-on-tertiary-container/20 transition-all"/>
+            </div>
+            <p class="text-xs text-outline">Ajustes → Home Assistant Cloud → Acceso remoto</p>
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">
+              Token de acceso
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">key</span>
+              <input type="password" name="ha_token" placeholder="Token de larga duración" required
+                class="w-full pl-10 pr-4 py-3 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface placeholder:text-outline
+                       focus:outline-none focus:border-on-tertiary-container focus:ring-2 focus:ring-on-tertiary-container/20 transition-all"/>
+            </div>
+            <p class="text-xs text-outline">Perfil → Tokens de larga duración → Crear token</p>
+          </div>
+
+          <button type="submit"
+            class="w-full bg-primary text-on-primary py-3 rounded-lg font-semibold text-sm
+                   hover:opacity-90 active:scale-[0.98] transition-all mt-1">
+            Conectar
+          </button>
+
+        </form>
+      </div>
+
     </div>
-  </div>
+  </main>
+
+  <footer class="py-4 text-center text-xs text-outline border-t border-outline-variant">
+    © 2024 AgroManage · Máster Data/IA EDEM
+  </footer>
+
 </body>
 </html>
