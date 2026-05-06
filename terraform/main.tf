@@ -205,7 +205,7 @@ resource "google_cloud_run_v2_service" "frontend" {
       }
       env {
         name  = "AGENT_URL"
-        value = google_cloud_run_v2_service.model_serving.uri
+        value = google_cloud_run_v2_service.agent.uri
       }
     }
   }
@@ -252,8 +252,8 @@ resource "google_cloudbuild_trigger" "login_frontend" {
   filename = "frontend/cloudbuild.yaml"
 
   substitutions = {
-    _AGENT_URL = google_cloud_run_v2_service.model_serving.uri
-  }
+    _AGENT_URL = google_cloud_run_v2_service.agent.uri
+
 
   service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
 }
