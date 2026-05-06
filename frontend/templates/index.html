@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgroManage – Agricultura de Precisión</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script id="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary":                   "#061b0e",
+            "on-primary":                "#ffffff",
+            "primary-container":         "#1b3022",
+            "on-primary-container":      "#819986",
+            "primary-fixed":             "#d0e9d4",
+            "primary-fixed-dim":         "#b4cdb8",
+            "on-primary-fixed":          "#0b2013",
+            "on-primary-fixed-variant":  "#364c3c",
+            "secondary":                 "#6f5a4f",
+            "on-secondary":              "#ffffff",
+            "secondary-container":       "#f7dacc",
+            "on-secondary-container":    "#745e53",
+            "tertiary":                  "#0e1b00",
+            "on-tertiary":               "#ffffff",
+            "tertiary-container":        "#1e3100",
+            "on-tertiary-container":     "#6ca200",
+            "tertiary-fixed":            "#b2f746",
+            "tertiary-fixed-dim":        "#98da27",
+            "on-tertiary-fixed":         "#121f00",
+            "on-tertiary-fixed-variant": "#334f00",
+            "background":                "#f8f9fa",
+            "on-background":             "#191c1d",
+            "surface":                   "#f8f9fa",
+            "surface-dim":               "#d9dadb",
+            "surface-bright":            "#f8f9fa",
+            "surface-container-lowest":  "#ffffff",
+            "surface-container-low":     "#f3f4f5",
+            "surface-container":         "#edeeef",
+            "surface-container-high":    "#e7e8e9",
+            "surface-container-highest": "#e1e3e4",
+            "on-surface":                "#191c1d",
+            "on-surface-variant":        "#434843",
+            "outline":                   "#737973",
+            "outline-variant":           "#c3c8c1",
+            "inverse-surface":           "#2e3132",
+            "inverse-on-surface":        "#f0f1f2",
+            "inverse-primary":           "#b4cdb8",
+            "surface-tint":              "#4d6453",
+            "error":                     "#ba1a1a",
+            "on-error":                  "#ffffff",
+            "error-container":           "#ffdad6",
+            "on-error-container":        "#93000a"
+          },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"]
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .active-tab {
+      border-bottom: 2px solid #6ca200;
+      color: #061b0e;
+      font-weight: 600;
+    }
+    .inactive-tab {
+      color: #737973;
+      border-bottom: 2px solid transparent;
+    }
+    .inactive-tab:hover { color: #061b0e; }
+  </style>
+</head>
+<body class="bg-background text-on-background font-sans antialiased">
+
+  <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
+  <header class="bg-surface shadow-[0px_2px_8px_rgba(27,48,34,0.08)] flex justify-between items-center w-full px-8 py-4 sticky top-0 z-50">
+    <div class="flex items-center gap-3">
+      <img src="/icons/logo_png.png" alt="Logo" class="w-9 h-9 object-contain rounded"/>
+      <span class="text-2xl font-bold text-primary tracking-tight">AgroManage</span>
+    </div>
+
+    <nav class="hidden md:flex items-center gap-1">
+      <button onclick="switchTab('proyecto')" id="nav-proyecto"
+        class="px-4 py-2 text-sm font-medium text-primary bg-surface-container-high rounded-lg transition-colors">
+        El Proyecto
+      </button>
+      <button onclick="switchTab('funcionalidades')" id="nav-funcionalidades"
+        class="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
+        Funcionalidades
+      </button>
+      <button onclick="switchTab('iot')" id="nav-iot"
+        class="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
+        IoT & Home Assistant
+      </button>
+    </nav>
+
+    <a href="/login"
+      class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+      Iniciar Sesión
+    </a>
+  </header>
+
+  <main>
+    <!-- ── HERO ───────────────────────────────────────────────────────────── -->
+    <section class="relative w-full h-[420px] overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-r from-primary-container/95 via-primary-container/70 to-transparent z-10"></div>
+      <img src="/icons/fondo_login_page.webp" alt="Campo agrícola"
+           class="absolute inset-0 w-full h-full object-cover"/>
+      <div class="relative z-20 px-8 h-full flex flex-col justify-center max-w-3xl">
+        <span class="inline-flex items-center gap-1.5 bg-tertiary-fixed/20 text-tertiary-fixed border border-tertiary-fixed/30 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest mb-5">
+          <span class="material-symbols-outlined text-base">eco</span>
+          Plataforma agronómica inteligente
+        </span>
+        <h1 class="text-4xl md:text-5xl font-bold text-on-primary leading-tight mb-4">
+          Agricultura de Precisión<br/>para el Agricultor Moderno
+        </h1>
+        <p class="text-primary-fixed-dim text-lg max-w-xl leading-relaxed mb-7">
+          Gestiona tus parcelas e invernaderos con datos meteorológicos en tiempo real,
+          sensores IoT y recomendaciones agronómicas basadas en IA.
+        </p>
+        <div class="flex items-center gap-3">
+          <a href="/login"
+            class="bg-tertiary-fixed text-on-tertiary-fixed px-6 py-3 rounded-lg font-bold text-sm hover:shadow-[0_0_12px_rgba(178,247,70,0.5)] transition-all">
+            Empezar ahora
+          </a>
+          <button onclick="switchTab('funcionalidades')"
+            class="flex items-center gap-1.5 text-primary-fixed text-sm font-medium hover:text-tertiary-fixed transition-colors">
+            Ver funcionalidades
+            <span class="material-symbols-outlined text-base">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── TAB NAV ─────────────────────────────────────────────────────────── -->
+    <section class="bg-surface border-b border-outline-variant sticky top-[72px] z-40 px-8">
+      <div class="flex gap-8 overflow-x-auto">
+        <button onclick="switchTab('proyecto')" id="tab-btn-proyecto"
+          class="active-tab text-xs uppercase tracking-widest py-3 transition-all whitespace-nowrap">
+          El Proyecto
+        </button>
+        <button onclick="switchTab('funcionalidades')" id="tab-btn-funcionalidades"
+          class="inactive-tab text-xs uppercase tracking-widest py-3 transition-all whitespace-nowrap">
+          Funcionalidades
+        </button>
+        <button onclick="switchTab('iot')" id="tab-btn-iot"
+          class="inactive-tab text-xs uppercase tracking-widest py-3 transition-all whitespace-nowrap">
+          IoT & Home Assistant
+        </button>
+      </div>
+    </section>
+
+    <!-- ── CONTENT ────────────────────────────────────────────────────────── -->
+    <div class="px-8 py-12 max-w-7xl mx-auto">
+
+      <!-- TAB: EL PROYECTO -->
+      <div class="tab-content active" id="proyecto">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+          <!-- Mission card -->
+          <div class="md:col-span-8 bg-surface-container-lowest border border-outline-variant p-10 rounded-xl shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+            <span class="inline-block bg-tertiary-container text-on-tertiary-container text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-5">
+              Nuestra Misión
+            </span>
+            <h2 class="text-3xl font-semibold text-primary mb-4 leading-snug">
+              Tecnología de precisión al alcance<br/>de cada agricultor
+            </h2>
+            <p class="text-on-surface-variant text-base leading-relaxed mb-8">
+              AgroManage surge de la convicción de que la tecnología de precisión no debe ser exclusiva
+              de grandes explotaciones industriales. Ponemos a disposición de agricultores de pequeña y
+              mediana escala las mismas capacidades IoT que utilizan las cooperativas más avanzadas,
+              condensadas en una interfaz intuitiva y fiable.
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-on-tertiary-container bg-primary-container p-2.5 rounded-lg text-xl">map</span>
+                <div>
+                  <h4 class="text-sm font-bold text-primary mb-1">Integración SIGPAC</h4>
+                  <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Reclamación de parcelas usando datos GIS oficiales del catastro español con límites exactos.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-on-tertiary-container bg-primary-container p-2.5 rounded-lg text-xl">thermostat</span>
+                <div>
+                  <h4 class="text-sm font-bold text-primary mb-1">Inteligencia Climática</h4>
+                  <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Previsiones locales vía Open-Meteo y sincronización con estaciones AEMET.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-on-tertiary-container bg-primary-container p-2.5 rounded-lg text-xl">sensors</span>
+                <div>
+                  <h4 class="text-sm font-bold text-primary mb-1">Sensores IoT</h4>
+                  <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Integración con Home Assistant para sensores de humedad del suelo, temperatura y ambiente.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-on-tertiary-container bg-primary-container p-2.5 rounded-lg text-xl">psychology</span>
+                <div>
+                  <h4 class="text-sm font-bold text-primary mb-1">IA Agronómica</h4>
+                  <p class="text-xs text-on-surface-variant leading-relaxed">
+                    Recomendaciones de riego, abonado y poda adaptadas a cada cultivo y condición.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accent card -->
+          <div class="md:col-span-4 bg-primary-container rounded-xl overflow-hidden relative group min-h-[300px]">
+            <img src="/icons/fondo_login_page.webp" alt="Campo"
+                 class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-700"/>
+            <div class="absolute inset-0 bg-gradient-to-t from-primary-container via-primary-container/60 to-transparent"></div>
+            <div class="relative z-10 p-8 h-full flex flex-col justify-end">
+              <span class="material-symbols-outlined text-tertiary-fixed text-4xl mb-3">psychology</span>
+              <h3 class="text-xl font-semibold text-tertiary-fixed mb-2">Sugerencias basadas en IA</h3>
+              <p class="text-primary-fixed-dim text-sm leading-relaxed">
+                Recomendaciones personalizadas basadas en el historial de la parcela y las condiciones locales.
+              </p>
+            </div>
+          </div>
+
+          <!-- Map placeholder -->
+          <div class="md:col-span-12 bg-surface-container-highest rounded-xl h-[320px] border border-outline-variant overflow-hidden relative">
+            <div class="absolute inset-0 bg-[#1a2818]">
+              <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" opacity="0.35">
+                <defs>
+                  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#6ca200" stroke-width="0.5"/>
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)"/>
+                <path d="M100,200 L250,160 L400,190 L550,140 L700,170 L850,130 L1000,155 L1200,120" fill="none" stroke="#b2f746" stroke-width="1.5" stroke-dasharray="6,3"/>
+                <polygon points="320,80 380,100 400,180 350,200 290,170 280,110" fill="none" stroke="#6ca200" stroke-width="1.5"/>
+                <polygon points="550,120 630,110 650,190 600,210 530,195 520,140" fill="rgba(27,48,34,0.6)" stroke="#98da27" stroke-width="1.5"/>
+                <circle cx="400" cy="180" r="6" fill="#b2f746"/>
+                <circle cx="600" cy="190" r="6" fill="#b2f746"/>
+                <circle cx="250" cy="160" r="4" fill="#98da27" opacity="0.7"/>
+              </svg>
+            </div>
+            <div class="absolute top-5 left-5 z-10 bg-surface/95 backdrop-blur-sm p-4 rounded-xl shadow-lg max-w-xs border border-outline-variant">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-on-tertiary-container text-lg">map</span>
+                <h4 class="text-sm font-bold text-primary">Visualizador SIGPAC</h4>
+              </div>
+              <p class="text-xs text-on-surface-variant leading-relaxed">
+                Capa interactiva con los límites oficiales de parcelas catastrales y sus datos agronómicos asociados.
+              </p>
+            </div>
+            <div class="absolute bottom-5 right-5 z-10">
+              <div class="flex items-center gap-2 bg-primary-container/90 px-3 py-1.5 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>
+                <span class="text-xs text-primary-fixed-dim font-medium">Datos en tiempo real</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB: FUNCIONALIDADES -->
+      <div class="tab-content" id="funcionalidades">
+        <div class="text-center mb-12">
+          <h2 class="text-4xl font-bold text-primary mb-3">Todo lo que necesita tu explotación</h2>
+          <p class="text-on-surface-variant text-lg max-w-2xl mx-auto">
+            Desde la gestión de parcelas exteriores hasta el control de invernaderos,
+            AgroManage centraliza todos tus datos agronómicos en un único lugar.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+
+          <!-- Card: Parcelas -->
+          <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-7 shadow-[0px_4px_12px_rgba(27,48,34,0.05)] flex flex-col gap-4">
+            <div class="bg-primary-container w-12 h-12 rounded-xl flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-tertiary-container text-2xl">landscape</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-primary mb-2">Gestión de Parcelas</h3>
+              <p class="text-sm text-on-surface-variant leading-relaxed">
+                Reclama tus parcelas directamente sobre el mapa oficial SIGPAC. Indica el tipo de cultivo,
+                variedad y año de plantación. Registra riegos, podas y abonados con un solo toque.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-auto">
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Naranjo</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Melocotonero</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Maíz</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">+2 más</span>
+            </div>
+          </div>
+
+          <!-- Card: Invernaderos -->
+          <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-7 shadow-[0px_4px_12px_rgba(27,48,34,0.05)] flex flex-col gap-4">
+            <div class="bg-primary-container w-12 h-12 rounded-xl flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-tertiary-container text-2xl">warehouse</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-primary mb-2">Invernaderos Inteligentes</h3>
+              <p class="text-sm text-on-surface-variant leading-relaxed">
+                Diseña la distribución de tu invernadero en una cuadrícula 3D isométrica. Arrastra y coloca
+                tus cultivos, asigna sensores IoT a cada planta y visualiza sus lecturas en tiempo real.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-auto">
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Tomate</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Pimiento</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Pepino</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Calabacín</span>
+            </div>
+          </div>
+
+          <!-- Card: Clima -->
+          <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-7 shadow-[0px_4px_12px_rgba(27,48,34,0.05)] flex flex-col gap-4">
+            <div class="bg-primary-container w-12 h-12 rounded-xl flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-tertiary-container text-2xl">partly_cloudy_day</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-primary mb-2">Datos Meteorológicos</h3>
+              <p class="text-sm text-on-surface-variant leading-relaxed">
+                Previsión de 16 días con temperatura, precipitación, evapotranspiración y radiación solar
+                vía Open-Meteo. Estado del cielo y humedad relativa de AEMET para los próximos 7 días.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-auto">
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Open-Meteo</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">AEMET</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Previsión 16 días</span>
+            </div>
+          </div>
+
+          <!-- Card: IA -->
+          <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-7 shadow-[0px_4px_12px_rgba(27,48,34,0.05)] flex flex-col gap-4">
+            <div class="bg-primary-container w-12 h-12 rounded-xl flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-tertiary-container text-2xl">psychology</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-primary mb-2">Motor Agronómico IA</h3>
+              <p class="text-sm text-on-surface-variant leading-relaxed">
+                Analiza el clima, el tipo de cultivo y lo que ya has hecho en tu parcela
+                para avisarte exactamente cuándo regar, abonar o podar.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-auto">
+              <span class="text-xs bg-tertiary-container/30 text-on-tertiary-container px-2.5 py-1 rounded-full font-medium">Riego</span>
+              <span class="text-xs bg-tertiary-container/30 text-on-tertiary-container px-2.5 py-1 rounded-full font-medium">Abonado</span>
+              <span class="text-xs bg-tertiary-container/30 text-on-tertiary-container px-2.5 py-1 rounded-full font-medium">Poda</span>
+            </div>
+          </div>
+
+          <!-- Card: Acciones -->
+          <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-7 shadow-[0px_4px_12px_rgba(27,48,34,0.05)] flex flex-col gap-4">
+            <div class="bg-primary-container w-12 h-12 rounded-xl flex items-center justify-center">
+              <span class="material-symbols-outlined text-on-tertiary-container text-2xl">task_alt</span>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-primary mb-2">Registro de Acciones</h3>
+              <p class="text-sm text-on-surface-variant leading-relaxed">
+                Marca como realizadas las acciones de riego, poda y abonado desde la propia parcela.
+                El modelo tiene en cuenta lo que ya has hecho para no generar alertas innecesarias.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-auto">
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Historial completo</span>
+              <span class="text-xs bg-surface-container px-2.5 py-1 rounded-full text-on-surface-variant font-medium">Por parcela e invernadero</span>
+            </div>
+          </div>
+
+          <!-- Card: CTA -->
+          <div class="bg-primary-container rounded-xl p-7 flex flex-col gap-4 justify-between">
+            <div>
+              <h3 class="text-xl font-semibold text-tertiary-fixed mb-3">¿Listo para empezar?</h3>
+              <p class="text-primary-fixed-dim text-sm leading-relaxed">
+                Crea tu cuenta en menos de un minuto y conecta tus primeras parcelas.
+                Sin costes ocultos, sin configuraciones complicadas.
+              </p>
+            </div>
+            <div class="flex flex-col gap-3">
+              <a href="/login"
+                class="bg-tertiary-fixed text-on-tertiary-fixed text-center py-3 rounded-lg font-bold text-sm hover:shadow-[0_0_12px_rgba(178,247,70,0.4)] transition-all">
+                Crear cuenta gratuita
+              </a>
+              <a href="/login"
+                class="border border-primary-fixed/30 text-primary-fixed text-center py-3 rounded-lg font-medium text-sm hover:bg-primary/10 transition-colors">
+                Ya tengo cuenta
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Stats bar -->
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div class="text-center">
+            <div class="text-3xl font-bold text-primary mb-1">5+</div>
+            <div class="text-xs text-on-surface-variant uppercase tracking-widest font-semibold">Cultivos exteriores</div>
+          </div>
+          <div class="text-center">
+            <div class="text-3xl font-bold text-primary mb-1">4+</div>
+            <div class="text-xs text-on-surface-variant uppercase tracking-widest font-semibold">Cultivos invernadero</div>
+          </div>
+          <div class="text-center">
+            <div class="text-3xl font-bold text-primary mb-1">16</div>
+            <div class="text-xs text-on-surface-variant uppercase tracking-widest font-semibold">Días de previsión</div>
+          </div>
+          <div class="text-center">
+            <div class="text-3xl font-bold text-on-tertiary-container mb-1">IoT</div>
+            <div class="text-xs text-on-surface-variant uppercase tracking-widest font-semibold">Sensores en tiempo real</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: IOT & HOME ASSISTANT -->
+      <div class="tab-content -mx-8 -mb-12" id="iot">
+
+        <!-- ── Hero ───────────────────────────────────────────────────── -->
+        <div class="bg-[#111] px-8 py-24 text-center">
+          <div class="max-w-3xl mx-auto">
+            <div class="flex items-center justify-center gap-2 mb-6">
+              <img src="/icons/home_assistant_logo.png" alt="Home Assistant" class="w-7 h-7 object-contain"/>
+              <span class="text-[#b2f746] text-xs font-bold uppercase tracking-widest">Powered by Home Assistant</span>
+            </div>
+            <h2 class="text-5xl font-bold text-white leading-tight mb-6">
+              Tu campo, bajo control.<br/>En todo momento.
+            </h2>
+            <p class="text-white/60 text-xl leading-relaxed mb-10 max-w-2xl mx-auto">
+              Conecta sensores físicos a tus parcelas e invernaderos. AgroManage los lee
+              continuamente y ajusta sus recomendaciones a lo que está pasando de verdad,
+              no solo al pronóstico del tiempo.
+            </p>
+            <div class="flex justify-center gap-4 flex-wrap">
+              <a href="/login"
+                class="bg-[#b2f746] text-[#111] px-8 py-3.5 rounded-lg font-bold text-sm
+                       hover:bg-[#98da27] transition-colors">
+                Empezar ahora
+              </a>
+              <a href="https://www.home-assistant.io" target="_blank" rel="noopener"
+                class="border border-white/20 text-white/80 px-8 py-3.5 rounded-lg font-semibold text-sm
+                       hover:bg-white/10 transition-colors">
+                ¿Qué es Home Assistant?
+              </a>
+            </div>
+          </div>
+
+          <!-- Device visual centrado -->
+          <div class="mt-20 flex justify-center">
+            <div class="relative">
+              <div class="absolute inset-0 bg-[#b2f746]/20 blur-[80px] rounded-full"></div>
+              <div class="relative w-56 h-56 rounded-[2rem] border border-white/10 bg-[#1a1a1a]
+                          shadow-[0_40px_80px_rgba(0,0,0,0.7)]
+                          flex flex-col items-center justify-center gap-3">
+                <img src="/icons/home_assistant_logo.png" alt="Home Assistant Green"
+                     class="w-20 h-20 object-contain"/>
+                <div class="text-center">
+                  <div class="text-white font-semibold text-sm">Home Assistant</div>
+                  <div class="text-[#b2f746] text-xs font-bold uppercase tracking-widest">Green</div>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-[#b2f746] animate-pulse shadow-[0_0_8px_#b2f746]"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Beneficios ─────────────────────────────────────────────── -->
+        <div class="bg-[#161616] px-8 py-20 border-t border-white/5">
+          <div class="max-w-5xl mx-auto">
+            <h3 class="text-center text-3xl font-bold text-white mb-16">
+              ¿Qué cambia cuando añades sensores?
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+
+              <div class="text-center">
+                <div class="w-14 h-14 rounded-2xl bg-[#b2f746]/10 flex items-center justify-center mx-auto mb-5">
+                  <span class="material-symbols-outlined text-[#b2f746] text-3xl">visibility</span>
+                </div>
+                <h4 class="text-white font-bold text-lg mb-3">Seguimiento continuo</h4>
+                <p class="text-white/50 text-sm leading-relaxed">
+                  Sabe en todo momento la humedad del suelo, la temperatura
+                  y el ambiente de cada parcela o invernadero, sin tener que ir a comprobarlo.
+                </p>
+              </div>
+
+              <div class="text-center">
+                <div class="w-14 h-14 rounded-2xl bg-[#b2f746]/10 flex items-center justify-center mx-auto mb-5">
+                  <span class="material-symbols-outlined text-[#b2f746] text-3xl">psychology</span>
+                </div>
+                <h4 class="text-white font-bold text-lg mb-3">IA que te conoce</h4>
+                <p class="text-white/50 text-sm leading-relaxed">
+                  Las recomendaciones de riego, abonado y poda se calculan
+                  con los datos reales de tu suelo, no con valores genéricos.
+                  Cada parcela recibe un consejo distinto.
+                </p>
+              </div>
+
+              <div class="text-center">
+                <div class="w-14 h-14 rounded-2xl bg-[#b2f746]/10 flex items-center justify-center mx-auto mb-5">
+                  <span class="material-symbols-outlined text-[#b2f746] text-3xl">tune</span>
+                </div>
+                <h4 class="text-white font-bold text-lg mb-3">Personalización total</h4>
+                <p class="text-white/50 text-sm leading-relaxed">
+                  Asigna sensores a cada parcela o planta de invernadero
+                  de forma independiente. Añade o retira dispositivos
+                  cuando quieras desde la propia aplicación.
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Protocolo orbital ────────────────────────────────────────── -->
+        <div class="bg-[#0d0d0d] px-8 py-24 border-t border-white/5">
+          <div class="max-w-5xl mx-auto">
+
+            <!-- Mobile: badges en grid -->
+            <div class="md:hidden text-center mb-10">
+              <p class="text-[#b2f746] text-xs font-bold uppercase tracking-widest mb-3">Versátil</p>
+              <h3 class="text-white text-3xl font-bold mb-3">Funciona con casi todo.</h3>
+              <p class="text-white/50 text-sm mb-8">Conecta sensores por el protocolo que prefieras.</p>
+              <div class="flex flex-wrap justify-center gap-3">
+                {% for label, icon in [('Zigbee','hub'),('Wi-Fi','wifi'),('Bluetooth','bluetooth'),('Z-Wave','radio'),('Matter','verified'),('Thread','device_hub'),('+900 más','add')] %}
+                <div class="flex items-center gap-2 bg-white/6 border border-white/10 rounded-full px-4 py-2">
+                  <span class="material-symbols-outlined text-[#b2f746] text-base">{{ icon }}</span>
+                  <span class="text-white text-sm font-medium">{{ label }}</span>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Desktop: layout orbital -->
+            <div class="hidden md:block relative" style="height:560px;">
+
+              <!-- Texto central -->
+              <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-60 z-10 pointer-events-none">
+                <p class="text-[#b2f746] text-xs font-bold uppercase tracking-widest mb-3">Versátil</p>
+                <h3 class="text-white text-4xl font-bold leading-tight mb-3">
+                  Funciona<br/>con casi<br/>todo.
+                </h3>
+                <p class="text-white/45 text-sm leading-relaxed">
+                  Conecta sensores por el protocolo que ya tengas.
+                </p>
+              </div>
+
+              <!-- Círculos orbitales: 7 items, espaciado uniforme en 360° -->
+              <!-- Posiciones calculadas (radio ~210px, centro 50%/50%) -->
+
+              <!-- 0° — arriba -->
+              <div class="absolute" style="top:3%;left:50%;transform:translate(-50%,-0%);">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-20 h-20 rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                       style="background:linear-gradient(135deg,#3dd68c,#0da2bf)">
+                    <span class="material-symbols-outlined text-white text-3xl">hub</span>
+                  </div>
+                  <span class="text-white/70 text-xs font-semibold">Zigbee</span>
+                </div>
+              </div>
+
+              <!-- 51° — arriba-derecha -->
+              <div class="absolute" style="top:13%;left:69%;transform:translate(-50%,0);">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-20 h-20 rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                       style="background:linear-gradient(135deg,#22d3ee,#3b82f6)">
+                    <span class="material-symbols-outlined text-white text-3xl">wifi</span>
+                  </div>
+                  <span class="text-white/70 text-xs font-semibold">Wi-Fi</span>
+                </div>
+              </div>
+
+              <!-- 103° — derecha -->
+              <div class="absolute" style="top:42%;left:80%;transform:translate(-50%,-50%);">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-20 h-20 rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                       style="background:linear-gradient(135deg,#818cf8,#6366f1)">
+                    <span class="material-symbols-outlined text-white text-3xl">bluetooth</span>
+                  </div>
+                  <span class="text-white/70 text-xs font-semibold">Bluetooth</span>
+                </div>
+              </div>
+
+              <!-- 154° — abajo-derecha -->
+              <div class="absolute" style="top:74%;left:69%;transform:translate(-50%,-50%);">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-20 h-20 rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                       style="background:linear-gradient(135deg,#34d399,#059669)">
+                    <span class="material-symbols-outlined text-white text-3xl">radio</span>
+                  </div>
+                  <span class="text-white/70 text-xs font-semibold">Z-Wave</span>
+                </div>
+              </div>
+
+              <!-- 206° — abajo-izquierda -->
+              <div class="absolute" style="top:74%;left:31%;transform:translate(-50%,-50%);">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-20 h-20 rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                       style="background:linear-gradient(135deg,#fb923c,#f97316)">
+                    <span class="material-symbols-outlined text-white text-3xl">verified</span>
+                  </div>
+                  <span class="text-white/70 text-xs font-semibold">Matter</span>
+                </div>
+              </div>
+
+              <!-- 257° — izquierda -->
+              <div class="absolute" style="top:42%;left:20%;transform:translate(-50%,-50%);">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-20 h-20 rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                       style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">
+                    <span class="material-symbols-outlined text-white text-3xl">device_hub</span>
+                  </div>
+                  <span class="text-white/70 text-xs font-semibold">Thread</span>
+                </div>
+              </div>
+
+              <!-- 309° — arriba-izquierda -->
+              <div class="absolute" style="top:13%;left:31%;transform:translate(-50%,0);">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-20 h-20 rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                       style="background:linear-gradient(135deg,#94a3b8,#475569)">
+                    <span class="material-symbols-outlined text-white text-3xl">add</span>
+                  </div>
+                  <span class="text-white/70 text-xs font-semibold">+900 más</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- ── HA Green product ───────────────────────────────────────── -->
+        <div class="bg-[#111] px-8 py-24 border-t border-white/5">
+          <div class="max-w-4xl mx-auto text-center">
+
+            <span class="inline-block bg-[#b2f746]/10 border border-[#b2f746]/25 text-[#b2f746]
+                         px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-8">
+              Recomendado para empezar
+            </span>
+
+            <h2 class="text-4xl font-bold text-white mb-5">Home Assistant Green</h2>
+            <p class="text-white/55 text-lg leading-relaxed mb-14 max-w-2xl mx-auto">
+              El hub más sencillo del mercado. Llega listo para usar, sin instalar nada.
+              Solo enchúfalo, conéctalo a internet y empieza a añadir sensores en minutos.
+            </p>
+
+            <!-- 4 features en fila -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-14">
+              <div class="bg-white/5 rounded-2xl p-6 text-center">
+                <span class="material-symbols-outlined text-[#b2f746] text-3xl block mb-3">power_settings_new</span>
+                <div class="text-white font-semibold text-sm">Plug & Play</div>
+                <div class="text-white/40 text-xs mt-1">Listo en minutos</div>
+              </div>
+              <div class="bg-white/5 rounded-2xl p-6 text-center">
+                <span class="material-symbols-outlined text-[#b2f746] text-3xl block mb-3">sensors</span>
+                <div class="text-white font-semibold text-sm">+1.000 sensores</div>
+                <div class="text-white/40 text-xs mt-1">Compatibles</div>
+              </div>
+              <div class="bg-white/5 rounded-2xl p-6 text-center">
+                <span class="material-symbols-outlined text-[#b2f746] text-3xl block mb-3">lock</span>
+                <div class="text-white font-semibold text-sm">100% local</div>
+                <div class="text-white/40 text-xs mt-1">Sin nube externa</div>
+              </div>
+              <div class="bg-white/5 rounded-2xl p-6 text-center">
+                <span class="material-symbols-outlined text-[#b2f746] text-3xl block mb-3">open_source</span>
+                <div class="text-white font-semibold text-sm">Open Source</div>
+                <div class="text-white/40 text-xs mt-1">Comunidad activa</div>
+              </div>
+            </div>
+
+            <!-- CTA con precio -->
+            <div class="flex items-center justify-center gap-6 flex-wrap">
+              <a href="https://www.home-assistant.io/green/" target="_blank" rel="noopener"
+                class="flex items-center gap-2 bg-[#b2f746] text-[#111] px-8 py-4 rounded-xl font-bold
+                       hover:bg-[#98da27] hover:shadow-[0_0_24px_rgba(178,247,70,0.35)] transition-all">
+                <span class="material-symbols-outlined">open_in_new</span>
+                Ver Home Assistant Green
+              </a>
+              <span class="text-white/40 text-sm">desde <strong class="text-[#b2f746] text-xl font-bold">€179</strong></span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── FOOTER ──────────────────────────────────────────────────────────── -->
+  <footer class="bg-primary w-full px-8 py-12 mt-8">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-8">
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center gap-2 mb-1">
+          <img src="/icons/logo_png.png" alt="Logo" class="w-7 h-7 object-contain rounded opacity-90"/>
+          <span class="text-xl font-bold text-on-primary">AgroManage</span>
+        </div>
+        <p class="text-on-primary-fixed-variant text-sm max-w-xs leading-relaxed">
+          Ingeniería de precisión para la próxima generación de gestión de tierras agrícolas.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-x-10 gap-y-3">
+        <button onclick="switchTab('proyecto'); window.scrollTo({top:0,behavior:'smooth'})"
+          class="text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors text-sm">
+          El Proyecto
+        </button>
+        <button onclick="switchTab('funcionalidades'); window.scrollTo({top:0,behavior:'smooth'})"
+          class="text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors text-sm">
+          Funcionalidades
+        </button>
+        <button onclick="switchTab('iot'); window.scrollTo({top:0,behavior:'smooth'})"
+          class="text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors text-sm">
+          IoT & Home Assistant
+        </button>
+      </div>
+      <div class="text-on-primary-fixed-variant text-sm">
+        © 2024 AgroManage · Máster Data/IA EDEM
+      </div>
+    </div>
+  </footer>
+
+  <!-- ── MOBILE NAV ─────────────────────────────────────────────────────── -->
+  <nav class="md:hidden fixed bottom-0 w-full bg-surface border-t border-outline-variant flex justify-around items-center px-4 py-2 z-50">
+    <button onclick="switchTab('proyecto')" class="flex flex-col items-center text-on-surface-variant">
+      <span class="material-symbols-outlined text-xl">home</span>
+      <span class="text-[10px]">Proyecto</span>
+    </button>
+    <button onclick="switchTab('funcionalidades')" class="flex flex-col items-center text-on-surface-variant">
+      <span class="material-symbols-outlined text-xl">grid_view</span>
+      <span class="text-[10px]">Funciones</span>
+    </button>
+    <button onclick="switchTab('iot')" class="flex flex-col items-center text-on-surface-variant">
+      <span class="material-symbols-outlined text-xl">sensors</span>
+      <span class="text-[10px]">IoT</span>
+    </button>
+    <a href="/login" class="flex flex-col items-center text-on-tertiary-container">
+      <span class="material-symbols-outlined text-xl">login</span>
+      <span class="text-[10px]">Entrar</span>
+    </a>
+  </nav>
+
+  <script>
+    const TABS = ['proyecto', 'funcionalidades', 'iot'];
+
+    function switchTab(id) {
+      TABS.forEach(t => {
+        document.getElementById(t).classList.remove('active');
+        const btn = document.getElementById('tab-btn-' + t);
+        if (btn) { btn.className = 'inactive-tab text-xs uppercase tracking-widest py-3 transition-all whitespace-nowrap'; }
+        const nav = document.getElementById('nav-' + t);
+        if (nav) {
+          nav.classList.remove('bg-surface-container-high', 'text-primary');
+          nav.classList.add('text-on-surface-variant');
+        }
+      });
+
+      document.getElementById(id).classList.add('active');
+      const activeBtn = document.getElementById('tab-btn-' + id);
+      if (activeBtn) { activeBtn.className = 'active-tab text-xs uppercase tracking-widest py-3 transition-all whitespace-nowrap'; }
+      const activeNav = document.getElementById('nav-' + id);
+      if (activeNav) {
+        activeNav.classList.add('bg-surface-container-high', 'text-primary');
+        activeNav.classList.remove('text-on-surface-variant');
+      }
+
+      window.scrollTo({ top: 420, behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgroManage | Parcel Management Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-container": "#1b3022",
+                    "inverse-primary": "#b4cdb8",
+                    "tertiary": "#0e1b00",
+                    "on-tertiary-container": "#6ca200",
+                    "background": "#f8f9fa",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container": "#edeeef",
+                    "primary-fixed": "#d0e9d4",
+                    "secondary-fixed": "#faddce",
+                    "on-surface-variant": "#434843",
+                    "surface-container-highest": "#e1e3e4",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-secondary-fixed": "#271810",
+                    "surface-bright": "#f8f9fa",
+                    "surface-container-low": "#f3f4f5",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed-dim": "#98da27",
+                    "error": "#ba1a1a",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-container": "#1e3100",
+                    "secondary": "#6f5a4f",
+                    "on-background": "#191c1d",
+                    "secondary-container": "#f7dacc",
+                    "on-primary-container": "#819986",
+                    "inverse-surface": "#2e3132",
+                    "tertiary-fixed": "#b2f746",
+                    "primary-fixed-dim": "#b4cdb8",
+                    "on-error-container": "#93000a",
+                    "primary": "#061b0e",
+                    "on-secondary-container": "#745e53",
+                    "on-secondary-fixed-variant": "#564338",
+                    "on-tertiary-fixed-variant": "#334f00",
+                    "surface-dim": "#d9dadb",
+                    "surface-tint": "#4d6453",
+                    "secondary-fixed-dim": "#ddc1b3",
+                    "on-tertiary-fixed": "#121f00",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed": "#0b2013",
+                    "surface": "#f8f9fa",
+                    "on-surface": "#191c1d",
+                    "surface-variant": "#e1e3e4",
+                    "outline-variant": "#c3c8c1",
+                    "surface-container-high": "#e7e8e9",
+                    "on-primary-fixed-variant": "#364c3c",
+                    "on-primary": "#ffffff",
+                    "outline": "#737973",
+                    "on-secondary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xl": "64px",
+                    "gutter": "24px",
+                    "lg": "48px",
+                    "xs": "4px",
+                    "md": "24px",
+                    "sm": "12px",
+                    "base": "8px",
+                    "margin": "32px"
+            },
+            "fontFamily": {
+                    "data-tabular": ["Inter"],
+                    "h3": ["Inter"],
+                    "h1": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "h2": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "data-tabular": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "h3": ["24px", {"lineHeight": "1.3", "letterSpacing": "0", "fontWeight": "600"}],
+                    "h1": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "h2": ["32px", {"lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-screen left-0 w-64 sticky top-0 bg-surface-container-low border-r border-outline-variant p-md gap-sm">
+<div class="flex items-center gap-sm mb-lg px-xs">
+<div class="w-10 h-10 bg-primary-container rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-inverse-primary" style="font-variation-settings: 'FILL' 1;">agriculture</span>
+</div>
+<div>
+<h1 class="font-h3 text-h3 font-bold text-primary">AgroManage</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant opacity-70">Land &amp; Tech</p>
+</div>
+</div>
+<nav class="flex-1 space-y-base">
+<a class="flex items-center gap-md p-sm text-on-surface-variant opacity-70 hover:bg-surface-container-highest transition-all rounded-lg font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-md p-sm bg-tertiary-container text-on-tertiary-container rounded-lg font-bold font-label-sm text-label-sm translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="landscape">landscape</span>
+                Parcels
+            </a>
+<a class="flex items-center gap-md p-sm text-on-surface-variant opacity-70 hover:bg-surface-container-highest transition-all rounded-lg font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" data-icon="Agriculture">agriculture</span>
+                Greenhouses
+            </a>
+<a class="flex items-center gap-md p-sm text-on-surface-variant opacity-70 hover:bg-surface-container-highest transition-all rounded-lg font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+                Profile
+            </a>
+</nav>
+<button class="mt-auto w-full py-sm bg-tertiary-fixed text-on-tertiary-fixed font-bold rounded-lg font-label-sm text-label-sm hover:bg-tertiary-fixed-dim transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 18px;">add_circle</span>
+            Add New Parcel
+        </button>
+</aside>
+<main class="flex-1 flex flex-col min-w-0">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-margin py-base sticky top-0 z-50 bg-surface shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="md:hidden">
+<span class="font-h2 text-h2 font-bold text-primary">AgroManage</span>
+</div>
+<div class="hidden md:block flex-1 max-w-xl">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-xl pr-md py-xs bg-surface-container-low border border-outline-variant rounded-full font-body-md text-body-md focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Search parcels, owners, or coordinates..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="p-xs text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-full relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full border border-surface"></span>
+</button>
+<button class="p-xs text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-full">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<img alt="User profile avatar" class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="A professional headshot of a middle-aged agricultural consultant with short, clean-cut hair and a confident, approachable smile. He is wearing a dark olive green polo shirt, standing in front of a subtly blurred background of a modern, sunlit greenhouse. The lighting is crisp and natural, highlighting a sophisticated, high-tech agricultural setting in a light-mode color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUYaiMWJizAg4ToBud7rp_ilyeOsBLKJ8XfUkYCHYSR4YMRhFOZ98_tNryuI9BGu0JGCpQpAYEeDjr9rAXmg_GQsWL8C8B7UVNBS-b3rVYBlE-OFfRitRPLZ_z2DldvAB2YZ_7bjxkJI5PtVIHMZPBywac7svZDy9TZbrb0hV34r0HX9O6CTStThXKM1sJyJZ1y20IFuhD2A_73KPK8NtDyXw0Fb_TbwyTQp1QKc_44Zq5Y899DxLgk5j91OPZBxHD1HtQrFaJ-9la"/>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="p-margin space-y-lg">
+<!-- Page Header & Bento Grid Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<nav class="flex items-center gap-xs font-label-sm text-label-sm text-on-surface-variant opacity-60 mb-xs">
+<span>Dashboard</span>
+<span class="material-symbols-outlined" style="font-size: 14px;">chevron_right</span>
+<span>Parcels</span>
+</nav>
+<h2 class="font-h1 text-h1 text-primary">Parcel Management</h2>
+</div>
+<div class="flex gap-sm">
+<button class="px-md py-sm bg-surface-container-high border border-outline-variant rounded-lg font-label-sm text-label-sm hover:bg-surface-container-highest transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 18px;">filter_list</span>
+                        Filters
+                    </button>
+<button class="px-md py-sm bg-primary text-on-primary rounded-lg font-label-sm text-label-sm hover:opacity-90 transition-all flex items-center gap-xs shadow-[0px_0px_8px_rgba(163,230,53,0.2)]">
+<span class="material-symbols-outlined" style="font-size: 18px;">download</span>
+                        Export GIS Data
+                    </button>
+</div>
+</div>
+<!-- Bento Layout Content -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Map Placeholder (Large) -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-[0px_4px_12px_rgba(27,48,34,0.05)] h-[500px] relative">
+<div class="absolute inset-0 bg-neutral-200" data-location="Tuscany, Italy" style="">
+<!-- Simulated Map UI -->
+<div class="w-full h-full bg-cover bg-center filter saturate-[0.8] contrast-[1.1]" data-alt="A wide-angle aerial satellite view of a lush agricultural landscape featuring geometric farm parcels in Tuscany. The topography is varied with rolling hills and sharp borders between deep forest greens and golden-brown soil. The overall visual style is technical and data-driven, using a high-contrast palette of earthy browns and vibrant forest greens to emphasize land precision and professional land management." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCVeSD-8x-tFI4yRrOWrzsRs6UGr_BN_gdJybXvBxhl3RLAYBnl4jeR12bG9LjF4uEN7fQv0fJ0Bkbl9YHx-Mu05ue9Wf0nqiHPaHPtbiGfBeSIvXDGgA0Sx8OyQkTTkdA8XiJzJhSvkyHxjJnrfxwPH0v544TqBV0ZFvw4VYPnIYFSK_YMFBWIt6Gc4TMvHIIG3wA5dVA00BnuPHu0_p4Gzd6Y_iGR-xTdSfylqLHHplssxojq8zX5KrphSsiRUQWuPGuchn81j2_N')"></div>
+<!-- Map Controls -->
+<div class="absolute top-sm right-sm flex flex-col gap-xs">
+<button class="w-10 h-10 bg-surface rounded-lg shadow-md flex items-center justify-center text-primary hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="w-10 h-10 bg-surface rounded-lg shadow-md flex items-center justify-center text-primary hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<button class="w-10 h-10 bg-surface rounded-lg shadow-md flex items-center justify-center text-primary hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">layers</span>
+</button>
+</div>
+<div class="absolute bottom-sm left-sm bg-surface/90 backdrop-blur-md p-sm rounded-lg border border-outline-variant flex items-center gap-md">
+<div class="flex items-center gap-xs">
+<span class="w-3 h-3 bg-tertiary-fixed-dim rounded-full shadow-[0px_0px_8px_rgba(163,230,53,0.4)]"></span>
+<span class="font-label-sm text-label-sm text-primary">Active Selection</span>
+</div>
+<div class="h-4 w-px bg-outline-variant"></div>
+<span class="font-data-tabular text-data-tabular text-on-surface-variant">43.7696° N, 11.2558° E</span>
+</div>
+</div>
+</div>
+<!-- Summary Stats (Side Stack) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-gutter">
+<div class="flex-1 bg-surface-container-lowest border border-outline-variant rounded-xl p-md shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="flex items-center justify-between mb-md">
+<h3 class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant opacity-60">Total Area</h3>
+<span class="material-symbols-outlined text-tertiary-fixed-dim">area_chart</span>
+</div>
+<p class="font-h1 text-h1 text-primary">1,248.5<span class="text-h3 ml-xs font-medium text-on-surface-variant">ha</span></p>
+<div class="mt-md flex items-center gap-xs text-on-tertiary-container">
+<span class="material-symbols-outlined" style="font-size: 16px;">trending_up</span>
+<span class="font-label-sm text-label-sm">+12.4% from last quarter</span>
+</div>
+</div>
+<div class="flex-1 bg-primary text-on-primary border border-primary-container rounded-xl p-md shadow-[0px_4px_12px_rgba(27,48,34,0.1)] relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="font-label-sm text-label-sm uppercase tracking-wider opacity-60 mb-md">Asset Distribution</h3>
+<div class="space-y-sm">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md">Rustic Land</span>
+<span class="font-data-tabular text-data-tabular">840.2 ha</span>
+</div>
+<div class="w-full bg-on-primary/10 h-1.5 rounded-full overflow-hidden">
+<div class="bg-tertiary-fixed h-full w-[67%]"></div>
+</div>
+<div class="flex justify-between items-center mt-base">
+<span class="font-body-md text-body-md">Greenhouses</span>
+<span class="font-data-tabular text-data-tabular">408.3 ha</span>
+</div>
+<div class="w-full bg-on-primary/10 h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary-fixed h-full w-[33%]"></div>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined absolute -bottom-4 -right-4 text-9xl opacity-5">grass</span>
+</div>
+</div>
+<!-- Parcel List Table (Wide) -->
+<div class="col-span-12 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0px_4px_12px_rgba(27,48,34,0.05)] overflow-hidden">
+<div class="p-md border-b border-outline-variant bg-surface-container-low/30 flex justify-between items-center">
+<h3 class="font-h3 text-h3 text-primary">Parcel Inventory</h3>
+<div class="flex items-center gap-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Showing 4 of 32 parcels</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-primary/5">
+<th class="px-md py-sm font-label-sm text-label-sm text-on-primary-fixed-variant">Parcel ID</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-primary-fixed-variant">Name</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-primary-fixed-variant">Location</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-primary-fixed-variant text-right">Surface (ha)</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-primary-fixed-variant">Status</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-primary-fixed-variant">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/50">
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-md py-md font-data-tabular text-data-tabular text-primary">#P-88210</td>
+<td class="px-md py-md font-body-md text-body-md font-semibold text-primary">North Ridge Valley</td>
+<td class="px-md py-md font-body-md text-body-md text-on-surface-variant">Siena District, Tuscany</td>
+<td class="px-md py-md font-data-tabular text-data-tabular text-right">142.50</td>
+<td class="px-md py-md">
+<span class="px-sm py-xs bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold uppercase tracking-wider rounded-full">Active</span>
+</td>
+<td class="px-md py-md">
+<button class="p-xs hover:bg-surface-container-highest rounded-full transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-md py-md font-data-tabular text-data-tabular text-primary">#P-99024</td>
+<td class="px-md py-md font-body-md text-body-md font-semibold text-primary">East Creek Orchard</td>
+<td class="px-md py-md font-body-md text-body-md text-on-surface-variant">Lucca Province</td>
+<td class="px-md py-md font-data-tabular text-data-tabular text-right">88.20</td>
+<td class="px-md py-md">
+<span class="px-sm py-xs bg-secondary-container text-on-secondary-container text-[11px] font-bold uppercase tracking-wider rounded-full">Pending</span>
+</td>
+<td class="px-md py-md">
+<button class="p-xs hover:bg-surface-container-highest rounded-full transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-md py-md font-data-tabular text-data-tabular text-primary">#P-44312</td>
+<td class="px-md py-md font-body-md text-body-md font-semibold text-primary">Sunset Plateau</td>
+<td class="px-md py-md font-body-md text-body-md text-on-surface-variant">Val d'Orcia</td>
+<td class="px-md py-md font-data-tabular text-data-tabular text-right">312.45</td>
+<td class="px-md py-md">
+<span class="px-sm py-xs bg-tertiary-fixed text-on-tertiary-fixed text-[11px] font-bold uppercase tracking-wider rounded-full">Active</span>
+</td>
+<td class="px-md py-md">
+<button class="p-xs hover:bg-surface-container-highest rounded-full transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-md py-md font-data-tabular text-data-tabular text-primary">#P-21105</td>
+<td class="px-md py-md font-body-md text-body-md font-semibold text-primary">Blue River Basin</td>
+<td class="px-md py-md font-body-md text-body-md text-on-surface-variant">Maremma Coast</td>
+<td class="px-md py-md font-data-tabular text-data-tabular text-right">205.15</td>
+<td class="px-md py-md">
+<span class="px-sm py-xs bg-secondary-fixed text-on-secondary-fixed-variant text-[11px] font-bold uppercase tracking-wider rounded-full" style="background-color: #faddce;">Maintenance</span>
+</td>
+<td class="px-md py-md">
+<button class="p-xs hover:bg-surface-container-highest rounded-full transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-size: 20px;">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="w-full px-margin py-lg flex flex-col md:flex-row justify-between items-center gap-md bg-primary text-on-primary">
+<div>
+<h3 class="font-h3 text-h3 text-on-primary mb-xs">AgroManage</h3>
+<p class="font-body-md text-body-md opacity-70">© 2024 AgroManage Precision Systems. All rights reserved.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-md">
+<a class="font-body-md text-body-md text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors" href="#">Sustainability</a>
+<a class="font-body-md text-body-md text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors" href="#">Technical Support</a>
+<a class="font-body-md text-body-md text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-md text-body-md text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors" href="#">Terms of Service</a>
+</div>
+</footer>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full flex justify-around items-center px-4 py-2 bg-surface shadow-lg z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-label-sm text-label-sm">Land</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="grass">grass</span>
+<span class="font-label-sm text-label-sm">GH</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>
