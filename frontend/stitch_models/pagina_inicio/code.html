@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-surface": "#2e3132",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-dim": "#d9dadb",
+                    "secondary-fixed": "#faddce",
+                    "surface-variant": "#e1e3e4",
+                    "secondary-fixed-dim": "#ddc1b3",
+                    "on-secondary-fixed": "#271810",
+                    "on-secondary-container": "#745e53",
+                    "tertiary-fixed-dim": "#98da27",
+                    "on-background": "#191c1d",
+                    "on-error-container": "#93000a",
+                    "error": "#ba1a1a",
+                    "primary-container": "#1b3022",
+                    "on-tertiary-fixed": "#121f00",
+                    "secondary-container": "#f7dacc",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#edeeef",
+                    "surface": "#f8f9fa",
+                    "on-secondary-fixed-variant": "#564338",
+                    "tertiary-container": "#1e3100",
+                    "on-tertiary-fixed-variant": "#334f00",
+                    "on-primary-fixed": "#0b2013",
+                    "on-tertiary-container": "#6ca200",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#d0e9d4",
+                    "tertiary": "#0e1b00",
+                    "outline": "#737973",
+                    "on-surface": "#191c1d",
+                    "on-surface-variant": "#434843",
+                    "on-primary-container": "#819986",
+                    "inverse-on-surface": "#f0f1f2",
+                    "surface-container-low": "#f3f4f5",
+                    "tertiary-fixed": "#b2f746",
+                    "primary-fixed-dim": "#b4cdb8",
+                    "primary": "#061b0e",
+                    "surface-container-high": "#e7e8e9",
+                    "surface-bright": "#f8f9fa",
+                    "secondary": "#6f5a4f",
+                    "background": "#f8f9fa",
+                    "outline-variant": "#c3c8c1",
+                    "error-container": "#ffdad6",
+                    "surface-tint": "#4d6453",
+                    "inverse-primary": "#b4cdb8",
+                    "on-primary-fixed-variant": "#364c3c",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-secondary": "#ffffff",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "4px",
+                    "gutter": "24px",
+                    "lg": "48px",
+                    "sm": "12px",
+                    "xl": "64px",
+                    "margin": "32px",
+                    "md": "24px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "data-tabular": ["Inter"],
+                    "h2": ["Inter"],
+                    "h1": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "h3": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "data-tabular": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "h2": ["32px", {"lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "h1": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "h3": ["24px", {"lineHeight": "1.3", "letterSpacing": "0", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab {
+            border-bottom: 2px solid #6ca200;
+            color: #061b0e;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md selection:bg-tertiary-fixed">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-inverse-surface shadow-[0px_4px_12px_rgba(27,48,34,0.05)] flex justify-between items-center w-full px-margin py-base sticky top-0 z-50">
+<div class="flex items-center gap-sm">
+<span class="font-h2 text-h2 font-bold text-primary dark:text-inverse-primary">AgroManage</span>
+</div>
+<nav class="hidden md:flex gap-md">
+<a class="text-on-tertiary-container font-bold border-b-2 border-on-tertiary-container font-h3 text-body-md py-2" href="#">Marketing Hub</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors font-h3 text-body-md py-2 px-2 rounded-lg" href="#">Product</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors font-h3 text-body-md py-2 px-2 rounded-lg" href="#">Community</a>
+</nav>
+<div class="flex items-center gap-sm">
+<div class="hidden md:flex bg-surface-container-high items-center px-sm py-xs rounded-full">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md ml-xs w-32" placeholder="Search..." type="text"/>
+</div>
+<button class="material-symbols-outlined text-primary p-xs hover:bg-surface-container-high rounded-full">notifications</button>
+<button class="material-symbols-outlined text-primary p-xs hover:bg-surface-container-high rounded-full">settings</button>
+<img alt="User profile avatar" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4xOtdEFwSyfUle9m9SLYrREhFL9PMBLTyWt_fVms2fRs4m1J6AiMkKrtmdK-PyjTouaMgx7GrvBfvUBqr0RCvANp5d3PCw5OBOka0kdY_jJlPS7CXzlVDVMKPVbvqll8naojftKYP41iHdKntujLtrSdH706c1KMIkc6Id-1sTRUiUpgN24yGaLTWq9nsQenQCiltBqFTbxkWmERy1z5U2EEC7HCHrJf54MG7VHZxLD9smCvcssEoIJyzy_RligIGqAkj8R3HgCsu"/>
+</div>
+</header>
+<main class="min-h-screen">
+<!-- Hero Section -->
+<section class="relative w-full h-[400px] overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-primary-container/90 to-transparent z-10"></div>
+<img class="absolute inset-0 w-full h-full object-cover" data-alt="A wide panoramic view of a lush, precision-managed farmland at sunrise, featuring modern agricultural drones and sensors subtly placed in the rows. The lighting is golden and high-contrast, emphasizing the intersection of natural beauty and high-tech efficiency. The atmosphere is professional and calm, with deep forest greens and warm earth tones dominating the landscape." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI4Amr2oWBxnfTebQOBadQbCYLpTuSxy-vqlWLmV_H9Z4-f9JOal7-YeRvTdJnZEUioTYrcT35mQ5Vz10RElRhspHA3V8qEQWjPh_SgaTr_e8HNBlm_T6hsF1joRHa7fYtgfXicRNrw_umF_c34gWZbl_sdeBusXwu-OWTUgYsq6Ry2qV2EGksG9XfSFMDpXYNaNP9DhyMOB19bcheeUsYsNP33WG-E9LFG9LiwxDhoFxr36RJImiIVaObuCZzn_XRRjj99VUog5EO"/>
+<div class="relative z-20 px-margin h-full flex flex-col justify-center max-w-4xl">
+<h1 class="font-h1 text-h1 text-on-primary mb-md">Precision Agriculture for the Modern Steward</h1>
+<p class="font-body-lg text-primary-fixed-dim max-w-2xl">Bridging the gap between rural legacy and technological innovation. Manage your land with data-driven confidence.</p>
+</div>
+</section>
+<!-- Marketing Tabs Navigation -->
+<section class="bg-surface border-b border-outline-variant sticky top-[72px] z-40 px-margin">
+<div class="flex gap-lg overflow-x-auto no-scrollbar py-sm">
+<button class="font-label-sm text-label-sm uppercase tracking-widest py-2 active-tab transition-all whitespace-nowrap" id="tab-btn-the-project" onclick="switchTab('the-project')">The Project</button>
+<button class="font-label-sm text-label-sm uppercase tracking-widest py-2 text-outline hover:text-primary transition-all whitespace-nowrap" id="tab-btn-pricing" onclick="switchTab('pricing')">Pricing</button>
+<button class="font-label-sm text-label-sm uppercase tracking-widest py-2 text-outline hover:text-primary transition-all whitespace-nowrap" id="tab-btn-iot" onclick="switchTab('iot')">IoT &amp; Home Assistant</button>
+</div>
+</section>
+<!-- Content Container -->
+<div class="px-margin py-lg max-w-7xl mx-auto">
+<!-- Tab 1: The Project -->
+<div class="tab-content active" id="the-project">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Mission Card -->
+<div class="md:col-span-8 bg-surface-container-lowest border border-outline-variant p-lg rounded-xl shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<span class="text-on-tertiary-container font-label-sm text-label-sm bg-tertiary-container px-sm py-xs rounded-full mb-md inline-block">OUR MISSION</span>
+<h2 class="font-h2 text-h2 text-primary mb-md">Empowering Farmers with IoT and Intelligence</h2>
+<p class="font-body-lg text-on-surface-variant mb-lg leading-relaxed">
+                            AgroManage is built on the belief that precision technology shouldn't be reserved for industrial giants. We provide small to medium-scale agricultural professionals with the same IoT capabilities used by the world's most advanced cooperatives, distilled into an intuitive, reliable interface.
+                        </p>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-md">
+<div class="flex items-start gap-sm">
+<span class="material-symbols-outlined text-tertiary-fixed-dim bg-primary-container p-sm rounded-lg">map</span>
+<div>
+<h4 class="font-h3 text-body-md font-bold text-primary">SIGPAC Integration</h4>
+<p class="text-label-sm text-on-surface-variant">Advanced parcel reclamation using official Spanish GIS data for precise boundary management.</p>
+</div>
+</div>
+<div class="flex items-start gap-sm">
+<span class="material-symbols-outlined text-tertiary-fixed-dim bg-primary-container p-sm rounded-lg">thermostat</span>
+<div>
+<h4 class="font-h3 text-body-md font-bold text-primary">Climate Intelligence</h4>
+<p class="text-label-sm text-on-surface-variant">Real-time local forecasting via Open-Meteo and AEMET station synchronization.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Visual Accent / Bento Item -->
+<div class="md:col-span-4 bg-primary-container rounded-xl overflow-hidden relative group">
+<img class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" data-alt="A macro close-up of a high-tech agricultural sensor embedded in fertile, dark soil next to a healthy green sprout. The sensor has a subtle glowing LED status indicator in lime green. The background shows a blurred, sun-drenched field. The image is crisp, clean, and evokes a sense of high-precision environmental monitoring." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAH3QMKcGGuU39R6IhrvBPYemFCxVbjV8btoIKAxqCiYt_oAAe26kYYSj9KY0Xzgw-yh2aDaeo9CNjskvL7Y2_w3zrNd03g_2KDTbUMAsW1h1vRMT1r8c8gyT-Y5wTLThynSQy2pJeIsPyr7W1BUkXT4xnXGnpZ3WCLZZSEXCQrAtYbEQPHbmN5pCfgHTaw4aJ4kjWw3lnOUcnkpWoRnp6X9kkDRUW3OfmipMx7eNIVZoM6y3rAwAD6uqnRkKlqASqRa6AfLU4tYSz7"/>
+<div class="relative z-10 p-lg h-full flex flex-col justify-end">
+<h3 class="font-h3 text-h3 text-tertiary-fixed mb-xs">AI-Driven Insights</h3>
+<p class="text-primary-fixed-dim text-body-md">Personalized agronomic suggestions based on soil health and local history.</p>
+</div>
+</div>
+<!-- Map Placeholder Section -->
+<div class="md:col-span-12 bg-surface-container-high rounded-xl h-[400px] border border-outline-variant overflow-hidden relative">
+<div class="absolute inset-0 z-0 bg-[#1a1c1a]" data-location="Toledo, Spain" style="">
+<!-- Simulated Map UI -->
+<div class="absolute inset-0 opacity-40">
+<svg height="100%" width="100%" xmlns="http://www.w3.org/2000/svg">
+<path d="M0,100 L200,150 L400,100 L600,200 L800,180 L1000,250 L1200,200" fill="none" stroke="#6ca200" stroke-width="2"></path>
+<circle cx="200" cy="150" fill="#b2f746" r="4"></circle>
+<rect fill="#1b3022" height="100" stroke="#6ca200" stroke-width="1" width="150" x="500" y="50"></rect>
+</svg>
+</div>
+</div>
+<div class="absolute top-md left-md z-10 bg-surface/90 backdrop-blur-sm p-md rounded-lg shadow-lg max-w-xs">
+<h4 class="font-h3 text-body-md font-bold mb-xs">SIGPAC Visualizer</h4>
+<p class="text-label-sm text-on-surface-variant">Interactive overlay showing official parcel boundaries and soil moisture levels across 200 hectares.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Tab 2: Pricing -->
+<div class="tab-content" id="pricing">
+<div class="text-center mb-xl">
+<h2 class="font-h1 text-h1 text-primary mb-sm">Transparent Growth</h2>
+<p class="font-body-lg text-on-surface-variant max-w-2xl mx-auto">Scale your technology as your farm grows. No hidden fees, just precision at every level.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Starter -->
+<div class="bg-surface-container-lowest border border-outline-variant p-lg rounded-xl flex flex-col shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="mb-lg">
+<h3 class="font-h3 text-h3 text-primary mb-xs">Starter</h3>
+<div class="flex items-baseline gap-xs">
+<span class="text-h1 font-bold">€0</span>
+<span class="text-on-surface-variant">/month</span>
+</div>
+</div>
+<ul class="space-y-sm mb-xl flex-grow">
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-on-tertiary-container">check_circle</span> 1 Parcel Management</li>
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-on-tertiary-container">check_circle</span> Real-time Climate Data</li>
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-on-tertiary-container">check_circle</span> Mobile App Access</li>
+<li class="flex items-center gap-xs text-outline opacity-50 text-body-md"><span>—</span> No Historical Data</li>
+</ul>
+<button class="w-full py-sm bg-surface-container-high text-primary font-bold rounded-lg hover:bg-outline-variant transition-colors">Start Free</button>
+</div>
+<!-- Professional -->
+<div class="bg-primary-container border-2 border-tertiary-fixed p-lg rounded-xl flex flex-col shadow-lg relative transform scale-105">
+<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-tertiary-fixed text-primary px-md py-1 rounded-full text-label-sm font-bold uppercase tracking-wider">Most Popular</div>
+<div class="mb-lg">
+<h3 class="font-h3 text-h3 text-on-primary mb-xs">Professional</h3>
+<div class="flex items-baseline gap-xs text-on-primary">
+<span class="text-h1 font-bold">€29</span>
+<span class="text-primary-fixed-dim">/month</span>
+</div>
+</div>
+<ul class="space-y-sm mb-xl flex-grow text-primary-fixed">
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-tertiary-fixed">check_circle</span> Unlimited Parcels</li>
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-tertiary-fixed">check_circle</span> Full Activity History</li>
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-tertiary-fixed">check_circle</span> AI Agronomic Suggestions</li>
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-tertiary-fixed">check_circle</span> Priority Support</li>
+</ul>
+<button class="w-full py-sm bg-tertiary-fixed text-primary font-bold rounded-lg hover:shadow-[0px_0px_8px_rgba(163,230,53,0.4)] transition-all">Go Professional</button>
+</div>
+<!-- Enterprise -->
+<div class="bg-surface-container-lowest border border-outline-variant p-lg rounded-xl flex flex-col shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="mb-lg">
+<h3 class="font-h3 text-h3 text-primary mb-xs">Enterprise</h3>
+<div class="flex items-baseline gap-xs">
+<span class="text-h1 font-bold">Custom</span>
+</div>
+</div>
+<ul class="space-y-sm mb-xl flex-grow">
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-on-tertiary-container">check_circle</span> Cooperative Management</li>
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-on-tertiary-container">check_circle</span> Custom Hardware Integration</li>
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-on-tertiary-container">check_circle</span> API Direct Access</li>
+<li class="flex items-center gap-xs text-body-md"><span class="material-symbols-outlined text-on-tertiary-container">check_circle</span> On-site Training</li>
+</ul>
+<button class="w-full py-sm bg-primary text-on-primary font-bold rounded-lg hover:opacity-80 transition-all">Contact Sales</button>
+</div>
+</div>
+<!-- Comparison Table -->
+<div class="mt-xl overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead class="bg-primary-container/5">
+<tr>
+<th class="p-md font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Feature</th>
+<th class="p-md font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Starter</th>
+<th class="p-md font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Professional</th>
+<th class="p-md font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Enterprise</th>
+</tr>
+</thead>
+<tbody class="text-body-md divide-y divide-outline-variant/30">
+<tr>
+<td class="p-md font-bold">Max Parcels</td>
+<td class="p-md">1</td>
+<td class="p-md">Unlimited</td>
+<td class="p-md">Unlimited</td>
+</tr>
+<tr>
+<td class="p-md font-bold">AI Diagnostics</td>
+<td class="p-md text-outline">—</td>
+<td class="p-md"><span class="material-symbols-outlined text-on-tertiary-container">check</span></td>
+<td class="p-md"><span class="material-symbols-outlined text-on-tertiary-container">check</span></td>
+</tr>
+<tr>
+<td class="p-md font-bold">Data Export</td>
+<td class="p-md text-outline">Basic</td>
+<td class="p-md">Advanced (PDF/CSV)</td>
+<td class="p-md">Full API + White Label</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Tab 3: IoT & Home Assistant -->
+<div class="tab-content" id="iot">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Intro -->
+<div class="lg:col-span-5 space-y-md">
+<div class="bg-tertiary-container p-lg rounded-xl">
+<h2 class="font-h2 text-h2 text-tertiary-fixed mb-md">What is Home Assistant?</h2>
+<p class="font-body-md text-on-tertiary-container leading-relaxed">
+                                Home Assistant is the world's most powerful open-source automation platform. By utilizing it as our local hardware bridge, AgroManage allows you to maintain 100% control over your sensor data while leveraging our advanced agronomic cloud for processing and long-term analysis.
+                            </p>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-lg rounded-xl">
+<h2 class="font-h2 text-h2 text-primary mb-md">Our Integration</h2>
+<p class="font-body-md text-on-surface-variant mb-md">
+                                We utilize a high-security <strong>Push Architecture</strong>. Your Home Assistant instance sends data to our cloud via encrypted HTTP POST requests triggered by local automations.
+                            </p>
+<div class="flex flex-col gap-sm">
+<div class="flex items-center gap-sm bg-surface p-sm rounded-lg border border-outline-variant">
+<span class="material-symbols-outlined text-primary">security</span>
+<span class="text-label-sm font-bold">No Open Ports Required</span>
+</div>
+<div class="flex items-center gap-sm bg-surface p-sm rounded-lg border border-outline-variant">
+<span class="material-symbols-outlined text-primary">bolt</span>
+<span class="text-label-sm font-bold">Sub-second Latency</span>
+</div>
+</div>
+</div>
+</div>
+<!-- The Device Recommendation -->
+<div class="lg:col-span-7 bg-white border border-outline-variant rounded-xl overflow-hidden shadow-lg">
+<div class="p-lg bg-gradient-to-br from-surface to-surface-container">
+<div class="flex justify-between items-start mb-lg">
+<div>
+<h2 class="font-h2 text-h2 text-primary mb-xs">Get Started</h2>
+<p class="text-on-surface-variant font-body-md">Recommended Hardware Stack</p>
+</div>
+<img alt="Home Assistant Logo" class="w-12 h-12" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7BYcDVxpQpLFuECAg5sgbugbpfc3FpDjTCvXbJFAnKM6X__AVOPkdjXUKZG2fnsBKDkgKi3Sg9Ynp8Jcf0AHcLxatLRL8OfYwINrBr6CFfpcHmqj7vOt7-WO-MZGArrQhLrWN1DF0yDgyDb7WHJ3d_-pLlkNiPJYiKoXql32pb85vVdNHUTcfh5B7Lnz4HtNxvf_aU4lPQ8Nfm9CAsi-lEZU-WYEmQ9M-dBTm9iR3DqCXsJ7vecuz0ekv4qGjVmjlvNj7YWcyQQ8C"/>
+</div>
+<div class="flex flex-col md:flex-row gap-lg items-center">
+<div class="w-full md:w-1/2">
+<img class="rounded-lg shadow-md w-full aspect-square object-cover" data-alt="A professional studio product shot of a sleek, minimalist Home Assistant Blue or Yellow hub device. The device is placed on a clean white surface with soft studio lighting. In the background, a small soil moisture probe is visible, implying the connection between hardware and nature. The style is ultra-modern, high-end consumer electronics." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWCg8Lk_v1u_J1t-fB1SZwkZaV0RtBrgIsk2104allZxa5Lw2OHVmFDsd5UhHE2u81sYOvEudpDMW2BZnJk3rv17h-XGaSQkSm0i4WgLI6fJZNivXQJQ5D70B9ffrmsa6cboB7U08PYzzujUr2GpcUkNrWgeN-jHvJVqtg_UAEcvCMZMuQutyIvxf2JsRk1ibntmovKdkMgAfEubK_pbrR53wLZ8ZbXTjv1hpci-Cn-K7FSPloQXMxoKbeiqP2MSOPvBNNZRUMooWy"/>
+</div>
+<div class="w-full md:w-1/2 space-y-md">
+<h3 class="font-h3 text-h3 text-primary">Home Assistant BLE Device</h3>
+<p class="text-body-md text-on-surface-variant">
+                                        We recommend the official HA-BLE bridge. It effortlessly connects low-power Zigbee and Bluetooth sensors for soil moisture, humidity, and temperature.
+                                    </p>
+<ul class="space-y-xs text-label-sm">
+<li class="flex gap-xs items-center"><span class="material-symbols-outlined text-tertiary-container text-[18px]">radio</span> 100m Outdoor Range</li>
+<li class="flex gap-xs items-center"><span class="material-symbols-outlined text-tertiary-container text-[18px]">battery_very_low</span> 2-Year Sensor Battery Life</li>
+<li class="flex gap-xs items-center"><span class="material-symbols-outlined text-tertiary-container text-[18px]">hub</span> Supports 50+ Concurrent Nodes</li>
+</ul>
+<button class="bg-primary text-on-primary px-lg py-sm rounded-full font-bold w-full hover:scale-95 transition-all">Shop Compatible Hardware</button>
+</div>
+</div>
+</div>
+<div class="bg-primary-container p-md text-center">
+<p class="text-tertiary-fixed text-label-sm">Need help setting up your local hub? <a class="underline font-bold" href="#">Read our Wiki</a></p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-primary dark:bg-primary-container w-full px-margin py-lg flex flex-col md:flex-row justify-between items-center gap-md">
+<div class="flex flex-col gap-xs">
+<span class="font-h3 text-h3 text-on-primary">AgroManage</span>
+<p class="font-body-md text-on-primary-fixed-variant max-w-xs">Precision engineering for the next generation of land management.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-md">
+<a class="text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors font-body-md" href="#">Sustainability</a>
+<a class="text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors font-body-md" href="#">Technical Support</a>
+<a class="text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors font-body-md" href="#">Privacy Policy</a>
+<a class="text-on-primary-fixed-variant hover:text-tertiary-fixed-dim transition-colors font-body-md" href="#">Terms of Service</a>
+</div>
+<div class="text-on-primary-fixed-variant font-body-md">
+            © 2024 AgroManage Precision Systems. All rights reserved.
+        </div>
+</footer>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-surface dark:bg-inverse-surface flex justify-around items-center px-4 py-2 z-50 shadow-lg border-t border-outline-variant/10">
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-sm">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1">
+<span class="material-symbols-outlined">rocket_launch</span>
+<span class="text-label-sm">Hub</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant">
+<span class="material-symbols-outlined">grass</span>
+<span class="text-label-sm">GH</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="text-label-sm">Profile</span>
+</div>
+</nav>
+<script>
+        function switchTab(tabId) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            // Show target content
+            document.getElementById(tabId).classList.add('active');
+            
+            // Reset tab button styles
+            const buttons = ['the-project', 'pricing', 'iot'];
+            buttons.forEach(id => {
+                const btn = document.getElementById('tab-btn-' + id);
+                btn.classList.remove('active-tab', 'text-primary');
+                btn.classList.add('text-outline');
+            });
+            
+            // Set active button style
+            const activeBtn = document.getElementById('tab-btn-' + tabId);
+            activeBtn.classList.add('active-tab', 'text-primary');
+            activeBtn.classList.remove('text-outline');
+
+            window.scrollTo({ top: 400, behavior: 'smooth' });
+        }
+    </script>
+</body></html>

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AgroManage | Greenhouses</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#1b3022",
+                        "inverse-primary": "#b4cdb8",
+                        "tertiary": "#0e1b00",
+                        "on-tertiary-container": "#6ca200",
+                        "background": "#f8f9fa",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#edeeef",
+                        "primary-fixed": "#d0e9d4",
+                        "secondary-fixed": "#faddce",
+                        "on-surface-variant": "#434843",
+                        "surface-container-highest": "#e1e3e4",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-secondary-fixed": "#271810",
+                        "surface-bright": "#f8f9fa",
+                        "surface-container-low": "#f3f4f5",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#98da27",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#1e3100",
+                        "secondary": "#6f5a4f",
+                        "on-background": "#191c1d",
+                        "secondary-container": "#f7dacc",
+                        "on-primary-container": "#819986",
+                        "inverse-surface": "#2e3132",
+                        "tertiary-fixed": "#b2f746",
+                        "primary-fixed-dim": "#b4cdb8",
+                        "on-error-container": "#93000a",
+                        "primary": "#061b0e",
+                        "on-secondary-container": "#745e53",
+                        "on-secondary-fixed-variant": "#564338",
+                        "on-tertiary-fixed-variant": "#334f00",
+                        "surface-dim": "#d9dadb",
+                        "surface-tint": "#4d6453",
+                        "secondary-fixed-dim": "#ddc1b3",
+                        "on-tertiary-fixed": "#121f00",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#0b2013",
+                        "surface": "#f8f9fa",
+                        "on-surface": "#191c1d",
+                        "surface-variant": "#e1e3e4",
+                        "outline-variant": "#c3c8c1",
+                        "surface-container-high": "#e7e8e9",
+                        "on-primary-fixed-variant": "#364c3c",
+                        "on-primary": "#ffffff",
+                        "outline": "#737973",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "64px",
+                        "gutter": "24px",
+                        "lg": "48px",
+                        "xs": "4px",
+                        "md": "24px",
+                        "sm": "12px",
+                        "base": "8px",
+                        "margin": "32px"
+                    },
+                    "fontFamily": {
+                        "data-tabular": ["Inter"],
+                        "h3": ["Inter"],
+                        "h1": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "h2": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-tabular": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "h3": ["24px", {"lineHeight": "1.3", "letterSpacing": "0", "fontWeight": "600"}],
+                        "h1": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "h2": ["32px", {"lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-surface flex min-h-screen">
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex flex-col h-screen left-0 w-64 bg-surface-container-low border-r border-outline-variant p-md gap-sm sticky top-0">
+<div class="flex items-center gap-sm mb-lg px-xs">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary-fixed" data-icon="Agriculture"></span>
+</div>
+<div>
+<h1 class="font-h3 text-h3 font-bold text-primary">AgroManage</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant opacity-70">Land &amp; Tech</p>
+</div>
+</div>
+<nav class="flex-grow flex flex-col gap-xs">
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant opacity-70 font-label-sm text-label-sm hover:bg-surface-container-highest transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard"></span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant opacity-70 font-label-sm text-label-sm hover:bg-surface-container-highest transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="landscape"></span>
+                Parcels
+            </a>
+<a class="flex items-center gap-md px-md py-sm bg-tertiary-container text-on-tertiary-container rounded-lg font-bold font-label-sm text-label-sm translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="Agriculture" style="font-variation-settings: 'FILL' 1;"></span>
+                Greenhouses
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant opacity-70 font-label-sm text-label-sm hover:bg-surface-container-highest transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="person"></span>
+                Profile
+            </a>
+</nav>
+<button class="mt-auto bg-tertiary-fixed text-on-tertiary-fixed font-bold py-sm px-md rounded-lg flex items-center justify-center gap-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" data-icon="add"></span>
+            Add New Parcel
+        </button>
+</aside>
+<main class="flex-grow flex flex-col min-w-0">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-margin py-base sticky top-0 z-50 bg-surface shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="flex items-center md:hidden">
+<span class="font-h2 text-h2 font-bold text-primary">AgroManage</span>
+</div>
+<div class="hidden md:flex items-center gap-lg">
+<span class="font-h3 text-h3 text-primary">Greenhouse Management</span>
+</div>
+<div class="flex items-center gap-md">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline" data-icon="search"></span>
+<input class="bg-surface-container-low border border-outline-variant rounded-full pl-xl pr-md py-xs text-body-md focus:outline-none focus:border-primary w-64" placeholder="Search structures..." type="text"/>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="notifications"></span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="settings"></span>
+</button>
+<img alt="User profile avatar" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A professional headshot of a modern agricultural manager in a bright, clean indoor office setting. The lighting is soft and natural, reflecting a high-end corporate aesthetic. The manager has a confident expression, wearing a smart casual earth-toned shirt. The background is slightly blurred with hints of architectural greenery and sleek glass partitions." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAweOLalDPh1FeCtdX9LZFt5QQMvUaOPJwMuYwEO8YEOK3kvh-AakUdlIzfBPH9ai7_LUdRPWbOG0NqTpCDlkHfi2IBcSg2-LX47VCyoTQC1o_1__ftp61yeFtPbijyV8DdkyO3w2aTwkhkqn79B-N4ktYv9kYPUVbwipR8xkB6LgIt3hqeGXoBjKb1p57wB2uYJyPh3TSivqqw8lXSiMQCPG8v3gocmZr7468BBljrTKJb8lTRrl7y58IT5sm6tvuo3ySFpMjzCtRL"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<div class="p-margin flex flex-col gap-lg">
+<!-- Header Section -->
+<section class="flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<h2 class="font-h1 text-h1 text-primary">Active Greenhouse Fleet</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mt-xs">Real-time telemetry and climate control monitoring for high-precision indoor cultivation units.</p>
+</div>
+<div class="flex gap-sm">
+<button class="bg-surface-container-highest text-primary font-bold px-md py-sm rounded-lg flex items-center gap-sm border border-outline-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined" data-icon="history"></span>
+                        Historical Reports
+                    </button>
+<button class="bg-tertiary-fixed text-on-tertiary-fixed font-bold px-md py-sm rounded-lg flex items-center gap-sm shadow-[0px_0px_8px_rgba(163,230,53,0.4)] hover:opacity-90 transition-all">
+<span class="material-symbols-outlined" data-icon="add_box"></span>
+                        Register Unit
+                    </button>
+</div>
+</section>
+<!-- Status Overview Bento -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+<div class="bg-surface border border-outline-variant rounded-xl p-md shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Avg Temperature</span>
+<span class="material-symbols-outlined text-on-tertiary-container" data-icon="thermostat"></span>
+</div>
+<div class="font-h2 text-h2 text-primary">24.5°C</div>
+<div class="mt-xs text-label-sm text-on-tertiary-container flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="trending_up"></span>
+                        +0.2% from last hour
+                    </div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl p-md shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Avg Humidity</span>
+<span class="material-symbols-outlined text-secondary" data-icon="humidity_percentage"></span>
+</div>
+<div class="font-h2 text-h2 text-primary">62.8%</div>
+<div class="mt-xs text-label-sm text-secondary flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="check_circle"></span>
+                        Optimal Range
+                    </div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl p-md shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Active Units</span>
+<span class="material-symbols-outlined text-primary" data-icon="factory"></span>
+</div>
+<div class="font-h2 text-h2 text-primary">12 / 14</div>
+<div class="mt-xs text-label-sm text-on-surface-variant flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="info"></span>
+                        2 Units in Maintenance
+                    </div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl p-md shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">CO2 Levels</span>
+<span class="material-symbols-outlined text-on-tertiary-container" data-icon="co2"></span>
+</div>
+<div class="font-h2 text-h2 text-primary">850 ppm</div>
+<div class="mt-xs text-label-sm text-on-tertiary-container flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="trending_down"></span>
+                        -12 ppm from average
+                    </div>
+</div>
+</div>
+<!-- Greenhouse Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Greenhouse Card 1 -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-[0px_4px_12px_rgba(27,48,34,0.05)] group">
+<div class="relative h-48 w-full">
+<img class="w-full h-full object-cover" data-alt="A wide-angle interior shot of a technologically advanced greenhouse featuring automated irrigation lines and pristine rows of young tomato plants. The structure is made of sleek metal and high-transparency glass, filled with bright natural sunlight and soft shadows. The overall aesthetic is professional, modern, and focused on clean agricultural technology with a color palette of vibrant greens and soft whites." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTic-_xc0pM_zk-n_x1K-flr9ok6mbSV-8xDUf3FmokDPboTKAaNij5b2wfVoH5GFbaGrPw0UemCx9inGtP5MZTqFetK6gdbUgkHVvhnvvgGTLV4eTbwIQRn17lI7pNEaZMmZ2HZz7esKFgV8OIywK2QDQXomdk4MsABnyA_0eDiViYkn0vDLkGYyBVEcUrY0zJiY7a7FrJQ3GPchEvPNwnIqfLDA8ht57wLgIhFL4JmbwfOKC2QY3luK9TCI6WLqlLstHHTxN_yWC"/>
+<div class="absolute top-sm right-sm bg-tertiary-fixed text-on-tertiary-fixed font-bold px-sm py-xs rounded text-label-sm flex items-center gap-xs">
+<span class="w-2 h-2 bg-on-tertiary-container rounded-full"></span>
+                            ACTIVE
+                        </div>
+</div>
+<div class="p-md">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-h3 text-h3 text-primary">Unit Alpha-01</h3>
+<span class="text-on-surface-variant text-body-md">ID: GH-2024-A1</span>
+</div>
+<div class="grid grid-cols-2 gap-sm mb-md">
+<div class="bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<p class="text-label-sm text-on-surface-variant mb-xs">TEMP</p>
+<p class="font-data-tabular text-data-tabular text-primary">24.2°C</p>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<p class="text-label-sm text-on-surface-variant mb-xs">HUMIDITY</p>
+<p class="font-data-tabular text-data-tabular text-primary">64%</p>
+</div>
+</div>
+<div class="space-y-sm">
+<div class="flex justify-between text-label-sm">
+<span class="text-on-surface-variant">Nutrient Solution Level</span>
+<span class="text-primary font-bold">82%</span>
+</div>
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-tertiary-fixed h-full w-[82%]"></div>
+</div>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex justify-between">
+<button class="text-primary font-bold text-label-sm flex items-center gap-xs group-hover:translate-x-1 transition-transform">
+                                VIEW ANALYTICS <span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward"></span>
+</button>
+<span class="material-symbols-outlined text-outline" data-icon="more_vert"></span>
+</div>
+</div>
+</div>
+<!-- Greenhouse Card 2 -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-[0px_4px_12px_rgba(27,48,34,0.05)] group">
+<div class="relative h-48 w-full">
+<img class="w-full h-full object-cover" data-alt="A close-up perspective of high-density vertical farming racks inside a futuristic greenhouse. LED grow lights cast a soft magenta and white glow onto rows of lush leafy greens. The environment is impeccably clean, featuring stainless steel frames and clear nutrient delivery tubes. The atmosphere is quiet, precise, and highlights a high-tech approach to sustainable food production." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6efEhWfwtt45NYA2XSowaK0b27h73OhEwDDzUGxhxlXRIZeX-uRpUY_ZD0DMmOUkBvts1cZ4p9akSWBUfHbIxrzhtOQ4zY-qJdyPa3gkpX03mFK5OabE9uLeAIK7IziXZdbpwEQ5OTShbJBM5DVo6aHzmNNvV43KgBA7bDd1GyE1wsPTF606I7qOYkEWwY4257gHltvfhi-HOJeJxp2C8hsiVBxbWz7DKatwg-mpK0YEU9D_3C-R4MHsuo37BLAw8Ea327LHtHm_h"/>
+<div class="absolute top-sm right-sm bg-tertiary-fixed text-on-tertiary-fixed font-bold px-sm py-xs rounded text-label-sm flex items-center gap-xs">
+<span class="w-2 h-2 bg-on-tertiary-container rounded-full"></span>
+                            ACTIVE
+                        </div>
+</div>
+<div class="p-md">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-h3 text-h3 text-primary">Unit Beta-04</h3>
+<span class="text-on-surface-variant text-body-md">ID: GH-2024-B4</span>
+</div>
+<div class="grid grid-cols-2 gap-sm mb-md">
+<div class="bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<p class="text-label-sm text-on-surface-variant mb-xs">TEMP</p>
+<p class="font-data-tabular text-data-tabular text-primary">22.8°C</p>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<p class="text-label-sm text-on-surface-variant mb-xs">HUMIDITY</p>
+<p class="font-data-tabular text-data-tabular text-primary">58%</p>
+</div>
+</div>
+<div class="space-y-sm">
+<div class="flex justify-between text-label-sm">
+<span class="text-on-surface-variant">Lighting Load</span>
+<span class="text-primary font-bold">45%</span>
+</div>
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-tertiary-fixed h-full w-[45%]"></div>
+</div>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex justify-between">
+<button class="text-primary font-bold text-label-sm flex items-center gap-xs group-hover:translate-x-1 transition-transform">
+                                VIEW ANALYTICS <span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward"></span>
+</button>
+<span class="material-symbols-outlined text-outline" data-icon="more_vert"></span>
+</div>
+</div>
+</div>
+<!-- Greenhouse Card 3 (Maintenance State) -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-[0px_4px_12px_rgba(27,48,34,0.05)] group">
+<div class="relative h-48 w-full grayscale opacity-70">
+<img class="w-full h-full object-cover" data-alt="An empty greenhouse space undergoing maintenance, with some structural glass panels reflecting the outdoor sky. Maintenance equipment like a small stepladder and technician toolboxes are neatly organized in the foreground. The lighting is bright morning light, emphasizing the geometric precision of the empty greenhouse framing. The mood is industrial, orderly, and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvZGtaPwuORwOWxEalB33UJjAhAGxla9xqQv8YLbbFV86Ed8DlyiOW93hqY0BCM89PoJ-kp948bFt38i8rF1wrXgThnZ1HzF29O7vcfGhDKxayWKizXozH0_UTuY1yzS2sVsqNfkX1ybBUmZBFPwNOeFXwCQK7RZ7F5DTsgCzvaVsY_wuaUq-Azfm1oXYg4pZxVKd-fOskrDUSev_gGC52Kq0BhACH5uqkKjfg7EYk_k-MaUBysaqPhxIDDwMPG6ccU8iKwgOIrNgZ"/>
+<div class="absolute top-sm right-sm bg-secondary-container text-on-secondary-container font-bold px-sm py-xs rounded text-label-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px]" data-icon="build"></span>
+                            MAINTENANCE
+                        </div>
+</div>
+<div class="p-md">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-h3 text-h3 text-primary">Unit Gamma-02</h3>
+<span class="text-on-surface-variant text-body-md">ID: GH-2024-G2</span>
+</div>
+<div class="grid grid-cols-2 gap-sm mb-md">
+<div class="bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<p class="text-label-sm text-on-surface-variant mb-xs">TEMP</p>
+<p class="font-data-tabular text-data-tabular text-on-surface-variant">--.-°C</p>
+</div>
+<div class="bg-surface-container-low p-sm rounded-lg border border-outline-variant/30">
+<p class="text-label-sm text-on-surface-variant mb-xs">HUMIDITY</p>
+<p class="font-data-tabular text-data-tabular text-on-surface-variant">--%</p>
+</div>
+</div>
+<div class="p-sm bg-error-container/20 rounded-lg border border-error/10 flex items-start gap-sm">
+<span class="material-symbols-outlined text-error text-[20px]" data-icon="warning"></span>
+<p class="text-label-sm text-error">Sensors offline for scheduled calibration. Estimated completion: 4h.</p>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex justify-between">
+<button class="text-primary font-bold text-label-sm flex items-center gap-xs group-hover:translate-x-1 transition-transform">
+                                MAINTENANCE LOG <span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward"></span>
+</button>
+<span class="material-symbols-outlined text-outline" data-icon="more_vert"></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Historical Data Table -->
+<section class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-[0px_4px_12px_rgba(27,48,34,0.05)]">
+<div class="px-md py-md border-b border-outline-variant flex justify-between items-center bg-primary/5">
+<h3 class="font-h3 text-h3 text-primary">System Performance History</h3>
+<button class="text-primary font-bold text-label-sm flex items-center gap-xs hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined text-[20px]" data-icon="download"></span>
+                        EXPORT CSV
+                    </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-primary-container/5">
+<th class="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Timestamp</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Greenhouse</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Event</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Duration</th>
+<th class="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-md font-data-tabular text-data-tabular text-on-surface">2024-05-24 14:32</td>
+<td class="px-md py-md font-body-md text-body-md text-primary font-semibold">Alpha-01</td>
+<td class="px-md py-md font-body-md text-body-md text-on-surface">Automated Irrigation Cycle</td>
+<td class="px-md py-md font-data-tabular text-data-tabular text-on-surface-variant">12m 40s</td>
+<td class="px-md py-md text-right">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-sm py-xs rounded text-label-sm font-bold">COMPLETED</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-md font-data-tabular text-data-tabular text-on-surface">2024-05-24 13:15</td>
+<td class="px-md py-md font-body-md text-body-md text-primary font-semibold">Beta-04</td>
+<td class="px-md py-md font-body-md text-body-md text-on-surface">Climate Adjustment (Fan On)</td>
+<td class="px-md py-md font-data-tabular text-data-tabular text-on-surface-variant">45m 00s</td>
+<td class="px-md py-md text-right">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-sm py-xs rounded text-label-sm font-bold">COMPLETED</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-md font-data-tabular text-data-tabular text-on-surface">2024-05-24 11:00</td>
+<td class="px-md py-md font-body-md text-body-md text-primary font-semibold">Gamma-02</td>
+<td class="px-md py-md font-body-md text-body-md text-on-surface">Scheduled Sensor Calibration</td>
+<td class="px-md py-md font-data-tabular text-data-tabular text-on-surface-variant">In Progress</td>
+<td class="px-md py-md text-right">
+<span class="bg-secondary-container text-on-secondary-container px-sm py-xs rounded text-label-sm font-bold">PENDING</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-md py-md font-data-tabular text-data-tabular text-on-surface">2024-05-24 09:20</td>
+<td class="px-md py-md font-body-md text-body-md text-primary font-semibold">Alpha-01</td>
+<td class="px-md py-md font-body-md text-body-md text-on-surface">CO2 Injection Cycle</td>
+<td class="px-md py-md font-data-tabular text-data-tabular text-on-surface-variant">25m 12s</td>
+<td class="px-md py-md text-right">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed px-sm py-xs rounded text-label-sm font-bold">COMPLETED</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Footer -->
+<footer class="w-full px-margin py-lg flex flex-col md:flex-row justify-between items-center gap-md bg-primary dark:bg-primary-container mt-auto">
+<div class="flex flex-col items-center md:items-start gap-xs">
+<span class="font-h3 text-h3 text-on-primary">AgroManage</span>
+<p class="font-body-md text-body-md text-on-primary-fixed-variant opacity-80">© 2024 AgroManage Precision Systems. All rights reserved.</p>
+</div>
+<div class="flex gap-lg">
+<a class="text-on-primary-fixed-variant font-body-md text-body-md hover:text-tertiary-fixed-dim transition-colors" href="#">Sustainability</a>
+<a class="text-on-primary-fixed-variant font-body-md text-body-md hover:text-tertiary-fixed-dim transition-colors" href="#">Technical Support</a>
+<a class="text-on-primary-fixed-variant font-body-md text-body-md hover:text-tertiary-fixed-dim transition-colors" href="#">Privacy Policy</a>
+</div>
+</footer>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full flex justify-around items-center px-4 py-2 bg-surface shadow-[0px_-4px_12px_rgba(27,48,34,0.05)] z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm text-label-sm py-1" href="#">
+<span class="material-symbols-outlined" data-icon="home"></span>
+            Home
+        </a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm text-label-sm py-1" href="#">
+<span class="material-symbols-outlined" data-icon="map"></span>
+            Land
+        </a>
+<a class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 font-bold font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" data-icon="grass" style="font-variation-settings: 'FILL' 1;"></span>
+            GH
+        </a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant font-label-sm text-label-sm py-1" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle"></span>
+            Profile
+        </a>
+</nav>
+</body></html>

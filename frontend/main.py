@@ -83,8 +83,17 @@ def _point_in_ring(px, py, ring):
     return inside
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
+def index():
+    if 'user_id' in session:
+        return redirect(url_for('mapa'))
+    return render_template('index.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
+    if 'user_id' in session:
+        return redirect(url_for('mapa'))
     error = None
     if request.method == 'POST':
         resp = requests.post(f'{API_URL}/login', json={

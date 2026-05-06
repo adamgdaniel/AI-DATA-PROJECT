@@ -1,92 +1,230 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>AgroMonitor – Login</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgroManage – Iniciar Sesión</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary":                  "#061b0e",
+            "on-primary":               "#ffffff",
+            "primary-container":        "#1b3022",
+            "on-primary-container":     "#819986",
+            "primary-fixed":            "#d0e9d4",
+            "primary-fixed-dim":        "#b4cdb8",
+            "on-primary-fixed-variant": "#364c3c",
+            "tertiary-fixed":           "#b2f746",
+            "tertiary-fixed-dim":       "#98da27",
+            "on-tertiary-fixed":        "#121f00",
+            "on-tertiary-container":    "#6ca200",
+            "tertiary-container":       "#1e3100",
+            "background":               "#f8f9fa",
+            "surface":                  "#ffffff",
+            "surface-container-low":    "#f3f4f5",
+            "surface-container":        "#edeeef",
+            "surface-container-high":   "#e7e8e9",
+            "on-surface":               "#191c1d",
+            "on-surface-variant":       "#434843",
+            "outline":                  "#737973",
+            "outline-variant":          "#c3c8c1",
+            "error":                    "#ba1a1a",
+            "error-container":          "#ffdad6",
+          },
+          fontFamily: { sans: ["Inter", "sans-serif"] }
+        }
+      }
+    }
+  </script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background-image: url('/icons/fondo_login_page.webp');
-      background-repeat: no-repeat;
-      background-position: center center;
-      background-size: auto 100%;
-      position: relative;
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     }
-
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: rgba(255,255,255,0.30);
-      z-index: 0;
+    input:-webkit-autofill {
+      -webkit-box-shadow: 0 0 0 50px white inset;
+      -webkit-text-fill-color: #191c1d;
     }
-
-    .branding, form {
-      position: relative;
-      z-index: 1;
-    }
-
-    .branding {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 30px;
-    }
-
-    .branding img {
-      width: 185px;
-      height: 185px;
-      object-fit: contain;
-    }
-
-    .branding h1 {
-      font-size: 2.6rem;
-      font-weight: 700;
-      color: #fff;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.55);
-      letter-spacing: 0.5px;
-    }
-
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 13px;
-      width: 350px;
-      background: rgba(255,255,255,0.88);
-      padding: 35px 30px;
-      border-radius: 13px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    }
-
-    input { padding: 10px; font-size: 18px; border: 1px solid #ccc; border-radius: 4px; }
-    button { padding: 11px; background: #2d6a2d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 18px; }
-    button:hover { background: #245224; }
-    .error { color: red; font-size: 16px; }
-    a { text-align: center; font-size: 16px; color: #2d6a2d; }
   </style>
-  <link rel="stylesheet" href="/static/theme-override.css"/>
 </head>
-<body>
-  <div class="branding">
-    <img src="/icons/logo_png.png" alt="AgroMonitor logo">
-    <h1>AgroMonitor</h1>
+<body class="font-sans antialiased bg-background text-on-surface min-h-screen flex">
+
+  <!-- ── PANEL IZQUIERDO: imagen ─────────────────────────────────────── -->
+  <div class="hidden lg:flex lg:w-[55%] relative overflow-hidden">
+    <img src="/icons/fondo_login_page.webp" alt="Campo agrícola"
+         class="absolute inset-0 w-full h-full object-cover"/>
+
+    <!-- Gradiente oscuro sobre la imagen -->
+    <div class="absolute inset-0 bg-gradient-to-br from-primary-container/95 via-primary-container/75 to-primary/40"></div>
+
+    <!-- Contenido sobre la imagen -->
+    <div class="relative z-10 flex flex-col justify-between h-full p-12">
+
+      <!-- Logo superior -->
+      <div class="flex items-center gap-3">
+        <img src="/icons/logo_png.png" alt="AgroManage"
+             class="w-10 h-10 object-contain rounded-lg"/>
+        <span class="text-2xl font-bold text-on-primary tracking-tight">AgroManage</span>
+      </div>
+
+      <!-- Claim central -->
+      <div>
+        <span class="inline-flex items-center gap-1.5 bg-tertiary-fixed/15 border border-tertiary-fixed/25 text-tertiary-fixed px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest mb-6">
+          <span class="material-symbols-outlined text-sm">eco</span>
+          Plataforma agronómica
+        </span>
+        <h1 class="text-4xl font-bold text-on-primary leading-tight mb-4">
+          Gestiona tus parcelas<br/>con inteligencia.
+        </h1>
+        <p class="text-primary-fixed-dim text-base leading-relaxed max-w-sm">
+          Previsión meteorológica, sensores IoT y recomendaciones de riego,
+          abonado y poda adaptadas a cada cultivo.
+        </p>
+      </div>
+
+      <!-- Feature pills inferiores -->
+      <div class="flex flex-wrap gap-2">
+        <span class="flex items-center gap-1.5 bg-primary/50 backdrop-blur-sm border border-primary-fixed/20 text-primary-fixed px-3 py-1.5 rounded-full text-xs font-medium">
+          <span class="material-symbols-outlined text-sm">map</span>SIGPAC
+        </span>
+        <span class="flex items-center gap-1.5 bg-primary/50 backdrop-blur-sm border border-primary-fixed/20 text-primary-fixed px-3 py-1.5 rounded-full text-xs font-medium">
+          <span class="material-symbols-outlined text-sm">partly_cloudy_day</span>Open-Meteo · AEMET
+        </span>
+        <span class="flex items-center gap-1.5 bg-primary/50 backdrop-blur-sm border border-primary-fixed/20 text-primary-fixed px-3 py-1.5 rounded-full text-xs font-medium">
+          <span class="material-symbols-outlined text-sm">sensors</span>Home Assistant IoT
+        </span>
+        <span class="flex items-center gap-1.5 bg-primary/50 backdrop-blur-sm border border-primary-fixed/20 text-primary-fixed px-3 py-1.5 rounded-full text-xs font-medium">
+          <span class="material-symbols-outlined text-sm">psychology</span>IA Agronómica
+        </span>
+      </div>
+
+    </div>
   </div>
 
-  <form method="POST">
-    <input type="text" name="username" placeholder="Usuario" required>
-    <input type="password" name="password" placeholder="Contraseña" required>
-    <button type="submit">Entrar</button>
-    {% if error %}
-      <p class="error">{{ error }}</p>
-    {% endif %}
-    <a href="/register">Crear cuenta</a>
-  </form>
+  <!-- ── PANEL DERECHO: formulario ──────────────────────────────────── -->
+  <div class="flex-1 flex flex-col justify-between bg-surface px-8 py-10 sm:px-12 lg:px-16">
+
+    <!-- Header con back link y logo mobile -->
+    <div class="flex items-center justify-between">
+      <a href="/"
+         class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-sm font-medium">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        Volver al inicio
+      </a>
+      <!-- Logo solo en mobile -->
+      <div class="flex items-center gap-2 lg:hidden">
+        <img src="/icons/logo_png.png" alt="AgroManage" class="w-8 h-8 object-contain rounded"/>
+        <span class="text-lg font-bold text-primary">AgroManage</span>
+      </div>
+    </div>
+
+    <!-- Formulario centrado -->
+    <div class="w-full max-w-sm mx-auto">
+
+      <div class="mb-8">
+        <h2 class="text-3xl font-bold text-primary mb-1">Bienvenido de nuevo</h2>
+        <p class="text-on-surface-variant text-sm">Introduce tus credenciales para acceder a tus parcelas.</p>
+      </div>
+
+      <form method="POST" action="/login" class="flex flex-col gap-4">
+
+        <!-- Usuario -->
+        <div class="flex flex-col gap-1.5">
+          <label for="username" class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">
+            Usuario
+          </label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">
+              person
+            </span>
+            <input
+              id="username" type="text" name="username"
+              placeholder="Tu nombre de usuario"
+              required autocomplete="username"
+              class="w-full pl-10 pr-4 py-3 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface placeholder:text-outline
+                     focus:outline-none focus:border-on-tertiary-container focus:ring-2 focus:ring-on-tertiary-container/20 transition-all"
+            />
+          </div>
+        </div>
+
+        <!-- Contraseña -->
+        <div class="flex flex-col gap-1.5">
+          <label for="password" class="text-xs font-semibold text-on-surface-variant uppercase tracking-widest">
+            Contraseña
+          </label>
+          <div class="relative">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">
+              lock
+            </span>
+            <input
+              id="password" type="password" name="password"
+              placeholder="Tu contraseña"
+              required autocomplete="current-password"
+              class="w-full pl-10 pr-10 py-3 border border-outline-variant rounded-lg text-sm text-on-surface bg-surface placeholder:text-outline
+                     focus:outline-none focus:border-on-tertiary-container focus:ring-2 focus:ring-on-tertiary-container/20 transition-all"
+            />
+            <button type="button" onclick="togglePassword()"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors">
+              <span class="material-symbols-outlined text-xl" id="eye-icon">visibility</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error -->
+        {% if error %}
+        <div class="flex items-center gap-2 bg-error-container text-error px-4 py-3 rounded-lg text-sm font-medium">
+          <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
+          {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- Submit -->
+        <button type="submit"
+          class="w-full bg-primary text-on-primary py-3 rounded-lg font-semibold text-sm
+                 hover:opacity-90 active:scale-[0.98] transition-all mt-1">
+          Iniciar Sesión
+        </button>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-3 my-1">
+          <div class="flex-1 h-px bg-outline-variant"></div>
+          <span class="text-xs text-outline font-medium">¿No tienes cuenta?</span>
+          <div class="flex-1 h-px bg-outline-variant"></div>
+        </div>
+
+        <!-- Register link -->
+        <a href="/register"
+          class="w-full border border-outline-variant text-on-surface-variant py-3 rounded-lg font-semibold text-sm text-center
+                 hover:bg-surface-container-low hover:text-primary transition-all">
+          Crear cuenta nueva
+        </a>
+
+      </form>
+    </div>
+
+    <!-- Footer mínimo -->
+    <p class="text-center text-xs text-outline">
+      © 2024 AgroManage · Máster Data/IA EDEM
+    </p>
+
+  </div>
+
 </body>
+<script>
+  function togglePassword() {
+    const input = document.getElementById('password');
+    const icon  = document.getElementById('eye-icon');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.textContent = 'visibility_off';
+    } else {
+      input.type = 'password';
+      icon.textContent = 'visibility';
+    }
+  }
+</script>
 </html>
