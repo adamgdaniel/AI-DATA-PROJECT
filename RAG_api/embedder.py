@@ -4,7 +4,7 @@ from vertexai.language_models import TextEmbeddingModel
 
 vertexai.init(
     project=os.environ.get("GCP_PROJECT_ID", "project-7f8b4dee-2b72-40f2-941"),
-    location=os.environ.get("GCP_REGION", "europe-west1")
+    location=os.environ.get("GCP_REGION", "us-central1")
 )
 
 _model = None
@@ -13,7 +13,7 @@ _model = None
 def _get_model() -> TextEmbeddingModel:
     global _model
     if _model is None:
-        _model = TextEmbeddingModel.from_pretrained("textembedding-gecko@003")
+        _model = TextEmbeddingModel.from_pretrained("text-embedding-004")
     return _model
 
 
