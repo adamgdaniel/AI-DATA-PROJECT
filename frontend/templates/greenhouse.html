@@ -20,20 +20,24 @@
     }
 
     header {
-      background: rgba(6, 27, 14, 0.94); color: white;
+      background: rgba(27, 48, 34, 0.84); color: white;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
       padding: 11px 20px; flex-shrink: 0;
       display: flex; justify-content: space-between; align-items: center;
-      z-index: 10; backdrop-filter: blur(6px);
+      z-index: 10;
     }
     .header-brand { display: flex; align-items: center; gap: 8px; }
-    .header-brand img { height: 28px; object-fit: contain; border-radius: 5px; }
+    .header-brand img { height: 28px; object-fit: contain; }
     .header-brand span { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; }
     .header-nav { display: flex; gap: 4px; align-items: center; }
     .header-nav a {
       color: #b4cdb8; font-size: 13px; font-weight: 500; text-decoration: none;
+      display: flex; align-items: center; gap: 5px;
       padding: 5px 10px; border-radius: 7px; transition: background .15s, color .15s;
     }
     .header-nav a:hover { background: rgba(255,255,255,.08); color: #d0e9d4; }
+    .header-nav a img { height: 17px; width: 17px; object-fit: contain; flex-shrink: 0; }
+    .header-nav .logout { color: #9db8a2; }
 
     /* ── Top bar ── */
     #top-bar {
@@ -291,8 +295,8 @@
 <div id="landing">
   <div id="landing-panel">
     <div id="landing-logo">
-      <img src="/icons/logo_nuevo.png" alt="AgroMonitor">
-      <span>AgroMonitor</span>
+      <img src="/icons/logo_light.svg" alt="AgroManage">
+      <span>AgroManage</span>
     </div>
     <h2>Mis Invernaderos</h2>
     <div id="gh-cards"><div id="gh-cards-empty">Cargando...</div></div>
@@ -302,13 +306,13 @@
 
 <header>
   <div class="header-brand">
-    <img src="/icons/logo_nuevo.png" alt="AgroManage"/>
+    <img src="/icons/logo_light.svg" alt="AgroManage"/>
     <span>AgroManage</span>
   </div>
   <nav class="header-nav">
-    <a href="/mapa">Mis parcelas</a>
-    <a href="/home-assistant">Home Assistant</a>
-    <a href="/logout">Cerrar sesión</a>
+    <a href="/mapa"><img src="/icons/logo_light.svg" alt=""/>Mis parcelas</a>
+    <a href="/home-assistant"><img src="/icons/home_assistant_logo.png" alt=""/>Home Assistant</a>
+    <a href="/logout" class="logout"><img src="/icons/logout_icon.png" alt=""/>Cerrar sesión</a>
   </nav>
 </header>
 
