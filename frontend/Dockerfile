@@ -5,4 +5,5 @@ RUN pip install -r requirements.txt
 COPY main.py .
 COPY templates/ templates/
 COPY icons/ icons/
+COPY static/ static/
 CMD ["python", "main.py"]

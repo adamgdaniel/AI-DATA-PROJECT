@@ -31,39 +31,62 @@ def _build_tools() -> list[Tool]:
     ])]
 
 
-def _get_sensor_context(parcela_usuario_id: int) -> str:
+def _get_sensor_context(parcela_id: str) -> str:
     """Llama a sensor-api y formatea el contexto como texto para el prompt."""
     try:
         resp = requests.get(
             f"{SENSOR_API_URL}/sensores/contexto",
-            params={"parcela_id": parcela_usuario_id},
+            params={"parcela_id": parcela_id},
             timeout=10,
         )
         if resp.status_code != 200:
             return ""
         ctx = resp.json()
-        lines = [f"Cultivo: {ctx['parcela_info'].get('cultivo', 'desconocido')}"]
-        for var, vals in ctx.get("ultimas_24h", {}).items():
-            lines.append(f"{var} (24h): media={vals['avg']}, min={vals['min']}, max={vals['max']}")
-        acciones = ctx.get("ultimas_acciones", [])
+
+        # Construir resumen legible para el system prompt
+        lines = [f"Parcela: {ctx.get('parcela_id', parcela_id)}"]
+        lines.append(f"Cultivo: {ctx.get('cultivo', 'desconocido')}")
+
+        # Métricas últimas 24h
+        h24 = ctx.get("ultimas_24h", {})
+        if h24.get("temp_media") is not None:
+            lines.append(f"Temperatura (24h): {h24['temp_media']}°C")
+        if h24.get("humedad_suelo_media") is not None:
+            lines.append(f"Humedad suelo (24h): {h24['humedad_suelo_media']}%")
+        if h24.get("humedad_ambiental_media") is not None:
+            lines.append(f"Humedad ambiental (24h): {h24['humedad_ambiental_media']}%")
+
+        # Métricas últimos 7 días
+        d7 = ctx.get("ultimos_7d", {})
+        if d7.get("temp_media") is not None:
+            lines.append(f"Temperatura media (7d): {d7['temp_media']}°C")
+        if d7.get("precipitacion_acumulada") is not None:
+            lines.append(f"Precipitación acumulada (7d): {d7['precipitacion_acumulada']} mm")
+        if d7.get("et0_acumulado") is not None:
+            lines.append(f"ET₀ acumulado (7d): {d7['et0_acumulado']} mm")
+
+        # Acciones recientes del agricultor
+        acciones = ctx.get("acciones_recientes", [])
         if acciones:
             a = acciones[0]
-            lines.append(f"Última acción: {a['tipo']} el {a['fecha'][:10]}")
+            detalle = f" ({a['detalle']})" if a.get("detalle") else ""
+            lines.append(f"Última acción: {a['tipo']} el {a['fecha'][:10]}{detalle}")
+
         return "\n".join(lines)
     except Exception:
         return ""
 
 
 class ChatRequest(BaseModel):
-    user_id: int
-    parcela_usuario_id: Optional[int] = None
+    user_id: str
+    parcela_id: Optional[str] = None
     mensaje: str
 
 
 @app.post("/agent/chat")
 def chat(req: ChatRequest):
     # 1. Obtener contexto de la parcela desde sensor-api
-    contexto = _get_sensor_context(req.parcela_usuario_id) if req.parcela_usuario_id else ""
+    contexto = _get_sensor_context(req.parcela_id) if req.parcela_id else ""
 
     # 2. Construir prompt enriquecido con el contexto
     if contexto:

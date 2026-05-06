@@ -44,7 +44,7 @@ class CargarParcelasSQL(beam.DoFn):
     def process(self, element):
         cursor = self._conn.cursor()
         cursor.execute("""
-            SELECT id, parcela_id, cultivo, lat, lng, provincia, municipio, superficie
+            SELECT id, parcela_id, cultivo, variedad, lat, lng, provincia, municipio, superficie
             FROM parcelas_usuario
         """)
         parcelas = {}
@@ -52,11 +52,12 @@ class CargarParcelasSQL(beam.DoFn):
             parcelas[row[0]] = {
                 'parcela_id': row[1],
                 'cultivo':    row[2],
-                'lat':        float(row[3]) if row[3] else None,
-                'lng':        float(row[4]) if row[4] else None,
-                'provincia':  row[5],
-                'municipio':  row[6],
-                'superficie': float(row[7]) if row[7] else None,
+                'variedad':   row[3],
+                'lat':        float(row[4]) if row[4] else None,
+                'lng':        float(row[5]) if row[5] else None,
+                'provincia':  row[6],
+                'municipio':  row[7],
+                'superficie': float(row[8]) if row[8] else None,
             }
         logging.info(f"CargarParcelasSQL: {len(parcelas)} parcelas cargadas")
         yield parcelas
@@ -72,41 +73,47 @@ class AgregarYEnriquecer(beam.DoFn):
     """Agrega las lecturas de una ventana de 1h y enriquece con datos de parcela."""
 
     def process(self, element, parcelas, window=beam.DoFn.WindowParam):
-        key, readings = element
+        parcela_usuario_id, readings = element
         readings = list(readings)
 
-        values = []
+        # Pivot readings by sensor_type
+        by_type = {}
         for r in readings:
+            st = r.get('sensor_type')
+            if not st:
+                continue
             try:
-                values.append(float(r['value']))
+                by_type.setdefault(st, []).append(float(r['value']))
             except (ValueError, TypeError):
                 continue
 
-        if not values:
+        def _avg(vals):
+            return round(sum(vals) / len(vals), 4) if vals else None
+
+        temperatura       = _avg(by_type.get('temperature', []))
+        humedad_suelo     = _avg(by_type.get('soil_moisture', []))
+        humedad_ambiental = _avg(by_type.get('ambient_humidity', []))
+
+        if temperatura is None and humedad_suelo is None and humedad_ambiental is None:
             return
 
         first   = readings[0]
-        parcela = parcelas.get(first['parcela_usuario_id'], {})
+        parcela = parcelas.get(parcela_usuario_id, {})
 
         yield {
-            'sensor_id':          first['sensor_id'],
-            'sensor_type':        first['sensor_type'],
-            'parcela_usuario_id': first['parcela_usuario_id'],
-            'parcela_id':         parcela.get('parcela_id'),
-            'user_id':            first['user_id'],
-            'cultivo':            parcela.get('cultivo'),
-            'lat':                parcela.get('lat'),
-            'lng':                parcela.get('lng'),
-            'provincia':          parcela.get('provincia'),
-            'municipio':          parcela.get('municipio'),
-            'superficie':         parcela.get('superficie'),
-            'window_start':       window.start.to_utc_datetime().isoformat(),
-            'window_end':         window.end.to_utc_datetime().isoformat(),
-            'value_avg':          round(sum(values) / len(values), 4),
-            'value_min':          min(values),
-            'value_max':          max(values),
-            'reading_count':      len(values),
-            'unit':               first.get('unit'),
+            'user_id':              str(first.get('user_id', '')),
+            'parcel_id':            parcela.get('parcela_id'),
+            'timestamp':            window.start.to_utc_datetime().strftime('%Y-%m-%dT%H:%M:%S'),
+            'temperatura':          temperatura,
+            'humedad_ambiental':    humedad_ambiental,
+            'humedad_suelo':        humedad_suelo,
+            'precipitacion_mm':     None,
+            'et0':                  None,
+            'radiacion_solar':      None,
+            'fuente_temperatura':   'sensor' if temperatura is not None else None,
+            'tipo_cultivo':         parcela.get('cultivo'),
+            'variedad':             parcela.get('variedad'),
+            'fecha_plantacion_aprox': None,
         }
 
 
@@ -116,8 +123,8 @@ def run():
     parser = argparse.ArgumentParser()
     parser.add_argument('--project_id',               required=True)
     parser.add_argument('--subscription',             required=True, default='sensor-readings-dataflow-sub')
-    parser.add_argument('--bq_dataset',               required=True, default='iot_data')
-    parser.add_argument('--bq_table',                 required=True, default='sensor_aggregated')
+    parser.add_argument('--bq_dataset',               required=True, default='agri_data')
+    parser.add_argument('--bq_table',                 required=True, default='lecturas_parcelas')
     parser.add_argument('--instance_connection_name', required=True)
     parser.add_argument('--db_user',                  required=True)
     parser.add_argument('--db_password',              required=True)
@@ -139,12 +146,11 @@ def run():
     sub      = f"projects/{known_args.project_id}/subscriptions/{known_args.subscription}"
     bq_table = f"{known_args.project_id}:{known_args.bq_dataset}.{known_args.bq_table}"
     bq_schema = (
-        "sensor_id:STRING,sensor_type:STRING,parcela_usuario_id:INTEGER,"
-        "parcela_id:STRING,user_id:INTEGER,cultivo:STRING,lat:FLOAT,lng:FLOAT,"
-        "provincia:INTEGER,municipio:INTEGER,superficie:FLOAT,"
-        "window_start:TIMESTAMP,window_end:TIMESTAMP,"
-        "value_avg:FLOAT,value_min:FLOAT,value_max:FLOAT,"
-        "reading_count:INTEGER,unit:STRING"
+        "user_id:STRING,parcel_id:STRING,timestamp:DATETIME,"
+        "temperatura:FLOAT,humedad_ambiental:FLOAT,humedad_suelo:FLOAT,"
+        "precipitacion_mm:FLOAT,et0:FLOAT,radiacion_solar:FLOAT,"
+        "fuente_temperatura:STRING,tipo_cultivo:STRING,variedad:STRING,"
+        "fecha_plantacion_aprox:DATE"
     )
 
     p = beam.Pipeline(options=options)
@@ -174,7 +180,7 @@ def run():
         | "LeerPubSub"        >> beam.io.ReadFromPubSub(subscription=sub)
         | "Parsear"           >> beam.Map(parse_message)
         | "FiltrarNulos"      >> beam.Filter(lambda x: x is not None)
-        | "ClaveSensor"       >> beam.Map(lambda x: (x['sensor_id'], x))
+        | "ClaveParcela"      >> beam.Map(lambda x: (x['parcela_usuario_id'], x))
         | "Ventana1h"         >> beam.WindowInto(FixedWindows(3600))
         | "Agrupar"           >> beam.GroupByKey()
         | "AgregarEnriquecer" >> beam.ParDo(AgregarYEnriquecer(), parcelas=vista_parcelas)

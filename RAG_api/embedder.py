@@ -4,7 +4,7 @@ from vertexai.language_models import TextEmbeddingModel
 
 vertexai.init(
     project=os.environ.get("GCP_PROJECT_ID", "project-7f8b4dee-2b72-40f2-941"),
-    location=os.environ.get("GCP_REGION", "europe-west1")
+    location="us-central1"
 )
 
 _model = None
@@ -13,7 +13,7 @@ _model = None
 def _get_model() -> TextEmbeddingModel:
     global _model
     if _model is None:
-        _model = TextEmbeddingModel.from_pretrained("textembedding-gecko@003")
+        _model = TextEmbeddingModel.from_pretrained("text-embedding-004")
     return _model
 
 
@@ -22,6 +22,10 @@ def embed(text: str) -> list[float]:
 
 
 def embed_batch(texts: list[str]) -> list[list[float]]:
-    # gecko@003 acepta hasta 250 textos por llamada
-    results = _get_model().get_embeddings(texts)
-    return [r.values for r in results]
+    model = _get_model()
+    results = []
+    for i in range(0, len(texts), 250):
+        batch = texts[i:i + 250]
+        batch_results = model.get_embeddings(batch)
+        results.extend([r.values for r in batch_results])
+    return results

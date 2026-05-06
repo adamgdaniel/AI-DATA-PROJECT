@@ -1,5 +1,4 @@
 fastapi
 uvicorn
-psycopg2-binary
 google-cloud-bigquery
 python-dotenv

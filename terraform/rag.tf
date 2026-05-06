@@ -58,9 +58,18 @@ resource "google_cloud_run_v2_service" "rag_api" {
     service_account = google_service_account.cloudrun.email
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
-      env { name = "GCP_PROJECT_ID" value = var.project_id }
-      env { name = "GCP_REGION"     value = var.region }
-      env { name = "GCS_BUCKET"     value = google_storage_bucket.agro_docs.name }
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "GCP_REGION"
+        value = var.region
+      }
+      env {
+        name  = "GCS_BUCKET"
+        value = google_storage_bucket.agro_docs.name
+      }
     }
   }
 
@@ -88,12 +97,30 @@ resource "google_cloud_run_v2_service" "sensor_api" {
     service_account = google_service_account.cloudrun.email
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
-      env { name = "INSTANCE_CONNECTION_NAME" value = google_sql_database_instance.main.connection_name }
-      env { name = "DB_NAME"                  value = google_sql_database.main.name }
-      env { name = "DB_USER"                  value = google_sql_user.main.name }
-      env { name = "DB_PASSWORD"              value = var.db_password }
-      env { name = "GCP_PROJECT_ID"           value = var.project_id }
-      volume_mounts { name = "cloudsql" mount_path = "/cloudsql" }
+      env {
+        name  = "INSTANCE_CONNECTION_NAME"
+        value = google_sql_database_instance.main.connection_name
+      }
+      env {
+        name  = "DB_NAME"
+        value = google_sql_database.main.name
+      }
+      env {
+        name  = "DB_USER"
+        value = google_sql_user.main.name
+      }
+      env {
+        name  = "DB_PASSWORD"
+        value = var.db_password
+      }
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
     }
     volumes {
       name = "cloudsql"
@@ -122,11 +149,26 @@ resource "google_cloud_run_v2_service" "agent" {
     service_account = google_service_account.cloudrun.email
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
-      env { name = "GCP_PROJECT_ID"    value = var.project_id }
-      env { name = "GCP_REGION"        value = var.region }
-      env { name = "SENSOR_API_URL"    value = google_cloud_run_v2_service.sensor_api.uri }
-      env { name = "RAG_API_URL"       value = google_cloud_run_v2_service.rag_api.uri }
-      env { name = "MODEL_SERVING_URL" value = google_cloud_run_v2_service.model_serving.uri }
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "GCP_REGION"
+        value = var.region
+      }
+      env {
+        name  = "SENSOR_API_URL"
+        value = google_cloud_run_v2_service.sensor_api.uri
+      }
+      env {
+        name  = "RAG_API_URL"
+        value = google_cloud_run_v2_service.rag_api.uri
+      }
+      env {
+        name  = "MODEL_SERVING_URL"
+        value = google_cloud_run_v2_service.model_serving.uri
+      }
     }
   }
 

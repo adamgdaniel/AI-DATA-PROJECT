@@ -1,14 +1,26 @@
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
+from google.cloud import bigquery
 import psycopg2
 import bcrypt
 import json
 import uuid
 import os
+from datetime import datetime, timezone
 
 load_dotenv()
 
 app = Flask(__name__)
+
+GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID', '')
+
+_bq = None
+
+def _bq_client():
+    global _bq
+    if _bq is None and GCP_PROJECT_ID:
+        _bq = bigquery.Client(project=GCP_PROJECT_ID)
+    return _bq
 
 
 def get_db():
@@ -80,13 +92,14 @@ def registrar_parcela():
         cur.execute("""
             INSERT INTO parcelas_usuario
                 (usuario_id, parcela_id, provincia, municipio, poligono, parcela, recinto,
-                cultivo, superficie, lat, lng, geometria)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                cultivo, variedad, edad_cultivo, superficie, lat, lng, geometria)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             usuario_id, parcela_id,
             data.get('provincia'), data.get('municipio'), data.get('poligono'),
             data.get('parcela'), data.get('recinto'),
-            data.get('cultivo'), data.get('superficie'),
+            data.get('cultivo'), data.get('variedad'), data.get('edad_cultivo'),
+            data.get('superficie'),
             data.get('lat'), data.get('lng'),
             json.dumps(geometria) if geometria else None
         ))
@@ -110,7 +123,7 @@ def obtener_parcelas():
     cur = conn.cursor()
     cur.execute("""
         SELECT parcela_id, provincia, municipio, poligono, parcela, recinto,
-            cultivo, superficie, lat, lng, geometria, zonas, grid, fecha_registro
+            cultivo, variedad, edad_cultivo, superficie, lat, lng, geometria, zonas, grid, fecha_registro
         FROM parcelas_usuario
         WHERE usuario_id = %s
         ORDER BY fecha_registro DESC
@@ -129,14 +142,14 @@ def obtener_parcelas():
             'parcela_id': r[0],
             'provincia': r[1], 'municipio': r[2], 'poligono': r[3],
             'parcela': r[4], 'recinto': r[5],
-            'cultivo': r[6],
-            'superficie': float(r[7]) if r[7] else None,
-            'lat': float(r[8]) if r[8] else None,
-            'lng': float(r[9]) if r[9] else None,
-            'geometria': _json(r[10]),
-            'zonas': _json(r[11]) or [],
-            'grid': _json(r[12]) or {},
-            'fecha_registro': r[13].isoformat()
+            'cultivo': r[6], 'variedad': r[7], 'edad_cultivo': r[8],
+            'superficie': float(r[9]) if r[9] else None,
+            'lat': float(r[10]) if r[10] else None,
+            'lng': float(r[11]) if r[11] else None,
+            'geometria': _json(r[12]),
+            'zonas': _json(r[13]) or [],
+            'grid': _json(r[14]) or {},
+            'fecha_registro': r[15].isoformat()
         }
         for r in rows
     ]
@@ -214,6 +227,40 @@ def eliminar_zona(parcela_id, zona_id):
     conn.close()
     zonas = (row[0] if isinstance(row[0], list) else json.loads(row[0])) if row else []
     return jsonify({'success': True, 'zonas': zonas})
+
+
+@app.route('/eventos', methods=['POST'])
+def registrar_evento():
+    data = request.json or {}
+    user_id = data.get('user_id')
+    entity_type = data.get('entity_type', 'parcela')
+    entity_id = data.get('entity_id')
+    tipo_evento = data.get('tipo_evento')
+
+    if not all([user_id, entity_id, tipo_evento]):
+        return jsonify({'error': 'user_id, entity_id y tipo_evento son requeridos'}), 400
+
+    if tipo_evento not in ('riego', 'abonado', 'poda'):
+        return jsonify({'error': 'tipo_evento debe ser riego, abonado o poda'}), 400
+
+    client = _bq_client()
+    if not client:
+        return jsonify({'error': 'BigQuery no configurado'}), 503
+
+    row = {
+        'user_id':     str(user_id),
+        'entity_type': entity_type,
+        'entity_id':   entity_id,
+        'timestamp':   datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S'),
+        'tipo_evento': tipo_evento,
+        'valor':       data.get('valor'),
+    }
+    table_id = f"{GCP_PROJECT_ID}.agri_data.eventos_agricolas"
+    errors = client.insert_rows_json(table_id, [row])
+    if errors:
+        return jsonify({'error': str(errors)}), 500
+
+    return jsonify({'success': True}), 201
 
 
 if __name__ == '__main__':
