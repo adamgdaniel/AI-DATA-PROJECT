@@ -253,7 +253,7 @@ resource "google_cloudbuild_trigger" "login_frontend" {
 
   substitutions = {
     _AGENT_URL    = google_cloud_run_v2_service.agent.uri
-    _DATA_API_URL = "https://data-api-${var.project_number}.europe-west1.run.app"
+    _DATA_API_URL = google_cloud_run_v2_service.data_api.uri
   }
 
   service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
