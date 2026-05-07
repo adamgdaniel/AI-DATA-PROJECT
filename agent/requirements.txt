@@ -1,4 +1,4 @@
 fastapi
 uvicorn
 requests
-google-cloud-aiplatform[preview]
+google-genai
