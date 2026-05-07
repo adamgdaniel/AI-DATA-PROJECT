@@ -25,6 +25,11 @@ resource "google_storage_bucket_iam_member" "cloudrun_gcs_rw" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.cloudrun.email}"
 }
+resource "google_project_iam_member" "cloudrun_bigquery_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.cloudrun.email}"
+}
 
 # --- BigQuery: dataset y tabla para los chunks del RAG ---
 resource "google_bigquery_dataset" "rag_data" {
