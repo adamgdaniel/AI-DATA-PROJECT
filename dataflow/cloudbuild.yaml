@@ -5,6 +5,27 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/dataflow-pipeline:latest']
 
+  # Cancela el job en curso si existe (no-op en el primer despliegue)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        JOB=$(gcloud dataflow jobs list \
+          --project=$PROJECT_ID \
+          --region=europe-west1 \
+          --filter="name=iot-sensor-pipeline AND state=Running" \
+          --format="value(id)" \
+          --limit=1)
+        if [ -n "$JOB" ]; then
+          gcloud dataflow jobs cancel "$JOB" \
+            --project=$PROJECT_ID \
+            --region=europe-west1
+          echo "Job cancelado: $JOB"
+        else
+          echo "No hay job en ejecucion. Primer despliegue."
+        fi
+
   - name: 'europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/dataflow-pipeline:latest'
     args:
       - --runner=DataflowRunner
@@ -17,7 +38,6 @@ steps:
       - --db_password=$_DB_PASSWORD
       - --db_name=logindb
       - --requirements_file=/app/requirements.txt
-      - --update
 
 substitutions:
   _INSTANCE_CONNECTION_NAME: 'project-7f8b4dee-2b72-40f2-941:europe-west1:login-db'
