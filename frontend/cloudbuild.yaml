@@ -15,7 +15,7 @@ steps:
       - --region=europe-west1
       - --platform=managed
       - --update-secrets=SECRET_KEY=frontend-secret-key:latest
-      - --update-env-vars=DATA_API_URL=https://data-api-874385889107.europe-west1.run.app,AGENT_URL=$_AGENT_URL
+      - --update-env-vars=DATA_API_URL=$_DATA_API_URL,AGENT_URL=$_AGENT_URL
       - --timeout=3600
   # --- Data API ---
   - name: 'gcr.io/cloud-builders/docker'
