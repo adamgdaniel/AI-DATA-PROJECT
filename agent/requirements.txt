@@ -1,3 +1,4 @@
+ cat agent/requirements.txt
 fastapi
 uvicorn
 requests
