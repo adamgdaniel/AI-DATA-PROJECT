@@ -1,7 +1,7 @@
 import fitz  # PyMuPDF
 
 
-def chunk_pdf(pdf_bytes: bytes, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+def chunk_pdf(pdf_bytes: bytes, chunk_size: int = 50, overlap: int = 5) -> list[str]:
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     full_text = ""
     for page in doc:
@@ -10,7 +10,7 @@ def chunk_pdf(pdf_bytes: bytes, chunk_size: int = 500, overlap: int = 50) -> lis
     return _split(full_text, chunk_size, overlap)
 
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+def chunk_text(text: str, chunk_size: int = 50, overlap: int = 5) -> list[str]:
     return _split(text, chunk_size, overlap)
 
 
