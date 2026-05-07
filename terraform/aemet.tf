@@ -76,6 +76,11 @@ resource "google_cloud_run_v2_job" "aemet_ingest" {
           name  = "GCP_PROJECT_ID"
           value = var.project_id
         }
+
+        volume_mounts {
+          name       = "cloudsql"
+          mount_path = "/cloudsql"
+        }
       }
 
       volumes {
