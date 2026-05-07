@@ -277,6 +277,11 @@ resource "google_cloudbuild_trigger" "login_api" {
 
   filename = "logging/api/cloudbuild.yaml"
 
+  substitutions = {
+    _TEST_USERNAME = "testuser"
+    _TEST_PASSWORD = var.test_password
+  }
+
   service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
 }
 
