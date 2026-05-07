@@ -1,5 +1,5 @@
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions, GoogleCloudOptions, GoogleCloudOptions
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions, GoogleCloudOptions
 from apache_beam.transforms.window import FixedWindows
 from apache_beam.transforms.periodicsequence import PeriodicImpulse
 from apache_beam.transforms import trigger, window
