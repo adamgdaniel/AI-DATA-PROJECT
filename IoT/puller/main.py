@@ -10,6 +10,13 @@ from datetime import datetime, timezone
 def _decrypt(value: str) -> str:
     return Fernet(os.environ['ENCRYPTION_KEY'].encode()).decrypt(value.encode()).decode()
 
+# La BD guarda sensor_type en inglés; el Dataflow espera español en el atributo sensor_tipo
+SENSOR_TYPE_ES = {
+    'temperature':        'temperatura',
+    'ambient_humidity':   'humedad_ambiental',
+    'soil_moisture':      'humedad_suelo',
+}
+
 TASK_INDEX = int(os.environ.get('CLOUD_RUN_TASK_INDEX', 0))
 TASK_COUNT = int(os.environ.get('CLOUD_RUN_TASK_COUNT', 1))
 
@@ -97,7 +104,7 @@ def run():
                     'entity_type': sensor['location_type'],
                     'entity_id': sensor['location_id'],
                     'usuario_id': sensor['user_id'],
-                    'sensor_tipo': sensor['sensor_type']
+                    'sensor_tipo': SENSOR_TYPE_ES.get(sensor['sensor_type'], sensor['sensor_type'])
                 }
 
                 futures.append(
