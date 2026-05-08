@@ -6,7 +6,6 @@ from apache_beam.transforms.trigger import Repeatedly, AfterProcessingTime, Accu
 import json
 import logging
 from datetime import datetime, timedelta
-from cloud_sql_python_connector import Connector
 from google.cloud import bigquery
 from google.cloud import firestore
 import os
@@ -42,6 +41,7 @@ class LoadParcelasSQL(beam.DoFn):
         self._conn = None
 
     def setup(self):
+        from google.cloud.sql.connector import Connector
         self._connector = Connector()
         self._conn = self._connector.connect(
             self.instance_connection_name,
@@ -111,6 +111,7 @@ class LoadMeteoSQL(beam.DoFn):
         self._conn = None
 
     def setup(self):
+        from google.cloud.sql.connector import Connector
         self._connector = Connector()
         self._conn = self._connector.connect(
             self.instance_connection_name,
