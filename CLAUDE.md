@@ -103,14 +103,18 @@ Pages:
 
 | Tabla | Contenido clave |
 |---|---|
-| `municipios_monitorizados` | `codigo_ine`, `nombre`, `lat`, `lon`, `activo` — municipios que tienen parcelas reclamadas |
-| `prevision_meteorologica` | `municipio_id`, `timestamp` (hora), `temperatura`, `humedad_ambiental`, `precipitacion_mm`, `et0`, `radiacion_solar`, `weather_code`, `estado_cielo` — 1 fila/municipio/hora, 15 días |
-| `parcelas_usuario` | `id`, `usuario_id`, `parcela_id`, `municipio`, `lat`, `lng`, `cultivo`, `variedad`, `superficie`, `sensor_temperatura_id`, `sensor_humedad_ambiental_id`, `sensor_humedad_suelo_id` |
-| `invernaderos` | `id`, `usuario_id`, `nombre`, `sensor_temperatura_id`, `sensor_humedad_ambiental_id` |
-| `plantas_invernadero` | `id`, `invernadero_id`, `tipo`, `variedad`, `grid_col`, `grid_row`, `sensor_humedad_suelo_id` |
-| `ha_connections` | `id`, `usuario_id`, `ha_url`, `token_encrypted` — una fila por usuario con HA configurado |
+| `users` | `id`, `username`, `password_hash`, `email` — cuentas de usuario |
+| `parcelas_usuario` | `id`, `usuario_id`, `parcela_id`, `provincia`, `municipio`, `poligono`, `parcela`, `recinto`, `cultivo`, `variedad`, `edad_cultivo`, `superficie`, `lat`, `lng`, `geometria`, `zonas`, `grid` |
+| `invernaderos` | `id`, `usuario_id`, `nombre`, `temperatura_entity_id`, `hum_amb_entity_id` — entity IDs de HA para temperatura y humedad ambiental del invernadero |
+| `plantas_invernadero` | `id`, `invernadero_id`, `tipo`, `variedad`, `grid_col`, `grid_row`, `soil_entity_id` — entity ID de HA para humedad de suelo de la planta |
+| `ha_connections` | `id`, `user_id`, `ha_url`, `ha_token` (cifrados con Fernet), `display_name`, `last_seen_at` |
+| `sensors` | `sensor_id` (entity ID de HA), `connection_id`, `user_id`, `location_id`, `location_type` (`'parcela'`/`'invernadero'`/`'planta'`), `sensor_type` (`'temperature'`/`'ambient_humidity'`/`'soil_moisture'`), `active` — **registro central de todos los sensores vinculados** |
 
-**Nota sobre sensor_entity_id:** Cada sensor físico Zigbee expone en HA tres entidades independientes (una por métrica). Por eso hay tres columnas de sensor por elemento, no una. El IoT Cloud Run consulta todas las columnas no nulas para saber qué llamadas hacer. No existe tabla `sensores_monitorizados` separada — la información de qué sensores revisar se obtiene directamente de estas tablas.
+**Cómo se puebla `sensors`:**
+- Sensores de parcela: el usuario los registra desde la página de detalle de parcela → IoT API `POST /ha/sensores`
+- Sensores de invernadero/planta: el usuario los asigna desde la página de invernaderos → data-api `PUT /invernaderos/<id>/sensor` y `PUT /plantas/<id>/sensor`, que escriben en `sensors` con `ON CONFLICT DO NOTHING`
+
+**Cómo lee el IoT puller:** consulta `sensors JOIN ha_connections` filtrando `location_type = 'parcela'`. Para invernaderos/plantas el Dataflow lee las columnas `temperatura_entity_id`, `hum_amb_entity_id`, `soil_entity_id` directamente de sus tablas.
 
 **Nota sobre `estado_cielo`:** Se deriva del campo `weather_code` (código WMO estándar que devuelve Open-Meteo) usando una tabla de mapeo estática a español. No se usa AEMET.
 
