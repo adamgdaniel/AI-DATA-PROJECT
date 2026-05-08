@@ -84,10 +84,10 @@
 
   <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
   <header class="bg-surface shadow-[0px_2px_8px_rgba(27,48,34,0.08)] flex justify-between items-center w-full px-8 py-4 sticky top-0 z-50">
-    <a href="/login"
-      class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-      Iniciar Sesión
-    </a>
+    <div class="flex items-center gap-3">
+      <img src="/icons/logo_dark_green.png" alt="Logo" class="w-9 h-9 object-contain rounded"/>
+      <span class="text-2xl font-bold text-primary tracking-tight">AgroMonitor</span>
+    </div>
 
     <nav class="hidden md:flex items-center gap-1">
       <button onclick="switchTab('proyecto')" id="nav-proyecto"
@@ -104,10 +104,10 @@
       </button>
     </nav>
 
-    <div class="flex items-center gap-3">
-      <img src="/icons/logo_dark_green.png" alt="Logo" class="w-9 h-9 object-contain rounded"/>
-      <span class="text-2xl font-bold text-primary tracking-tight">AgroMonitor</span>
-    </div>
+    <a href="/login"
+      class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+      Iniciar Sesión
+    </a>
   </header>
 
   <main>
