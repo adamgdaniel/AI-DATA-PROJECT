@@ -1,0 +1,34 @@
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:$SHORT_SHA'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
+      - '.'
+    dir: 'dataflow-v2/parcelas'
+
+  # Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:$SHORT_SHA'
+
+  # Deploy Dataflow job (template)
+  - name: 'gcr.io/cloud-builders/gke-deploy'
+    args:
+      - 'run'
+      - '--filename=.'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:$SHORT_SHA'
+      - '--location=europe-west1'
+    dir: 'dataflow-v2/parcelas'
+
+images:
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:$SHORT_SHA'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
+
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

@@ -80,7 +80,9 @@ resource "google_bigquery_table" "lecturas_parcelas" {
     { name = "fuente_temperatura",     type = "STRING",   mode = "NULLABLE" },
     { name = "tipo_cultivo",           type = "STRING",   mode = "NULLABLE" },
     { name = "variedad",               type = "STRING",   mode = "NULLABLE" },
-    { name = "fecha_plantacion_aprox", type = "DATE",     mode = "NULLABLE" }
+    { name = "fecha_plantacion_aprox", type = "DATE",     mode = "NULLABLE" },
+    { name = "estado_cielo",           type = "STRING",   mode = "NULLABLE" },
+    { name = "sensor_id",              type = "STRING",   mode = "NULLABLE" }
   ])
 }
 
