@@ -34,12 +34,20 @@ resource "google_pubsub_topic" "sensor_readings" {
   name = "sensor-readings-raw"
 }
 
-resource "google_pubsub_subscription" "sensor_readings_dataflow" {
-  name  = "sensor-readings-dataflow-sub"
+resource "google_pubsub_subscription" "sensor_readings_parcelas" {
+  name  = "sus_parcelas"
   topic = google_pubsub_topic.sensor_readings.id
 
   ack_deadline_seconds       = 600
-  message_retention_duration = "604800s" 
+  message_retention_duration = "604800s"
+}
+
+resource "google_pubsub_subscription" "sensor_readings_invernaderos" {
+  name  = "sus_invernaderos"
+  topic = google_pubsub_topic.sensor_readings.id
+
+  ack_deadline_seconds       = 600
+  message_retention_duration = "604800s"
 }
 
 # --- Secret Manager: clave de cifrado para tokens HA ---
