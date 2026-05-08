@@ -4,14 +4,14 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
-      - 'dataflow-v2/parcelas/'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-invernaderos-repo/invernaderos:latest'
+      - 'dataflow-v2/invernaderos/'
 
   # Push to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-invernaderos-repo/invernaderos:latest'
 
   # Cancel running job if exists (no-op on first deploy)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -22,7 +22,7 @@ steps:
         JOB=$$(gcloud dataflow jobs list \
           --project=$PROJECT_ID \
           --region=europe-west3 \
-          --filter="name=dataflow-parcelas AND state=Running" \
+          --filter="name=dataflow-invernaderos AND state=Running" \
           --format="value(id)" \
           --limit=1)
         if [ -n "$$JOB" ]; then
@@ -35,15 +35,14 @@ steps:
         fi
 
   # Run Dataflow job
-  - name: 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
+  - name: 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-invernaderos-repo/invernaderos:latest'
     args:
       - '--runner=DataflowRunner'
       - '--project=$PROJECT_ID'
       - '--region=europe-west3'
-      - '--job_name=dataflow-parcelas'
+      - '--job_name=dataflow-invernaderos'
       - '--num_workers=1'
       - '--max_num_workers=1'
-      - '--subscription=sus_parcelas'
       - '--requirements_file=/app/requirements.txt'
     env:
       - 'GCP_PROJECT=$PROJECT_ID'
