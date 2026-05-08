@@ -19,17 +19,17 @@ steps:
     args:
       - -c
       - |
-        JOB=$(gcloud dataflow jobs list \
+        JOB=$$(gcloud dataflow jobs list \
           --project=$PROJECT_ID \
           --region=europe-west1 \
           --filter="name=dataflow-parcelas AND state=Running" \
           --format="value(id)" \
           --limit=1)
-        if [ -n "$JOB" ]; then
-          gcloud dataflow jobs cancel "$JOB" \
+        if [ -n "$$JOB" ]; then
+          gcloud dataflow jobs cancel "$$JOB" \
             --project=$PROJECT_ID \
             --region=europe-west1
-          echo "Job cancelado: $JOB"
+          echo "Job cancelado: $$JOB"
         else
           echo "No hay job en ejecución. Primer despliegue."
         fi
