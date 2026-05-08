@@ -28,11 +28,11 @@ def run():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT s.sensor_id, s.sensor_type, s.parcela_usuario_id, s.user_id,
+        SELECT s.sensor_id, s.sensor_type, s.location_id, s.user_id,
                h.ha_url, h.ha_token, h.id
         FROM sensors s
         JOIN ha_connections h ON s.connection_id = h.id
-        WHERE s.active = TRUE AND h.id %% %s = %s
+        WHERE s.active = TRUE AND s.location_type = 'parcela' AND h.id %% %s = %s
     """, (TASK_COUNT, TASK_INDEX))
 
     rows = cur.fetchall()

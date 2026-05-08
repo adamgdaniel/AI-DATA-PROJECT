@@ -168,7 +168,7 @@ def ha_discover():
 @app.route('/ha/sensores', methods=['POST'])
 def ha_registrar_sensor():
     data = request.json
-    required = ['sensor_id', 'connection_id', 'user_id', 'parcela_usuario_id', 'sensor_type']
+    required = ['sensor_id', 'connection_id', 'user_id', 'location_id', 'sensor_type']
     if not all(data.get(k) for k in required):
         return jsonify({'error': f'Campos requeridos: {", ".join(required)}'}), 400
 
@@ -177,7 +177,7 @@ def ha_registrar_sensor():
 
     cur.execute(
         "SELECT id FROM parcelas_usuario WHERE id = %s AND usuario_id = %s",
-        (data['parcela_usuario_id'], data['user_id'])
+        (data['location_id'], data['user_id'])
     )
     if not cur.fetchone():
         cur.close()
@@ -186,11 +186,11 @@ def ha_registrar_sensor():
 
     try:
         cur.execute("""
-            INSERT INTO sensors (sensor_id, connection_id, user_id, parcela_usuario_id, sensor_type, display_name)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
+            VALUES (%s, %s, %s, %s, 'parcela', %s, %s)
         """, (
             data['sensor_id'], data['connection_id'], data['user_id'],
-            data['parcela_usuario_id'], data['sensor_type'], data.get('display_name')
+            data['location_id'], data['sensor_type'], data.get('display_name')
         ))
         conn.commit()
         return jsonify({'success': True}), 201
@@ -216,7 +216,7 @@ def ha_get_sensores():
     if parcela_usuario_id:
         cur.execute("""
             SELECT sensor_id, sensor_type, display_name, active, created_at
-            FROM sensors WHERE parcela_usuario_id = %s AND active = TRUE
+            FROM sensors WHERE location_id = %s AND location_type = 'parcela' AND active = TRUE
         """, (parcela_usuario_id,))
     else:
         cur.execute("""
