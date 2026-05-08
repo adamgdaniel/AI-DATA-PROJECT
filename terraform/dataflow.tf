@@ -32,7 +32,7 @@ resource "google_cloudbuild_trigger" "dataflow_parcelas" {
     }
   }
 
-  included_files = ["dataflow-v2/parcelas/**"]
+  included_files = ["dataflow-v2/**"]
   filename       = "dataflow-v2/parcelas/cloudbuild.yaml"
 
   substitutions = {
