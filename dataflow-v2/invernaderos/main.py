@@ -1,5 +1,5 @@
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions
 from apache_beam.transforms.window import FixedWindows, GlobalWindows
 from apache_beam.transforms.periodicsequence import PeriodicImpulse
 from apache_beam.transforms.trigger import Repeatedly, AfterProcessingTime, AccumulationMode
@@ -360,6 +360,7 @@ def run(argv=None):
 
     pipeline_options = PipelineOptions(argv)
     pipeline_options.view_as(StandardOptions).streaming = True
+    pipeline_options.view_as(SetupOptions).save_main_session = True
 
     p = beam.Pipeline(options=pipeline_options)
 
