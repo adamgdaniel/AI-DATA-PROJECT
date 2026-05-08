@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgroManage – Mis Parcelas</title>
+  <title>AgroMonitor – Mis Parcelas</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
@@ -12,23 +12,24 @@
 
     /* ── HEADER ── */
     header {
-      background: #061b0e; color: white;
+      background: #f8f9fa; border-bottom: 1px solid #c3c8c1;
+      box-shadow: 0 2px 8px rgba(27,48,34,0.08);
       padding: 14px 28px;
       display: flex; justify-content: space-between; align-items: center;
       flex-shrink: 0; z-index: 100;
     }
     .header-brand { display: flex; align-items: center; gap: 10px; }
     .header-brand img { height: 34px; object-fit: contain; border-radius: 6px; }
-    .header-brand span { font-weight: 700; font-size: 20px; letter-spacing: -0.3px; }
+    .header-brand span { font-weight: 700; font-size: 20px; letter-spacing: -0.3px; color: #061b0e; }
     .header-nav { display: flex; gap: 4px; align-items: center; }
     .header-nav a {
-      color: #b4cdb8; font-size: 13px; font-weight: 500; text-decoration: none;
+      color: #434843; font-size: 13px; font-weight: 500; text-decoration: none;
       display: flex; align-items: center; gap: 6px;
       padding: 6px 12px; border-radius: 8px; transition: background .15s, color .15s;
     }
-    .header-nav a:hover { background: rgba(255,255,255,.08); color: #d0e9d4; }
+    .header-nav a:hover { background: #edeeef; color: #061b0e; }
     .header-nav a img { height: 18px; width: 18px; object-fit: contain; flex-shrink: 0; }
-    .header-nav .logout { color: #9db8a2; }
+    .header-nav .logout { color: #737973; }
 
     /* ── LAYOUT ── */
     #container { display: flex; flex: 1; overflow: hidden; }
@@ -262,8 +263,8 @@
 <body>
   <header>
     <div class="header-brand">
-      <img src="/icons/logo_nuevo.png" alt="AgroManage"/>
-      <span>AgroManage</span>
+      <img src="/icons/logo_dark_green.png" alt="AgroMonitor"/>
+      <span>AgroMonitor</span>
     </div>
     <nav class="header-nav">
       <a href="/invernadero"><img src="/icons/logo_invernadero.png" alt="" style="height:30px;width:30px;"/>Invernaderos</a>
@@ -378,7 +379,7 @@
   <button id="chat-btn" onclick="toggleChat()">💬 Hablar con el agente</button>
   <div id="chat-panel">
     <div id="chat-header">
-      <span>🤖 Agente AgroManage</span>
+      <span>🤖 Agente AgroMonitor</span>
       <button onclick="toggleChat()">✕</button>
     </div>
     <div id="chat-messages"></div>

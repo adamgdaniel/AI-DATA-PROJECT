@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgroManage – Agricultura de Precisión</title>
+  <title>AgroMonitor – Agricultura de Precisión</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -84,10 +84,10 @@
 
   <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
   <header class="bg-surface shadow-[0px_2px_8px_rgba(27,48,34,0.08)] flex justify-between items-center w-full px-8 py-4 sticky top-0 z-50">
-    <div class="flex items-center gap-3">
-      <img src="/icons/logo_nuevo.png" alt="Logo" class="w-9 h-9 object-contain rounded"/>
-      <span class="text-2xl font-bold text-primary tracking-tight">AgroManage</span>
-    </div>
+    <a href="/login"
+      class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+      Iniciar Sesión
+    </a>
 
     <nav class="hidden md:flex items-center gap-1">
       <button onclick="switchTab('proyecto')" id="nav-proyecto"
@@ -104,10 +104,10 @@
       </button>
     </nav>
 
-    <a href="/login"
-      class="bg-primary text-on-primary px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-      Iniciar Sesión
-    </a>
+    <div class="flex items-center gap-3">
+      <img src="/icons/logo_dark_green.png" alt="Logo" class="w-9 h-9 object-contain rounded"/>
+      <span class="text-2xl font-bold text-primary tracking-tight">AgroMonitor</span>
+    </div>
   </header>
 
   <main>
@@ -119,7 +119,7 @@
       <div class="relative z-20 px-8 h-full flex flex-col justify-center max-w-3xl">
         <span class="inline-flex items-center gap-1.5 bg-tertiary-fixed/20 text-tertiary-fixed border border-tertiary-fixed/30 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest mb-5">
           <span class="material-symbols-outlined text-base">eco</span>
-          Plataforma agronómica inteligente
+          Agricultura con IA
         </span>
         <h1 class="text-4xl md:text-5xl font-bold text-on-primary leading-tight mb-4">
           Agricultura de Precisión<br/>para el Agricultor Moderno
@@ -176,7 +176,7 @@
               Tecnología de precisión al alcance<br/>de cada agricultor
             </h2>
             <p class="text-on-surface-variant text-base leading-relaxed mb-8">
-              AgroManage surge de la convicción de que la tecnología de precisión no debe ser exclusiva
+              AgroMonitor surge de la convicción de que la tecnología de precisión no debe ser exclusiva
               de grandes explotaciones industriales. Ponemos a disposición de agricultores de pequeña y
               mediana escala las mismas capacidades IoT que utilizan las cooperativas más avanzadas,
               condensadas en una interfaz intuitiva y fiable.
@@ -279,7 +279,7 @@
           <h2 class="text-4xl font-bold text-primary mb-3">Todo lo que necesita tu explotación</h2>
           <p class="text-on-surface-variant text-lg max-w-2xl mx-auto">
             Desde la gestión de parcelas exteriores hasta el control de invernaderos,
-            AgroManage centraliza todos tus datos agronómicos en un único lugar.
+            AgroMonitor centraliza todos tus datos agronómicos en un único lugar.
           </p>
         </div>
 
@@ -668,7 +668,7 @@
       <div class="flex flex-col gap-2">
         <div class="flex items-center gap-2 mb-1">
           <img src="/icons/logo_nuevo.png" alt="Logo" class="w-7 h-7 object-contain rounded opacity-90"/>
-          <span class="text-xl font-bold text-on-primary">AgroManage</span>
+          <span class="text-xl font-bold text-on-primary">AgroMonitor</span>
         </div>
         <p class="text-on-primary-fixed-variant text-sm max-w-xs leading-relaxed">
           Ingeniería de precisión para la próxima generación de gestión de tierras agrícolas.
@@ -689,7 +689,7 @@
         </button>
       </div>
       <div class="text-on-primary-fixed-variant text-sm">
-        © 2024 AgroManage · Máster Data/IA EDEM
+        © 2024 AgroMonitor · Máster Data/IA EDEM
       </div>
     </div>
   </footer>
