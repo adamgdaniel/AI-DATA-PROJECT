@@ -4,31 +4,55 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:$SHORT_SHA'
-      - '-t'
       - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
-      - '.'
-    dir: 'dataflow-v2/parcelas'
+      - 'dataflow-v2/parcelas/'
 
   # Push to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:$SHORT_SHA'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
 
-  # Deploy Dataflow job (template)
-  - name: 'gcr.io/cloud-builders/gke-deploy'
+  # Cancel running job if exists (no-op on first deploy)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
     args:
-      - 'run'
-      - '--filename=.'
-      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:$SHORT_SHA'
-      - '--location=europe-west1'
-    dir: 'dataflow-v2/parcelas'
+      - -c
+      - |
+        JOB=$(gcloud dataflow jobs list \
+          --project=$PROJECT_ID \
+          --region=europe-west1 \
+          --filter="name=dataflow-parcelas AND state=Running" \
+          --format="value(id)" \
+          --limit=1)
+        if [ -n "$JOB" ]; then
+          gcloud dataflow jobs cancel "$JOB" \
+            --project=$PROJECT_ID \
+            --region=europe-west1
+          echo "Job cancelado: $JOB"
+        else
+          echo "No hay job en ejecución. Primer despliegue."
+        fi
 
-images:
-  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:$SHORT_SHA'
-  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
+  # Run Dataflow job
+  - name: 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-parcelas-repo/parcelas:latest'
+    args:
+      - '--runner=DataflowRunner'
+      - '--project=$PROJECT_ID'
+      - '--region=europe-west1'
+      - '--subscription=sus_parcelas'
+    env:
+      - 'GCP_PROJECT=$PROJECT_ID'
+      - 'INSTANCE_CONNECTION_NAME=$_INSTANCE_CONNECTION_NAME'
+      - 'DB_USER=$_DB_USER'
+      - 'DB_PASSWORD=$_DB_PASSWORD'
+      - 'DB_NAME=$_DB_NAME'
+
+substitutions:
+  _INSTANCE_CONNECTION_NAME: 'project-7f8b4dee-2b72-40f2-941:europe-west1:login-db'
+  _DB_USER: 'loginuser'
+  _DB_PASSWORD: ${DB_PASSWORD}
+  _DB_NAME: 'logindb'
 
 options:
-  machineType: 'N1_HIGHCPU_8'
   logging: CLOUD_LOGGING_ONLY
