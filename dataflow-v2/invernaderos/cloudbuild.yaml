@@ -41,7 +41,7 @@ steps:
       - '--project=$PROJECT_ID'
       - '--region=europe-west3'
       - '--job_name=dataflow-invernaderos'
-      - '--num_workers=1'
+      - '--num_workers=2'
       - '--max_num_workers=1'
       - '--requirements_file=/app/requirements.txt'
     env:
