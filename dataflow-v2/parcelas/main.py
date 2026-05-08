@@ -456,7 +456,7 @@ def run(argv=None):
             p
             | 'ReadFromPubSub' >> beam.io.ReadFromPubSub(subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
             | 'ParseSensor' >> beam.ParDo(ParseSensor()).with_outputs(
-                'ok', 'dead_letter', main='ok'
+                'dead_letter', main='ok'
             )
         )
 
@@ -476,7 +476,7 @@ def run(argv=None):
                 EnrichSensorWithParcelaAndMeteo(),
                 parcelas_dict=beam.pvalue.AsSingleton(parcelas_pcoll, default_value={}),
                 meteo_dict=beam.pvalue.AsSingleton(meteo_pcoll, default_value={})
-            ).with_outputs('ok', 'dead_letter', main='ok')
+            ).with_outputs('dead_letter', main='ok')
         )
 
         # Escribir a BigQuery
