@@ -1,5 +1,5 @@
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions
 from apache_beam.transforms.window import FixedWindows, GlobalWindows
 from apache_beam.transforms.periodicsequence import PeriodicImpulse
 from apache_beam.transforms.trigger import Repeatedly, AfterProcessingTime, AccumulationMode
@@ -21,7 +21,8 @@ if not INSTANCE_CONNECTION_NAME:
 
 DB_USER = os.environ.get('DB_USER')
 DB_PASSWORD = os.environ.get('DB_PASSWORD')
-DB_NAME = os.environ.get('DB_NAME')
+DB_NAME = os.environ.get('DB_NAME')           # logindb  — parcelas_usuario
+DB_NAME_METEO = os.environ.get('DB_NAME_METEO', 'agrodb')  # agrodb — prevision_meteorologica
 PUBSUB_SUBSCRIPTION = os.environ.get('PUBSUB_SUBSCRIPTION', f'projects/{PROJECT_ID}/subscriptions/sus_parcelas')
 DEAD_LETTER_TOPIC = os.environ.get('DEAD_LETTER_TOPIC', f'projects/{PROJECT_ID}/topics/sensor_readings_dead_letter')
 
@@ -417,6 +418,7 @@ def run(argv=None):
 
     pipeline_options = PipelineOptions(argv)
     pipeline_options.view_as(StandardOptions).streaming = True
+    pipeline_options.view_as(SetupOptions).save_main_session = True
 
     p = beam.Pipeline(options=pipeline_options)
 
@@ -447,7 +449,7 @@ def run(argv=None):
         )
         | 'LoadMeteo' >> beam.ParDo(
             LoadMeteoSQL(
-                INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
+                INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME_METEO
             )
         )
     )
