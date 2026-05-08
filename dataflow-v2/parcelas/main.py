@@ -1,8 +1,8 @@
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
-from apache_beam.transforms.window import FixedWindows, GlobalWindows, TimestampedValue
-from apache_beam.transforms.sideinputs import AsSingleton
-from apache_beam.transforms.trigger import AfterWatermark, AfterCount
+from apache_beam.transforms.window import FixedWindows, GlobalWindows
+from apache_beam.transforms.periodicsequence import PeriodicImpulse
+from apache_beam.transforms.trigger import Repeatedly, AfterProcessingTime, AccumulationMode
 import json
 import logging
 from datetime import datetime, timedelta
@@ -170,36 +170,44 @@ class LoadMeteoSQL(beam.DoFn):
 
 
 class ParseSensor(beam.DoFn):
-    """Parsea mensaje Pub/Sub y filtra por entity_type."""
+    """Parsea mensaje Pub/Sub (con atributos) y filtra por entity_type=parcela."""
 
     def process(self, element):
         try:
-            message = json.loads(element.decode('utf-8'))
+            attrs = element.attributes
+            body = json.loads(element.data.decode('utf-8'))
 
-            # Filtrar solo parcelas (entity_type = 'parcela')
-            # Nota: Asumimos que el sensor tiene parcela_usuario_id
-            if 'parcela_usuario_id' not in message:
-                logger.warning(f'Sensor sin parcela_usuario_id: {message}')
+            # Filtrar: solo mensajes de parcela
+            if attrs.get('entity_type') != 'parcela':
+                return
+
+            entity_id = attrs.get('entity_id')
+            if not entity_id:
                 yield beam.pvalue.TaggedOutput('dead_letter', {
-                    'error': 'missing_parcela_usuario_id',
-                    'message': message,
+                    'error': 'missing_entity_id',
+                    'attributes': dict(attrs),
                     'timestamp': datetime.utcnow().isoformat()
                 })
                 return
 
-            yield beam.pvalue.TaggedOutput('ok', message)
+            yield beam.pvalue.TaggedOutput('ok', {
+                'parcela_usuario_id': entity_id,
+                'usuario_id': attrs.get('usuario_id'),
+                'sensor_tipo': attrs.get('sensor_tipo'),
+                'valor': body.get('valor'),
+                'sensor_entity_id': body.get('sensor_entity_id'),
+                'timestamp_lectura': body.get('timestamp_lectura')
+            })
         except json.JSONDecodeError as e:
             logger.error(f'Error parsing sensor JSON: {e}')
             yield beam.pvalue.TaggedOutput('dead_letter', {
                 'error': 'json_decode_error',
-                'raw': element,
                 'timestamp': datetime.utcnow().isoformat()
             })
         except Exception as e:
             logger.error(f'Error parsing sensor: {e}')
             yield beam.pvalue.TaggedOutput('dead_letter', {
                 'error': str(e),
-                'raw': element,
                 'timestamp': datetime.utcnow().isoformat()
             })
 
@@ -207,7 +215,7 @@ class ParseSensor(beam.DoFn):
 class EnrichSensorWithParcelaAndMeteo(beam.DoFn):
     """Enriquece sensor con datos de parcela y meteorología usando side inputs."""
 
-    def process(self, sensor, parcelas_dict=None, meteo_dict=None, window_param=None):
+    def process(self, sensor, parcelas_dict=None, meteo_dict=None, window=beam.DoFn.WindowParam):
         try:
             if not parcelas_dict:
                 parcelas_dict = {}
@@ -233,11 +241,11 @@ class EnrichSensorWithParcelaAndMeteo(beam.DoFn):
             meteo = meteo_dict.get(municipio_code, {})
 
             # Construir registro enriquecido
-            sensor_type = sensor.get('sensor_type', '').lower()
-            value = float(sensor.get('value', 0))
+            sensor_type = sensor.get('sensor_tipo', '').lower()
+            value = float(sensor.get('valor', 0) or 0)
 
             # Obtener timestamp de la ventana
-            window_start = window_param.start.to_utc_datetime().isoformat() if window_param else datetime.utcnow().isoformat()
+            window_start = window.start.to_utc_datetime().isoformat()
 
             enriched = {
                 'user_id': str(parcela.get('usuario_id')),
@@ -257,7 +265,7 @@ class EnrichSensorWithParcelaAndMeteo(beam.DoFn):
                 'et0': meteo.get('et0'),
                 'radiacion_solar': meteo.get('radiacion_solar'),
                 'estado_cielo': meteo.get('estado_cielo'),
-                'sensor_id': sensor.get('sensor_id')
+                'sensor_id': sensor.get('sensor_entity_id')
             }
 
             # Aplicar valor del sensor
@@ -410,36 +418,42 @@ def run(argv=None):
     pipeline_options.view_as(StandardOptions).streaming = True
 
     with beam.Pipeline(options=pipeline_options) as p:
-        # Side input: Parcelas (refresco cada 10 min con PeriodicImpulse)
-        parcelas_side_input = (
+        # Side input: Parcelas — se refresca cada 20 min, no por cada mensaje
+        parcelas_pcoll = (
             p
-            | 'PeriodicImpulse_Parcelas' >> beam.Create([None])
-            | 'GlobalWindow_Parcelas' >> beam.WindowInto(GlobalWindows())
+            | 'PeriodicImpulse_Parcelas' >> PeriodicImpulse(fire_interval=1200)
+            | 'GlobalWindow_Parcelas' >> beam.WindowInto(
+                GlobalWindows(),
+                trigger=Repeatedly(AfterProcessingTime(1200)),
+                accumulation_mode=AccumulationMode.DISCARDING
+            )
             | 'LoadParcelas' >> beam.ParDo(
                 LoadParcelasSQL(
                     INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
                 )
             )
-            | 'ToSingleton_Parcelas' >> AsSingleton(default_value={})
         )
 
-        # Side input: Meteorología (refresco cada 10 min con PeriodicImpulse)
-        meteo_side_input = (
+        # Side input: Meteorología — se refresca cada 20 min, no por cada mensaje
+        meteo_pcoll = (
             p
-            | 'PeriodicImpulse_Meteo' >> beam.Create([None])
-            | 'GlobalWindow_Meteo' >> beam.WindowInto(GlobalWindows())
+            | 'PeriodicImpulse_Meteo' >> PeriodicImpulse(fire_interval=1200)
+            | 'GlobalWindow_Meteo' >> beam.WindowInto(
+                GlobalWindows(),
+                trigger=Repeatedly(AfterProcessingTime(1200)),
+                accumulation_mode=AccumulationMode.DISCARDING
+            )
             | 'LoadMeteo' >> beam.ParDo(
                 LoadMeteoSQL(
                     INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
                 )
             )
-            | 'ToSingleton_Meteo' >> AsSingleton(default_value={})
         )
 
         # Stream: Sensores desde Pub/Sub
         sensors = (
             p
-            | 'ReadFromPubSub' >> beam.io.ReadFromPubSub(subscription=PUBSUB_SUBSCRIPTION)
+            | 'ReadFromPubSub' >> beam.io.ReadFromPubSub(subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
             | 'ParseSensor' >> beam.ParDo(ParseSensor()).with_outputs(
                 'ok', 'dead_letter', main='ok'
             )
@@ -459,9 +473,8 @@ def run(argv=None):
             windowed_sensors
             | 'EnrichWithMetadata' >> beam.ParDo(
                 EnrichSensorWithParcelaAndMeteo(),
-                parcelas_dict=beam.pvalue.AsSingleton(parcelas_side_input),
-                meteo_dict=beam.pvalue.AsSingleton(meteo_side_input),
-                window_param=beam.DoFn.WindowParam()
+                parcelas_dict=beam.pvalue.AsSingleton(parcelas_pcoll, default_value={}),
+                meteo_dict=beam.pvalue.AsSingleton(meteo_pcoll, default_value={})
             ).with_outputs('ok', 'dead_letter', main='ok')
         )
 
