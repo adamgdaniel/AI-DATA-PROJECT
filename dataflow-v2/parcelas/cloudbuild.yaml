@@ -40,7 +40,7 @@ steps:
       - '--runner=DataflowRunner'
       - '--project=$PROJECT_ID'
       - '--region=europe-west1'
-      - '--worker_zone=europe-west1-c'
+      - '--worker_zone=europe-west1-d'
       - '--subscription=sus_parcelas'
       - '--requirements_file=/app/requirements.txt'
     env:
