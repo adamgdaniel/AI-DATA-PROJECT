@@ -1,5 +1,5 @@
 apache-beam[gcp]==2.56.0
-google-cloud-sql-connector[pg8000]==1.11.1
+cloud-sql-python-connector[pg8000]==1.4.6
 google-cloud-bigquery==3.23.0
 google-cloud-firestore==2.14.1
 google-cloud-pubsub==2.18.4

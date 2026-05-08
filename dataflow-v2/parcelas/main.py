@@ -6,7 +6,7 @@ from apache_beam.transforms.trigger import AfterWatermark, AfterCount
 import json
 import logging
 from datetime import datetime, timedelta
-from google.cloud.sql.connector import Connector
+from cloud_sql_python_connector import Connector
 from google.cloud import bigquery
 from google.cloud import firestore
 import os
