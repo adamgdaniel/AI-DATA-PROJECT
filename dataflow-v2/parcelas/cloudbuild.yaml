@@ -21,14 +21,14 @@ steps:
       - |
         JOB=$$(gcloud dataflow jobs list \
           --project=$PROJECT_ID \
-          --region=europe-west1 \
+          --region=europe-west4 \
           --filter="name=dataflow-parcelas AND state=Running" \
           --format="value(id)" \
           --limit=1)
         if [ -n "$$JOB" ]; then
           gcloud dataflow jobs cancel "$$JOB" \
             --project=$PROJECT_ID \
-            --region=europe-west1
+            --region=europe-west4
           echo "Job cancelado: $$JOB"
         else
           echo "No hay job en ejecución. Primer despliegue."
@@ -39,8 +39,8 @@ steps:
     args:
       - '--runner=DataflowRunner'
       - '--project=$PROJECT_ID'
-      - '--region=europe-west1'
-      - '--worker_zone=europe-west1-d'
+      - '--region=europe-west4'
+      - '--max_num_workers=1'
       - '--subscription=sus_parcelas'
       - '--requirements_file=/app/requirements.txt'
     env:
