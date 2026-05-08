@@ -29,7 +29,21 @@ steps:
           gcloud dataflow jobs cancel "$$JOB" \
             --project=$PROJECT_ID \
             --region=europe-west3
-          echo "Job cancelado: $$JOB"
+          echo "Cancel enviado. Esperando estado terminal..."
+          for i in $(seq 1 36); do
+            STATUS=$$(gcloud dataflow jobs describe "$$JOB" \
+              --project=$PROJECT_ID \
+              --region=europe-west3 \
+              --format="value(currentState)" 2>/dev/null)
+            echo "  Estado (intento $$i/36): $$STATUS"
+            if [ "$$STATUS" = "JOB_STATE_CANCELLED" ] || \
+               [ "$$STATUS" = "JOB_STATE_DONE" ]      || \
+               [ "$$STATUS" = "JOB_STATE_FAILED" ]; then
+              echo "Job terminado con estado: $$STATUS"
+              break
+            fi
+            sleep 10
+          done
         else
           echo "No hay job en ejecución. Primer despliegue."
         fi
