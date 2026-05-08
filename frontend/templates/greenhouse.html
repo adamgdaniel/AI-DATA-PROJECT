@@ -568,7 +568,7 @@ function renderGrid() {
     const cropImg = CROPS[plant.tipo] ? `<img src="${CROPS[plant.tipo].img}">` : '🌱';
     el.innerHTML = cropImg;
 
-    if (plant.sensor_entity_id) {
+    if (plant.soil_entity_id) {
       const dot = document.createElement('div');
       dot.className = 'sensor-dot';
       dot.title = 'Sensor conectado';
@@ -743,11 +743,11 @@ function openPlantModal(plant) {
     </div>
   `;
 
-  if (plant.sensor_entity_id) {
+  if (plant.soil_entity_id) {
     html += `
       <div class="sensor-linked">
         <div class="dot"></div>
-        <span>${plant.sensor_entity_id}</span>
+        <span>${plant.soil_entity_id}</span>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px">
         <button class="modal-btn" style="flex:1" onclick="openLinkSensor()">Cambiar sensor</button>
@@ -828,30 +828,34 @@ async function discoverAndPickSensor() {
     return;
   }
 
-  const typeLabel = { soil_moisture: 'Humedad suelo', temperature: 'Temperatura', ambient_humidity: 'Humedad ambiente' };
-  const opts = sensores.map(s =>
-    `<option value="${s.sensor_id}">${s.display_name} (${typeLabel[s.sensor_type] || s.sensor_type}) — ${s.state}${s.unit || ''}</option>`
+  const soilSensors = sensores.filter(s => s.sensor_type === 'soil_moisture');
+  if (!soilSensors.length) {
+    section.innerHTML = '<p style="font-size:12px;color:#e76f51">No se encontraron sensores de humedad de suelo.</p>';
+    return;
+  }
+  const opts = soilSensors.map(s =>
+    `<option value="${s.sensor_id}" data-conn="${connId}">${s.display_name} — ${s.state}${s.unit || ''}</option>`
   ).join('');
   section.innerHTML = `
-    <label style="font-size:12px;color:#95d5b2">Sensor</label>
+    <label style="font-size:12px;color:#95d5b2">Sensor de humedad de suelo</label>
     <select class="modal-select" id="sensor-entity-select">${opts}</select>
-    <button class="modal-btn" style="margin-top:8px" onclick="linkSensor()">Vincular sensor</button>
+    <button class="modal-btn" style="margin-top:8px" onclick="linkSensor(${connId})">Vincular sensor</button>
   `;
 }
 
-async function linkSensor() {
+async function linkSensor(connectionId) {
   const entityId = document.getElementById('sensor-entity-select').value;
   if (!entityId || !modalPlant || !currentGhId) return;
   try {
     const r = await fetch(`/actualizar-sensor-planta/${currentGhId}/${modalPlant.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sensor_entity_id: entityId })
+      body: JSON.stringify({ soil_entity_id: entityId, connection_id: connectionId })
     });
     if (r.ok) {
-      modalPlant.sensor_entity_id = entityId;
+      modalPlant.soil_entity_id = entityId;
       const idx = plants.findIndex(p => p.id === modalPlant.id);
-      if (idx !== -1) plants[idx].sensor_entity_id = entityId;
+      if (idx !== -1) plants[idx].soil_entity_id = entityId;
       renderGrid();
       openPlantModal(modalPlant);
     }
@@ -864,11 +868,11 @@ async function unlinkSensor() {
     await fetch(`/actualizar-sensor-planta/${currentGhId}/${modalPlant.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sensor_entity_id: null })
+      body: JSON.stringify({ soil_entity_id: null })
     });
-    modalPlant.sensor_entity_id = null;
+    modalPlant.soil_entity_id = null;
     const idx = plants.findIndex(p => p.id === modalPlant.id);
-    if (idx !== -1) plants[idx].sensor_entity_id = null;
+    if (idx !== -1) plants[idx].soil_entity_id = null;
     renderGrid();
     openPlantModal(modalPlant);
   } catch {}
@@ -895,21 +899,30 @@ function updateSensorWidget() {
 function openGhSensorModal() {
   const gh = greenhouses.find(g => g.id === currentGhId);
   const content = document.getElementById('gh-sensor-modal-content');
-  if (gh && gh.sensor_entity_id) {
-    content.innerHTML = `
-      <div class="sensor-linked">
-        <div class="dot"></div>
-        <span>${gh.sensor_entity_id}</span>
-      </div>
-      <button class="modal-btn" style="margin-top:10px" onclick="openGhSensorPicker()">Cambiar sensor</button>
-      <button class="modal-btn modal-btn-danger" style="margin-top:8px" onclick="unlinkGhSensor()">Desconectar</button>
-    `;
-  } else {
-    content.innerHTML = `
-      <p style="font-size:12px;color:#4a7c59;margin-bottom:10px">Sin sensor configurado.</p>
-      <button class="modal-btn" onclick="openGhSensorPicker()">Seleccionar sensor de Home Assistant</button>
-    `;
+
+  function sensorRow(label, entityId, tipo) {
+    if (entityId) {
+      return `
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:#95d5b2;margin-bottom:4px">${label}</div>
+          <div class="sensor-linked"><div class="dot"></div><span>${entityId}</span></div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="modal-btn" style="flex:1" onclick="openGhSensorPicker('${tipo}')">Cambiar</button>
+            <button class="modal-btn modal-btn-danger" style="flex:1" onclick="unlinkGhSensor('${tipo}')">Quitar</button>
+          </div>
+        </div>`;
+    }
+    return `
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:#95d5b2;margin-bottom:4px">${label}</div>
+        <button class="modal-btn" onclick="openGhSensorPicker('${tipo}')">Conectar sensor</button>
+      </div>`;
   }
+
+  content.innerHTML =
+    sensorRow('🌡 Temperatura', gh && gh.temperatura_entity_id, 'temperatura') +
+    sensorRow('💧 Humedad ambiental', gh && gh.hum_amb_entity_id, 'hum_amb');
+
   document.getElementById('gh-sensor-modal').classList.add('open');
 }
 
@@ -917,7 +930,7 @@ function closeGhSensorModal() {
   document.getElementById('gh-sensor-modal').classList.remove('open');
 }
 
-async function openGhSensorPicker() {
+async function openGhSensorPicker(tipo) {
   const content = document.getElementById('gh-sensor-modal-content');
   content.innerHTML = '<p style="font-size:12px;color:#95d5b2">Cargando conexiones...</p>';
   let connections = [];
@@ -935,12 +948,12 @@ async function openGhSensorPicker() {
   content.innerHTML = `
     <label style="font-size:12px;color:#95d5b2">Conexión HA</label>
     <select class="modal-select" id="gh-ha-conn-select">${opts}</select>
-    <button class="modal-btn" style="margin-top:8px" onclick="discoverGhSensors()">Buscar sensores</button>
+    <button class="modal-btn" style="margin-top:8px" onclick="discoverGhSensors('${tipo}')">Buscar sensores</button>
     <div id="gh-sensor-list" style="margin-top:10px"></div>
   `;
 }
 
-async function discoverGhSensors() {
+async function discoverGhSensors(tipo) {
   const connId = document.getElementById('gh-ha-conn-select').value;
   const list = document.getElementById('gh-sensor-list');
   list.innerHTML = '<p style="font-size:12px;color:#95d5b2">Buscando sensores...</p>';
@@ -949,51 +962,52 @@ async function discoverGhSensors() {
     const r = await fetch(`/iot/descubrir-sensores?connection_id=${connId}`);
     sensores = r.ok ? await r.json() : [];
   } catch {}
-  const relevant = sensores.filter(s => s.sensor_type === 'temperature' || s.sensor_type === 'ambient_humidity');
+  const haType = tipo === 'temperatura' ? 'temperature' : 'ambient_humidity';
+  const relevant = sensores.filter(s => s.sensor_type === haType);
   if (!relevant.length) {
-    list.innerHTML = '<p style="font-size:12px;color:#e76f51">No se encontraron sensores de temperatura/humedad.</p>';
+    list.innerHTML = '<p style="font-size:12px;color:#e76f51">No se encontraron sensores de ese tipo.</p>';
     return;
   }
-  const typeLabel = { temperature: 'Temperatura', ambient_humidity: 'Humedad amb.' };
   const opts = relevant.map(s =>
-    `<option value="${s.sensor_id}">${s.display_name} (${typeLabel[s.sensor_type]}) — ${s.state}${s.unit || ''}</option>`
+    `<option value="${s.sensor_id}">${s.display_name} — ${s.state}${s.unit || ''}</option>`
   ).join('');
   list.innerHTML = `
     <label style="font-size:12px;color:#95d5b2">Sensor</label>
     <select class="modal-select" id="gh-sensor-entity-select">${opts}</select>
-    <button class="modal-btn" style="margin-top:8px" onclick="linkGhSensor()">Vincular</button>
+    <button class="modal-btn" style="margin-top:8px" onclick="linkGhSensor('${tipo}', ${connId})">Vincular</button>
   `;
 }
 
-async function linkGhSensor() {
+async function linkGhSensor(tipo, connectionId) {
   const entityId = document.getElementById('gh-sensor-entity-select').value;
   if (!entityId || !currentGhId) return;
   try {
     const r = await fetch(`/actualizar-sensor-invernadero/${currentGhId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sensor_entity_id: entityId })
+      body: JSON.stringify({ sensor_type: tipo, sensor_entity_id: entityId, connection_id: connectionId })
     });
     if (r.ok) {
       const idx = greenhouses.findIndex(g => g.id === currentGhId);
-      if (idx !== -1) greenhouses[idx].sensor_entity_id = entityId;
+      const col = tipo === 'temperatura' ? 'temperatura_entity_id' : 'hum_amb_entity_id';
+      if (idx !== -1) greenhouses[idx][col] = entityId;
       closeGhSensorModal();
     }
   } catch {}
 }
 
-async function unlinkGhSensor() {
+async function unlinkGhSensor(tipo) {
   if (!currentGhId) return;
   try {
     await fetch(`/actualizar-sensor-invernadero/${currentGhId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sensor_entity_id: null })
+      body: JSON.stringify({ sensor_type: tipo, sensor_entity_id: null })
     });
     const idx = greenhouses.findIndex(g => g.id === currentGhId);
-    if (idx !== -1) greenhouses[idx].sensor_entity_id = null;
-    document.getElementById('inv-sensor-widget').style.display = 'none';
-    closeGhSensorModal();
+    const col = tipo === 'temperatura' ? 'temperatura_entity_id' : 'hum_amb_entity_id';
+    if (idx !== -1) greenhouses[idx][col] = null;
+    openGhSensorModal();
   } catch {}
 }
 
