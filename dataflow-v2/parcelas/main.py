@@ -418,90 +418,94 @@ def run(argv=None):
     pipeline_options = PipelineOptions(argv)
     pipeline_options.view_as(StandardOptions).streaming = True
 
-    with beam.Pipeline(options=pipeline_options) as p:
-        # Side input: Parcelas — se refresca cada 20 min, no por cada mensaje
-        parcelas_pcoll = (
-            p
-            | 'PeriodicImpulse_Parcelas' >> PeriodicImpulse(fire_interval=1200)
-            | 'GlobalWindow_Parcelas' >> beam.WindowInto(
-                GlobalWindows(),
-                trigger=Repeatedly(AfterProcessingTime(1200)),
-                accumulation_mode=AccumulationMode.DISCARDING
-            )
-            | 'LoadParcelas' >> beam.ParDo(
-                LoadParcelasSQL(
-                    INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
-                )
-            )
-        )
+    p = beam.Pipeline(options=pipeline_options)
 
-        # Side input: Meteorología — se refresca cada 20 min, no por cada mensaje
-        meteo_pcoll = (
-            p
-            | 'PeriodicImpulse_Meteo' >> PeriodicImpulse(fire_interval=1200)
-            | 'GlobalWindow_Meteo' >> beam.WindowInto(
-                GlobalWindows(),
-                trigger=Repeatedly(AfterProcessingTime(1200)),
-                accumulation_mode=AccumulationMode.DISCARDING
-            )
-            | 'LoadMeteo' >> beam.ParDo(
-                LoadMeteoSQL(
-                    INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
-                )
+    # Side input: Parcelas — se refresca cada 20 min, no por cada mensaje
+    parcelas_pcoll = (
+        p
+        | 'PeriodicImpulse_Parcelas' >> PeriodicImpulse(fire_interval=1200)
+        | 'GlobalWindow_Parcelas' >> beam.WindowInto(
+            GlobalWindows(),
+            trigger=Repeatedly(AfterProcessingTime(1200)),
+            accumulation_mode=AccumulationMode.DISCARDING
+        )
+        | 'LoadParcelas' >> beam.ParDo(
+            LoadParcelasSQL(
+                INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
             )
         )
+    )
 
-        # Stream: Sensores desde Pub/Sub
-        sensors = (
-            p
-            | 'ReadFromPubSub' >> beam.io.ReadFromPubSub(subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
-            | 'ParseSensor' >> beam.ParDo(ParseSensor()).with_outputs(
-                'dead_letter', main='ok'
+    # Side input: Meteorología — se refresca cada 20 min, no por cada mensaje
+    meteo_pcoll = (
+        p
+        | 'PeriodicImpulse_Meteo' >> PeriodicImpulse(fire_interval=1200)
+        | 'GlobalWindow_Meteo' >> beam.WindowInto(
+            GlobalWindows(),
+            trigger=Repeatedly(AfterProcessingTime(1200)),
+            accumulation_mode=AccumulationMode.DISCARDING
+        )
+        | 'LoadMeteo' >> beam.ParDo(
+            LoadMeteoSQL(
+                INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
             )
         )
+    )
 
-        # Dead letters del parseo
-        dead_letters_parse = sensors['dead_letter']
-
-        # Windowing: 20 minutos (FixedWindows)
-        windowed_sensors = (
-            sensors['ok']
-            | 'FixedWindows_Sensors' >> beam.WindowInto(FixedWindows(20 * 60))
+    # Stream: Sensores desde Pub/Sub
+    sensors = (
+        p
+        | 'ReadFromPubSub' >> beam.io.ReadFromPubSub(subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
+        | 'ParseSensor' >> beam.ParDo(ParseSensor()).with_outputs(
+            'dead_letter', main='ok'
         )
+    )
 
-        # Enriquecer con parcelas y meteorología
-        enriched = (
-            windowed_sensors
-            | 'EnrichWithMetadata' >> beam.ParDo(
-                EnrichSensorWithParcelaAndMeteo(),
-                parcelas_dict=beam.pvalue.AsSingleton(parcelas_pcoll, default_value={}),
-                meteo_dict=beam.pvalue.AsSingleton(meteo_pcoll, default_value={})
-            ).with_outputs('dead_letter', main='ok')
-        )
+    # Dead letters del parseo
+    dead_letters_parse = sensors['dead_letter']
 
-        # Escribir a BigQuery
-        _ = (
-            enriched['ok']
-            | 'WriteToBQ' >> beam.ParDo(WriteToBigQuery(PROJECT_ID, 'agri_data', 'lecturas_parcelas'))
-        )
+    # Windowing: 20 minutos (FixedWindows)
+    windowed_sensors = (
+        sensors['ok']
+        | 'FixedWindows_Sensors' >> beam.WindowInto(FixedWindows(20 * 60))
+    )
 
-        # Escribir a Firestore
-        _ = (
-            enriched['ok']
-            | 'WriteToFirestore' >> beam.ParDo(WriteToFirestore(PROJECT_ID))
-        )
+    # Enriquecer con parcelas y meteorología
+    enriched = (
+        windowed_sensors
+        | 'EnrichWithMetadata' >> beam.ParDo(
+            EnrichSensorWithParcelaAndMeteo(),
+            parcelas_dict=beam.pvalue.AsSingleton(parcelas_pcoll, default_value={}),
+            meteo_dict=beam.pvalue.AsSingleton(meteo_pcoll, default_value={})
+        ).with_outputs('dead_letter', main='ok')
+    )
 
-        # Combinar todos los dead letters
-        all_dead_letters = (
-            (dead_letters_parse, enriched['dead_letter'])
-            | 'FlattenDeadLetters' >> beam.Flatten()
-        )
+    # Escribir a BigQuery
+    _ = (
+        enriched['ok']
+        | 'WriteToBQ' >> beam.ParDo(WriteToBigQuery(PROJECT_ID, 'agri_data', 'lecturas_parcelas'))
+    )
 
-        # Dead letters a Pub/Sub
-        _ = (
-            all_dead_letters
-            | 'WriteDLQ' >> beam.ParDo(WriteDeadLetterToPubSub(PROJECT_ID, DEAD_LETTER_TOPIC))
-        )
+    # Escribir a Firestore
+    _ = (
+        enriched['ok']
+        | 'WriteToFirestore' >> beam.ParDo(WriteToFirestore(PROJECT_ID))
+    )
+
+    # Combinar todos los dead letters
+    all_dead_letters = (
+        (dead_letters_parse, enriched['dead_letter'])
+        | 'FlattenDeadLetters' >> beam.Flatten()
+    )
+
+    # Dead letters a Pub/Sub
+    _ = (
+        all_dead_letters
+        | 'WriteDLQ' >> beam.ParDo(WriteDeadLetterToPubSub(PROJECT_ID, DEAD_LETTER_TOPIC))
+    )
+
+    p.run()
+    logger.info('Dataflow streaming job submitted')
 
 
 if __name__ == '__main__':
