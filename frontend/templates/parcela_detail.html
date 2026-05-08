@@ -12,24 +12,25 @@
 
     /* HEADER */
     header {
-      background: rgba(27, 48, 34, 0.84); padding: 10px 16px;
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      background: #f8f9fa; border-bottom: 1px solid #c3c8c1;
+      box-shadow: 0 2px 8px rgba(27,48,34,0.08);
+      padding: 10px 16px;
       display: flex; align-items: center; gap: 10px;
-      flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,.07);
+      flex-shrink: 0;
     }
     header a {
-      color: #b4cdb8; font-size: 13px; text-decoration: none; flex-shrink: 0;
+      color: #434843; font-size: 13px; text-decoration: none; flex-shrink: 0;
       display: flex; align-items: center; gap: 4px;
       padding: 4px 8px; border-radius: 6px; transition: background .15s;
     }
-    header a:hover { background: rgba(255,255,255,.08); color: #d0e9d4; }
+    header a:hover { background: #edeeef; color: #061b0e; }
     .h-emoji { font-size: 24px; }
     .h-info { flex: 1; min-width: 0; }
-    .h-info strong { display: block; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .h-info span { font-size: 11px; color: #9db8a2; }
+    .h-info strong { display: block; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #061b0e; }
+    .h-info span { font-size: 11px; color: #737973; }
     .h-badge {
-      background: rgba(178,247,70,.15); color: #b2f746;
-      border: 1px solid rgba(178,247,70,.25);
+      background: rgba(108,162,0,.1); color: #334f00;
+      border: 1px solid rgba(108,162,0,.25);
       padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
       flex-shrink: 0;
     }
@@ -104,7 +105,7 @@
 <header>
   <a href="/mapa">← Volver</a>
   <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
-    <img src="/icons/logo_lime.png" alt="AgroMonitor" style="height:24px;object-fit:contain;"/>
+    <img src="/icons/logo_dark_green.png" alt="AgroMonitor" style="height:24px;object-fit:contain;"/>
     <span style="font-weight:700;font-size:14px;letter-spacing:-0.2px;">AgroMonitor</span>
   </div>
   <div class="h-emoji" id="h-icon"></div>
