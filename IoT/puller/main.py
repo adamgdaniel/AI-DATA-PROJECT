@@ -57,7 +57,7 @@ def run():
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(os.environ['GCP_PROJECT'], os.environ['PUBSUB_TOPIC'])
     timestamp = datetime.now(timezone.utc).isoformat()
-    published = 0
+    futures = []
 
     for conn_id, connection in connections.items():
         try:
@@ -85,17 +85,24 @@ def run():
                     'unit': entity['attributes'].get('unit_of_measurement'),
                     'timestamp': timestamp
                 }
-                publisher.publish(topic_path, json.dumps(message).encode('utf-8'))
-                published += 1
+                futures.append(publisher.publish(topic_path, json.dumps(message).encode('utf-8')))
 
         except requests.exceptions.RequestException as e:
             print(f"Error HA connection {conn_id}: {e}")
             continue
 
+    published = 0
+    for future in futures:
+        try:
+            future.result()
+            published += 1
+        except Exception as e:
+            print(f"Error confirmando publicación en Pub/Sub: {e}")
+
     conn.commit()
     cur.close()
     conn.close()
-    print(f"Task {TASK_INDEX}/{TASK_COUNT}: {published} lecturas publicadas en Pub/Sub")
+    print(f"Task {TASK_INDEX}/{TASK_COUNT}: {published} lecturas confirmadas en Pub/Sub")
 
 
 if __name__ == '__main__':
