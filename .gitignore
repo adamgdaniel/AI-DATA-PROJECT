@@ -4,3 +4,9 @@ terraform/.terraform/
 terraform/terraform.exe
 *.exe
 gcloud_credentials.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
