@@ -226,7 +226,7 @@ resource "google_project_iam_member" "scheduler_iot_invoker" {
 
 resource "google_cloud_scheduler_job" "iot_puller" {
   name      = "iot-puller-trigger"
-  schedule  = "*/15 * * * *"
+  schedule  = "*/10 * * * *"
   time_zone = "Europe/Madrid"
   region    = var.region
 
