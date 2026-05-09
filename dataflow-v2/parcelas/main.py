@@ -326,8 +326,6 @@ class WriteToBigQuery(beam.DoFn):
                 'fuente_temperatura': element['fuente_temperatura'],
                 'tipo_cultivo': element['cultivo'],
                 'variedad': element['variedad'],
-                'estado_cielo': element['estado_cielo'],
-                'sensor_id': element['sensor_id']
             }]
 
             errors = self.bq_client.insert_rows_json(table_id, rows_to_insert)
@@ -425,10 +423,10 @@ def run(argv=None):
     # Side input: Parcelas — se refresca cada 20 min, no por cada mensaje
     parcelas_pcoll = (
         p
-        | 'PeriodicImpulse_Parcelas' >> PeriodicImpulse(fire_interval=1200)
+        | 'PeriodicImpulse_Parcelas' >> PeriodicImpulse(fire_interval=60)
         | 'GlobalWindow_Parcelas' >> beam.WindowInto(
             GlobalWindows(),
-            trigger=Repeatedly(AfterProcessingTime(1200)),
+            trigger=Repeatedly(AfterProcessingTime(60)),
             accumulation_mode=AccumulationMode.DISCARDING
         )
         | 'LoadParcelas' >> beam.ParDo(
@@ -441,10 +439,10 @@ def run(argv=None):
     # Side input: Meteorología — se refresca cada 20 min, no por cada mensaje
     meteo_pcoll = (
         p
-        | 'PeriodicImpulse_Meteo' >> PeriodicImpulse(fire_interval=1200)
+        | 'PeriodicImpulse_Meteo' >> PeriodicImpulse(fire_interval=60)
         | 'GlobalWindow_Meteo' >> beam.WindowInto(
             GlobalWindows(),
-            trigger=Repeatedly(AfterProcessingTime(1200)),
+            trigger=Repeatedly(AfterProcessingTime(60)),
             accumulation_mode=AccumulationMode.DISCARDING
         )
         | 'LoadMeteo' >> beam.ParDo(
@@ -469,7 +467,7 @@ def run(argv=None):
     # Windowing: 20 minutos (FixedWindows)
     windowed_sensors = (
         sensors['ok']
-        | 'FixedWindows_Sensors' >> beam.WindowInto(FixedWindows(20 * 60))
+        | 'FixedWindows_Sensors' >> beam.WindowInto(FixedWindows(2 * 60))
     )
 
     # Enriquecer con parcelas y meteorología
