@@ -48,6 +48,12 @@ resource "google_project_iam_member" "compute_cloudsql_client" {
   member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
 }
 
+resource "google_project_iam_member" "compute_firestore_user" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
 # --- BigQuery Dataset ---
 resource "google_bigquery_dataset" "agri_data" {
   dataset_id = "agri_data"
