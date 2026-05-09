@@ -145,6 +145,27 @@
     .crop-marker { background: none !important; border: none !important; }
     .parcela-glow { filter: drop-shadow(0 0 6px #4ade80) drop-shadow(0 0 14px #4ade8088); }
 
+    /* ── Sensor overlay badge en el mapa ── */
+    .sensor-overlay-icon { background: transparent !important; border: none !important; }
+    .sensor-badge {
+      background: rgba(6,27,14,0.88);
+      border: 1.5px solid rgba(178,247,70,0.45);
+      border-radius: 8px;
+      padding: 7px 11px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: #d0e9d4;
+      white-space: nowrap;
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
+    .sensor-badge-row { display: flex; align-items: center; gap: 5px; }
+    .sensor-badge-src { font-size: 10px; color: #6ca200; font-weight: 400; margin-top: 1px; }
+
     /* Sensor section */
     .dp-section h4 { display: flex; align-items: center; justify-content: space-between; }
     .btn-add-small {
@@ -436,6 +457,46 @@
     // IDs de parcelas propias para detectar clicks en el mapa
     const misParcelasIds = new Set();
 
+    // ── Sensor stream para la parcela seleccionada ──────────────────────
+    let sensorStream = null;
+    let sensorMarker = null;
+
+    function abrirSensorStream(p) {
+      cerrarSensorStream();
+      if (!p.id || !p.lat || !p.lng) return;
+      sensorStream = new EventSource(`/stream/parcela/${p.id}`);
+      sensorStream.onmessage = function(e) {
+        try { mostrarBadgeSensor(JSON.parse(e.data), p); } catch {}
+      };
+    }
+
+    function cerrarSensorStream() {
+      if (sensorStream) { sensorStream.close(); sensorStream = null; }
+      if (sensorMarker) { sensorMarker.remove(); sensorMarker = null; }
+    }
+
+    function mostrarBadgeSensor(data, p) {
+      const temp     = data.temperatura;
+      const humAmb   = data.humedad_ambiental;
+      const humSuelo = data.humedad_suelo;
+      const fuente   = data.fuente_temperatura;
+      if (temp == null && humAmb == null) return;
+
+      let rows = '';
+      if (temp     != null) rows += `<div class="sensor-badge-row">🌡 <b>${parseFloat(temp).toFixed(1)} °C</b></div>`;
+      if (humAmb   != null) rows += `<div class="sensor-badge-row">💧 <b>${parseFloat(humAmb).toFixed(0)} %</b> hum.</div>`;
+      if (humSuelo != null) rows += `<div class="sensor-badge-row">🌱 <b>${parseFloat(humSuelo).toFixed(0)} %</b> suelo</div>`;
+      const srcLabel = fuente === 'sensor' ? '⚡ sensor IoT' : '🌐 Open-Meteo';
+      const html = `<div class="sensor-badge">${rows}<div class="sensor-badge-src">${srcLabel}</div></div>`;
+
+      const icon = L.divIcon({ className: 'sensor-overlay-icon', html, iconAnchor: [-8, 8] });
+      if (sensorMarker) {
+        sensorMarker.setIcon(icon);
+      } else {
+        sensorMarker = L.marker([p.lat, p.lng], { icon, interactive: false }).addTo(map);
+      }
+    }
+
     map.on('click', function(e) {
       if (map.getZoom() < 14) return;
 
@@ -637,6 +698,7 @@
     function mostrarDetalleParcela(p) {
       currentParcela = p;
       document.getElementById('info-panel').style.display = 'none';
+      abrirSensorStream(p);
       document.getElementById('dp-icon').innerHTML = `<img src="${CROP_IMGS[p.cultivo] || ''}" style="width:34px;height:34px;object-fit:contain">`;
       document.getElementById('dp-id').textContent = p.parcela_id;
       document.getElementById('dp-cultivo').textContent = p.cultivo + (p.variedad ? ' · ' + p.variedad : '');
@@ -662,6 +724,7 @@
 
     function cerrarDetalle() {
       document.getElementById('detail-panel').style.display = 'none';
+      cerrarSensorStream();
     }
 
     function weatherIcon(code) {

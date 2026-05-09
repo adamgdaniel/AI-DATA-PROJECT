@@ -580,10 +580,10 @@ function renderGrid() {
     }
 
     const plantaData = ghSensorData.plantas && ghSensorData.plantas[String(plant.id)];
-    if (plantaData && plantaData.humedad_suelo_actual != null) {
+    if (plantaData && plantaData.humedad_suelo != null) {
       const chip = document.createElement('div');
       chip.className = 'soil-chip';
-      chip.textContent = `💧 ${parseFloat(plantaData.humedad_suelo_actual).toFixed(0)}%`;
+      chip.textContent = `💧 ${parseFloat(plantaData.humedad_suelo).toFixed(0)}%`;
       el.appendChild(chip);
     }
 
@@ -888,8 +888,8 @@ async function unlinkSensor() {
 
 function updateSensorWidget() {
   const inv = ghSensorData.invernadero || {};
-  const temp = inv.temperatura_actual;
-  const hum  = inv.humedad_ambiental_actual;
+  const temp = inv.temperatura;
+  const hum  = inv.humedad_ambiental;
   const widget = document.getElementById('inv-sensor-widget');
   if (temp == null && hum == null) {
     widget.style.display = 'none';
