@@ -81,13 +81,14 @@ def _media(valores):
     return sum(valores) / len(valores) if valores else None
 
 
-def mergearParcelaConSensores(elemento):
+def mergearParcelaConSensores(elemento, window=beam.DoFn.WindowParam):
     """
     Recibe (parcel_id, {'meteo': [info], 'sensor': [lecturas]}).
     Emite una sola fila con meteo como baseline y sensores sobreescribiendo donde aplique.
     Si no hay meteo en la ventana (side input aún no disparó), descarta.
     """
     parcel_id, groups = elemento
+    window_start = window.start.to_utc_datetime()
     meteo_list = groups.get('meteo', [])
     sensor_list = groups.get('sensor', [])
 
@@ -119,7 +120,7 @@ def mergearParcelaConSensores(elemento):
     yield {
         'user_id': info['user_id'],
         'parcel_id': parcel_id,
-        'timestamp': datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat(),
+        'timestamp': window_start.replace(second=0, microsecond=0).isoformat(),
         'temperatura': temp_media if temp_media is not None else info.get('temperatura'),
         'humedad_ambiental': hum_media if hum_media is not None else info.get('humedad_ambiental'),
         'humedad_suelo': suelo_media,
