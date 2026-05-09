@@ -1,8 +1,5 @@
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions
-from apache_beam.transforms.window import GlobalWindows
-from apache_beam.transforms.periodicsequence import PeriodicImpulse
-from apache_beam.transforms.trigger import Repeatedly, AfterProcessingTime, AccumulationMode
 import json
 import logging
 from datetime import datetime
@@ -25,16 +22,26 @@ PUBSUB_SUBSCRIPTION = os.environ.get('PUBSUB_SUBSCRIPTION', f'projects/{PROJECT_
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+CACHE_TTL_SECONDS = 600
 
-class LoadParcelasSQL(beam.DoFn):
 
-    def __init__(self, instance_connection_name, db_user, db_password, db_name):
+class EscribirParcela(beam.DoFn):
+    """
+    Carga las parcelas desde Cloud SQL en setup() y las refresca cada 10 min.
+    Sin side inputs, sin windowing. Cada mensaje se procesa y escribe al llegar.
+    """
+
+    def __init__(self, project_id, instance_connection_name, db_user, db_password, db_name):
+        self.project_id = project_id
         self.instance_connection_name = instance_connection_name
         self.db_user = db_user
         self.db_password = db_password
         self.db_name = db_name
         self._connector = None
         self._conn = None
+        self._fs = None
+        self._parcelas = {}
+        self._loaded_at = None
 
     def setup(self):
         from google.cloud.sql.connector import Connector
@@ -46,54 +53,37 @@ class LoadParcelasSQL(beam.DoFn):
             password=self.db_password,
             db=self.db_name
         )
+        self._fs = firestore.Client(project=self.project_id)
+        self._cargar_parcelas()
 
-    def process(self, element):
+    def _cargar_parcelas(self):
         try:
             cursor = self._conn.cursor()
             cursor.execute("""
-                SELECT id, usuario_id, parcela_id, municipio, cultivo, variedad, lat, lng
+                SELECT id, usuario_id, parcela_id, municipio, cultivo, variedad
                 FROM parcelas_usuario
             """)
-            parcelas_dict = {}
+            parcelas = {}
             for row in cursor.fetchall():
-                parcelas_dict[str(row[0])] = {
+                parcelas[str(row[0])] = {
                     'usuario_id': str(row[1]),
                     'parcela_id': row[2],
                     'municipio': str(row[3]),
                     'cultivo': row[4],
                     'variedad': row[5],
-                    'lat': float(row[6]) if row[6] else None,
-                    'lng': float(row[7]) if row[7] else None,
                 }
             cursor.close()
-            logger.info(f'[LoadParcelas] {len(parcelas_dict)} parcelas cargadas. Keys: {list(parcelas_dict.keys())}')
-            yield parcelas_dict
+            self._parcelas = parcelas
+            self._loaded_at = datetime.utcnow()
+            logger.info(f'[EscribirParcela] {len(parcelas)} parcelas cargadas. Keys: {list(parcelas.keys())}')
         except Exception as e:
-            logger.error(f'[LoadParcelas] Error: {e}')
-            yield {}
+            logger.error(f'[EscribirParcela] Error cargando parcelas: {e}')
 
-    def teardown(self):
-        if self._conn:
-            self._conn.close()
-        if self._connector:
-            self._connector.close()
+    def process(self, element):
+        # Refrescar caché si ha pasado el TTL
+        if self._loaded_at is None or (datetime.utcnow() - self._loaded_at).seconds > CACHE_TTL_SECONDS:
+            self._cargar_parcelas()
 
-
-class EscribirEnFirestore(beam.DoFn):
-    """
-    Parsea el mensaje de Pub/Sub y escribe directamente en Firestore.
-    Sin tagged outputs, sin pasos intermedios.
-    Si algo falla, loga el error y continúa.
-    """
-
-    def __init__(self, project_id):
-        self.project_id = project_id
-        self.fs_client = None
-
-    def setup(self):
-        self.fs_client = firestore.Client(project=self.project_id)
-
-    def process(self, element, parcelas_dict):
         try:
             attrs = element.attributes
             entity_type = attrs.get('entity_type', '')
@@ -105,35 +95,36 @@ class EscribirEnFirestore(beam.DoFn):
             sensor_tipo = attrs.get('sensor_tipo', '')
 
             if not entity_id:
-                logger.warning('[EscribirEnFirestore] entity_id vacío, descartando')
+                logger.warning('[EscribirParcela] entity_id vacío')
                 return
 
-            if entity_id not in parcelas_dict:
-                logger.warning(f'[EscribirEnFirestore] parcela {entity_id!r} no encontrada. Dict tiene {len(parcelas_dict)} keys.')
+            if entity_id not in self._parcelas:
+                logger.warning(f'[EscribirParcela] parcela {entity_id!r} no encontrada en caché ({len(self._parcelas)} entradas)')
                 return
 
             body = json.loads(element.data.decode('utf-8'))
             valor = body.get('valor')
-            parcela = parcelas_dict[entity_id]
+            parcela = self._parcelas[entity_id]
 
-            doc = {
-                sensor_tipo: valor,
-                'updated_at': datetime.utcnow().isoformat()
-            }
+            doc = {sensor_tipo: valor, 'updated_at': datetime.utcnow().isoformat()}
 
-            self.fs_client\
+            self._fs\
                 .collection('usuarios').document(parcela['usuario_id'])\
                 .collection('parcelas').document(entity_id)\
                 .set(doc, merge=True)
 
-            logger.info(f'[EscribirEnFirestore] OK parcela={entity_id} {sensor_tipo}={valor}')
+            logger.info(f'[EscribirParcela] OK parcela={entity_id} {sensor_tipo}={valor}')
 
         except Exception as e:
-            logger.error(f'[EscribirEnFirestore] Error: {e}')
+            logger.error(f'[EscribirParcela] Error: {e}')
 
     def teardown(self):
-        if self.fs_client:
-            self.fs_client.close()
+        if self._conn:
+            self._conn.close()
+        if self._connector:
+            self._connector.close()
+        if self._fs:
+            self._fs.close()
 
 
 def run(argv=None):
@@ -143,27 +134,15 @@ def run(argv=None):
 
     p = beam.Pipeline(options=pipeline_options)
 
-    parcelas_pcoll = (
-        p
-        | 'PeriodicImpulse_Parcelas' >> PeriodicImpulse(fire_interval=60)
-        | 'GlobalWindow_Parcelas' >> beam.WindowInto(
-            GlobalWindows(),
-            trigger=Repeatedly(AfterProcessingTime(60)),
-            accumulation_mode=AccumulationMode.DISCARDING
-        )
-        | 'LoadParcelas' >> beam.ParDo(
-            LoadParcelasSQL(INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME)
-        )
-    )
-
     _ = (
         p
         | 'ReadFromPubSub' >> beam.io.ReadFromPubSub(
             subscription=PUBSUB_SUBSCRIPTION, with_attributes=True
         )
-        | 'EscribirEnFirestore' >> beam.ParDo(
-            EscribirEnFirestore(PROJECT_ID),
-            parcelas_dict=beam.pvalue.AsSingleton(parcelas_pcoll, default_value={})
+        | 'EscribirParcela' >> beam.ParDo(
+            EscribirParcela(
+                PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
+            )
         )
     )
 
