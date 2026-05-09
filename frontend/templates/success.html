@@ -145,26 +145,25 @@
     .crop-marker { background: none !important; border: none !important; }
     .parcela-glow { filter: drop-shadow(0 0 6px #4ade80) drop-shadow(0 0 14px #4ade8088); }
 
-    /* ── Sensor overlay badge en el mapa ── */
-    .sensor-overlay-icon { background: transparent !important; border: none !important; }
-    .sensor-badge {
-      background: rgba(6,27,14,0.88);
-      border: 1.5px solid rgba(178,247,70,0.45);
-      border-radius: 8px;
-      padding: 7px 11px;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      color: #d0e9d4;
-      white-space: nowrap;
+    /* ── Sensor popup en el mapa ── */
+    .sensor-popup .leaflet-popup-content-wrapper {
+      background: rgba(6,27,14,0.68) !important;
+      border: 1.5px solid rgba(178,247,70,0.40) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.45) !important;
       backdrop-filter: blur(6px);
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      color: #d0e9d4;
+      padding: 0;
     }
-    .sensor-badge-row { display: flex; align-items: center; gap: 5px; }
-    .sensor-badge-src { font-size: 10px; color: #6ca200; font-weight: 400; margin-top: 1px; }
+    .sensor-popup .leaflet-popup-tip-container { display: none; }
+    .sensor-popup .leaflet-popup-content { margin: 0; font-family: 'Inter', sans-serif; }
+    .sensor-popup-body { padding: 8px 14px; }
+    .spb-readings {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 700; color: #d0e9d4; white-space: nowrap;
+    }
+    .spb-sep { color: rgba(178,247,70,0.5); font-weight: 400; }
+    .spb-src { font-size: 10px; color: #98da27; font-weight: 400; text-align: center; margin-top: 3px; }
 
     /* Sensor section */
     .dp-section h4 { display: flex; align-items: center; justify-content: space-between; }
@@ -403,7 +402,7 @@
 
     // ── Sensor stream para la parcela seleccionada ──────────────────────
     let sensorStream = null;
-    let sensorMarker = null;
+    let sensorPopup  = null;
 
     function abrirSensorStream(p) {
       cerrarSensorStream();
@@ -416,7 +415,7 @@
 
     function cerrarSensorStream() {
       if (sensorStream) { sensorStream.close(); sensorStream = null; }
-      if (sensorMarker) { sensorMarker.remove(); sensorMarker = null; }
+      if (sensorPopup)  { sensorPopup.remove();  sensorPopup  = null; }
     }
 
     function mostrarBadgeSensor(data, p) {
@@ -426,18 +425,21 @@
       const fuente   = data.fuente_temperatura;
       if (temp == null && humAmb == null) return;
 
-      let rows = '';
-      if (temp     != null) rows += `<div class="sensor-badge-row">🌡 <b>${parseFloat(temp).toFixed(1)} °C</b></div>`;
-      if (humAmb   != null) rows += `<div class="sensor-badge-row">💧 <b>${parseFloat(humAmb).toFixed(0)} %</b> hum.</div>`;
-      if (humSuelo != null) rows += `<div class="sensor-badge-row">🌱 <b>${parseFloat(humSuelo).toFixed(0)} %</b> suelo</div>`;
+      const items = [];
+      if (temp     != null) items.push(`🌡 ${parseFloat(temp).toFixed(1)} °C`);
+      if (humAmb   != null) items.push(`💧 ${parseFloat(humAmb).toFixed(0)} %`);
+      if (humSuelo != null) items.push(`🌱 ${parseFloat(humSuelo).toFixed(0)} %`);
       const srcLabel = fuente === 'sensor' ? '⚡ sensor IoT' : '🌐 Open-Meteo';
-      const html = `<div class="sensor-badge">${rows}<div class="sensor-badge-src">${srcLabel}</div></div>`;
+      const inner = items.join('<span class="spb-sep"> · </span>');
+      const html  = `<div class="sensor-popup-body"><div class="spb-readings">${inner}</div><div class="spb-src">${srcLabel}</div></div>`;
 
-      const icon = L.divIcon({ className: 'sensor-overlay-icon', html, iconAnchor: [-8, 8] });
-      if (sensorMarker) {
-        sensorMarker.setIcon(icon);
+      if (sensorPopup) {
+        sensorPopup.setContent(html);
       } else {
-        sensorMarker = L.marker([p.lat, p.lng], { icon, interactive: false }).addTo(map);
+        sensorPopup = L.popup({ closeButton: false, className: 'sensor-popup', autoPan: false, offset: [0, -4] })
+          .setLatLng([p.lat, p.lng])
+          .setContent(html)
+          .openOn(map);
       }
     }
 

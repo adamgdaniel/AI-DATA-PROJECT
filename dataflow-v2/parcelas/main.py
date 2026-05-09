@@ -29,8 +29,8 @@ BQ_SCHEMA = (
     'fecha_plantacion_aprox:DATE,estado_cielo:STRING,sensor_id:STRING'
 )
 
-# Tamaño de la ventana de agregación BQ (en segundos). 300 = 5 min para tests, 1200 = 20 min en prod.
-WINDOW_SECONDS = 300
+# Alineado con el Cloud Run IoT puller (cada 10 min = 600 s)
+WINDOW_SECONDS = 600
 
 WMO_ESTADO = {
     0: 'Despejado', 1: 'Mayormente despejado', 2: 'Parcialmente nublado', 3: 'Nublado',
@@ -71,65 +71,36 @@ def filtrarParcela(reading):
     return reading is not None and reading.get('entity_type') == 'parcela'
 
 
-def enriquecerConMeteo(reading, parcelas_meteo):
-    """Cruza la lectura del sensor con los datos de parcela + meteo cacheados (para Firestore)."""
-    parcela_id = reading.get('entity_id')
-    info = parcelas_meteo.get(parcela_id)
-    if not info:
-        logger.warning(f'parcela {parcela_id!r} no encontrada en caché ({len(parcelas_meteo)} entradas)')
-        return
-
-    sensor_tipo = reading.get('sensor_tipo')
-    valor = reading.get('valor')
-
-    fila = {
-        'user_id': info['user_id'],
-        'parcel_id': parcela_id,
-        'timestamp': datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat(),
-        'temperatura': info.get('temperatura'),
-        'humedad_ambiental': info.get('humedad_ambiental'),
-        'humedad_suelo': None,
-        'precipitacion_mm': info.get('precipitacion_mm'),
-        'et0': info.get('et0'),
-        'radiacion_solar': info.get('radiacion_solar'),
-        'fuente_temperatura': 'openmeteo',
-        'tipo_cultivo': info.get('cultivo'),
-        'variedad': info.get('variedad'),
-        'fecha_plantacion_aprox': None,
-        'estado_cielo': info.get('estado_cielo'),
-        'sensor_id': reading.get('sensor_id'),
-    }
-
-    if sensor_tipo == 'temperatura':
-        fila['temperatura'] = valor
-        fila['fuente_temperatura'] = 'sensor'
-    elif sensor_tipo == 'humedad_ambiental':
-        fila['humedad_ambiental'] = valor
-    elif sensor_tipo == 'humedad_suelo':
-        fila['humedad_suelo'] = valor
-
-    yield fila
+def explotarParcelasMeteo(parcelas_dict):
+    """Emite (parcel_id, info_meteo) por cada parcela conocida."""
+    for parcel_id, info in parcelas_dict.items():
+        yield (parcel_id, info)
 
 
 def _media(valores):
     return sum(valores) / len(valores) if valores else None
 
 
-def combinarLecturas(elemento, parcelas_meteo, ventana=beam.DoFn.WindowParam):
-    """Recibe (parcel_id, [lecturas de la ventana]) y emite UNA fila para BQ.
-    - Si hay varias lecturas del mismo sensor, hace la media.
-    - Si no hay lectura de sensor, usa meteo (excepto humedad_suelo, que queda null).
-    - Timestamp = inicio de la ventana (con minutos, para que la IA identifique el más reciente).
+def mergearParcelaConSensores(elemento, window=beam.DoFn.WindowParam):
     """
-    parcela_id, lecturas = elemento
-    info = parcelas_meteo.get(parcela_id)
-    if not info:
-        logger.warning(f'[combinar] parcela {parcela_id!r} no encontrada en caché')
+    Recibe (parcel_id, {'meteo': [info], 'sensor': [lecturas]}).
+    Emite una sola fila con meteo como baseline y sensores sobreescribiendo donde aplique.
+    Si no hay meteo en la ventana (side input aún no disparó), descarta.
+    """
+    parcel_id, groups = elemento
+    window_start = window.start.to_utc_datetime()
+    meteo_list = groups.get('meteo', [])
+    sensor_list = groups.get('sensor', [])
+
+    if not meteo_list:
+        logger.warning(f'[merge] parcela {parcel_id!r} sin meteo en esta ventana, descartando')
         return
+
+    info = meteo_list[0]
 
     temps, hums, suelos = [], [], []
     sensor_id = None
-    for r in lecturas:
+    for r in sensor_list:
         sensor_id = sensor_id or r.get('sensor_id')
         v = r.get('valor')
         if v is None:
@@ -150,8 +121,8 @@ def combinarLecturas(elemento, parcelas_meteo, ventana=beam.DoFn.WindowParam):
 
     yield {
         'user_id': info['user_id'],
-        'parcel_id': parcela_id,
-        'timestamp': ts,
+        'parcel_id': parcel_id,
+        'timestamp': window_start.replace(second=0, microsecond=0).isoformat(),
         'temperatura': temp_media if temp_media is not None else info.get('temperatura'),
         'humedad_ambiental': hum_media if hum_media is not None else info.get('humedad_ambiental'),
         'humedad_suelo': suelo_media,
@@ -311,49 +282,56 @@ def run(argv=None):
     options.view_as(StandardOptions).streaming = True
     options.view_as(SetupOptions).save_main_session = True
 
-    p = beam.Pipeline(options=options)
+    with beam.Pipeline(options=options) as p:
 
-    # --- Side input: parcelas + meteo, refrescado cada 5 min (test) ---
-    parcelas_meteo = (
-        p
-        | "Reloj" >> PeriodicImpulse(fire_interval=300, apply_windowing=True)
-        | "VentanaGlobal" >> beam.WindowInto(
-            window.GlobalWindows(),
-            trigger=trigger.Repeatedly(trigger.AfterCount(1)),
-            accumulation_mode=trigger.AccumulationMode.DISCARDING)
-        | "CargarSQL" >> beam.ParDo(CargarParcelasYMeteo(
-            PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME, DB_NAME_METEO))
-    )
-    vista_parcelas = beam.pvalue.AsSingleton(parcelas_meteo, default_value={})
+        # --- Side input: parcelas + meteo, refrescado cada ventana ---
+        parcelas_meteo_raw = (
+            p
+            | "Reloj" >> PeriodicImpulse(fire_interval=WINDOW_SECONDS, apply_windowing=True)
+            | "VentanaGlobal" >> beam.WindowInto(
+                window.GlobalWindows(),
+                trigger=trigger.Repeatedly(trigger.AfterCount(1)),
+                accumulation_mode=trigger.AccumulationMode.DISCARDING)
+            | "CargarSQL" >> beam.ParDo(CargarParcelasYMeteo(
+                PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME, DB_NAME_METEO))
+        )
 
-    # --- Stream principal: parsear y filtrar parcelas ---
-    parsed = (
-        p
-        | "LeerPubSub" >> beam.io.ReadFromPubSub(
-            subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
-        | "ParsearMensaje" >> beam.Map(parsearMensaje)
-        | "FiltrarParcelas" >> beam.Filter(filtrarParcela)
-    )
+        # --- Branch meteo: un (parcel_id, info) por parcela en cada ventana fija ---
+        meteo_stream = (
+            parcelas_meteo_raw
+            | "ExplotarParcelas" >> beam.FlatMap(explotarParcelasMeteo)
+            | "VentanaMeteo" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
+        )
 
-    # --- Sink Firestore: 1 update por mensaje (sin agregación) ---
-    (parsed
-     | "EnriquecerFirestore" >> beam.FlatMap(enriquecerConMeteo, parcelas_meteo=vista_parcelas)
-     | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
+        # --- Branch sensor: mensajes de Pub/Sub en la misma ventana fija ---
+        sensor_stream = (
+            p
+            | "LeerPubSub" >> beam.io.ReadFromPubSub(
+                subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
+            | "ParsearMensaje" >> beam.Map(parsearMensaje)
+            | "FiltrarParcelas" >> beam.Filter(filtrarParcela)
+            | "ClaveParcelaSensor" >> beam.Map(lambda r: (r['entity_id'], r))
+            | "VentanaSensor" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
+        )
 
-    # --- Sink BigQuery: agregación por ventana fija, 1 fila por parcela y ventana ---
-    (parsed
-     | "ClavePorParcela" >> beam.Map(lambda r: (r['entity_id'], r))
-     | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
-     | "AgruparPorParcela" >> beam.GroupByKey()
-     | "CombinarLecturas" >> beam.FlatMap(combinarLecturas, parcelas_meteo=vista_parcelas)
-     | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
-         table=BQ_TABLE,
-         schema=BQ_SCHEMA,
-         write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
-         create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER))
+        # --- CoGroupByKey: merge meteo + sensores antes de escribir ---
+        merged = (
+            {'meteo': meteo_stream, 'sensor': sensor_stream}
+            | "CoAgrupar" >> beam.CoGroupByKey()
+            | "MergearParcelaConSensores" >> beam.FlatMap(mergearParcelaConSensores)
+        )
 
-    p.run()
-    logger.info('Dataflow parcelas streaming job submitted')
+        # --- Sink Firestore ---
+        (merged
+         | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
+
+        # --- Sink BigQuery ---
+        (merged
+         | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
+             table=BQ_TABLE,
+             schema=BQ_SCHEMA,
+             write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
+             create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER))
 
 
 if __name__ == '__main__':

@@ -45,6 +45,7 @@
       padding: 8px 16px; display: flex; align-items: center;
       justify-content: space-between; gap: 12px;
       flex-shrink: 0; z-index: 9; backdrop-filter: blur(4px);
+      position: relative;
     }
     #gh-select {
       padding: 6px 10px; border-radius: 8px;
@@ -224,6 +225,7 @@
       display: none; align-items: center; gap: 18px;
       background: rgba(82,183,136,0.12); border: 1px solid #3d8a65;
       border-radius: 8px; padding: 6px 16px;
+      position: absolute; left: 50%; transform: translateX(-50%);
     }
     .inv-reading { text-align: center; }
     .inv-reading-lbl { display: block; font-size: 10px; color: #4a7c59; }
@@ -279,12 +281,14 @@
 
     /* ── Soil moisture chip on plants ── */
     .soil-chip {
-      position: absolute; bottom: 3px; left: 50%;
+      position: absolute; bottom: 2px; left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.6); color: #7ee8a2;
-      font-size: 9px; font-weight: bold;
-      padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+      background: rgba(0,50,20,0.88); color: #7ee8a2;
+      font-size: 12px; font-weight: 700; font-style: normal;
+      padding: 3px 8px; border-radius: 4px; white-space: nowrap;
       pointer-events: none; line-height: 1.4;
+      border: 1px solid rgba(82,183,136,0.55);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
   </style>
   <link rel="stylesheet" href="/static/theme-override.css"/>
