@@ -10,6 +10,13 @@ DATA_API_URL = os.environ.get('DATA_API_URL', API_URL)
 IOT_API_URL = os.environ.get('IOT_API_URL', '')
 AGENT_URL = os.environ.get('AGENT_URL', '')
 
+
+@app.context_processor
+def inject_chat_flag():
+    """Hace disponible `chat_enabled` en todas las plantillas.
+    El chat flotante solo se muestra a usuarios autenticados."""
+    return {'chat_enabled': 'user_id' in session}
+
 # Código INE de la capital de cada provincia (fallback cuando el municipio no tiene previsión)
 PROVINCE_CAPITALS = {
     '01':'01059','02':'02003','03':'03014','04':'04013','05':'05019',
