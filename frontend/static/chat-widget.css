@@ -359,14 +359,13 @@
   box-shadow: 0 0 0 3px rgba(46, 125, 50, .15);
 }
 
-.agro-chat-camera {
+.agro-chat-media-btn {
   flex-shrink: 0;
   width: 46px;
   height: 46px;
   border-radius: 50%;
   border: 1.5px solid var(--agro-border);
   background: var(--agro-bg-alt);
-  color: var(--agro-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -374,15 +373,15 @@
   transition: background .2s ease, border-color .2s ease, transform .15s ease;
 }
 
-.agro-chat-camera:hover {
+.agro-chat-media-btn:hover {
   background: #e8f5e9;
   border-color: var(--agro-primary-light);
   transform: scale(1.05);
 }
 
-.agro-chat-camera:active { transform: scale(.92); }
+.agro-chat-media-btn:active { transform: scale(.92); }
 
-.agro-chat-camera svg {
+.agro-chat-media-btn svg {
   width: 22px;
   height: 22px;
   stroke: var(--agro-primary);
