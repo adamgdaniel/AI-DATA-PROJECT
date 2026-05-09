@@ -91,9 +91,10 @@ class LoadInvernaderosSQL(beam.DoFn):
                     })
 
             cursor.close()
+            logger.info(f'[LoadInvernaderos] Cargados {len(invernaderos)} invernaderos, {len(plant_to_inv)} plantas. Inv keys: {list(invernaderos.keys())}')
             yield {'invernaderos': invernaderos, 'plant_to_inv': plant_to_inv}
         except Exception as e:
-            logger.error(f'Error loading invernaderos from SQL: {e}')
+            logger.error(f'[LoadInvernaderos] Error: {e}')
             yield {'invernaderos': {}, 'plant_to_inv': {}}
 
     def teardown(self):
@@ -176,6 +177,8 @@ class TagWithInvernaderoId(beam.DoFn):
         entity_id = reading['entity_id']
         invernaderos = inv_metadata.get('invernaderos', {})
         plant_to_inv = inv_metadata.get('plant_to_inv', {})
+
+        logger.info(f'[TagWithInvId] entity_type={entity_type!r} entity_id={entity_id!r} inv_metadata size={len(invernaderos)} invernaderos, {len(plant_to_inv)} plantas')
 
         if entity_type == 'invernadero':
             if entity_id in invernaderos:

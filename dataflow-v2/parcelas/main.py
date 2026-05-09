@@ -88,9 +88,10 @@ class LoadParcelasSQL(beam.DoFn):
                 }
 
             cursor.close()
+            logger.info(f'[LoadParcelas] Cargadas {len(parcelas_dict)} parcelas. Keys: {list(parcelas_dict.keys())}')
             yield parcelas_dict
         except Exception as e:
-            logger.error(f'Error loading parcelas: {e}')
+            logger.error(f'[LoadParcelas] Error: {e}')
             yield {}
 
     def teardown(self):
@@ -227,6 +228,8 @@ class EnrichSensorWithParcelaAndMeteo(beam.DoFn):
                 meteo_dict = {}
 
             parcela_usuario_id = sensor.get('parcela_usuario_id')
+
+            logger.info(f'[EnrichWithMetadata] parcelas_dict size={len(parcelas_dict)}, buscando {parcela_usuario_id!r}')
 
             # Buscar parcela
             if parcela_usuario_id not in parcelas_dict:
