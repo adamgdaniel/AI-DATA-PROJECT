@@ -16,7 +16,7 @@ SENSOR_API_URL = os.environ.get("SENSOR_API_URL", "http://sensor-api:8080")
 
 client = genai.Client(vertexai=True, project=GCP_PROJECT, location="europe-west1")
 
-MODEL = "gemini-2.0-flash-001"
+MODEL = "gemini-2.0-flash"
 
 
 def _build_tools() -> list:
