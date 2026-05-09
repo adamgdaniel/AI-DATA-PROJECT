@@ -66,7 +66,7 @@ class LoadParcelasSQL(beam.DoFn):
 
             parcelas_dict = {}
             for row in cursor.fetchall():
-                parcelas_dict[row[0]] = {
+                parcelas_dict[str(row[0])] = {
                     'id': row[0],
                     'usuario_id': row[1],
                     'parcela_id': row[2],
@@ -271,12 +271,12 @@ class EnrichSensorWithParcelaAndMeteo(beam.DoFn):
             }
 
             # Aplicar valor del sensor
-            if sensor_type == 'temperature':
+            if sensor_type == 'temperatura':
                 enriched['temperatura'] = value
                 enriched['fuente_temperatura'] = 'sensor'
-            elif sensor_type == 'ambient_humidity':
+            elif sensor_type == 'humedad_ambiental':
                 enriched['humedad_ambiental'] = value
-            elif sensor_type == 'soil_moisture':
+            elif sensor_type == 'humedad_suelo':
                 enriched['humedad_suelo'] = value
 
             # Si no hay sensor, usar meteorología como fallback
