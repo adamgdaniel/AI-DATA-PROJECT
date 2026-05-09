@@ -1,7 +1,34 @@
-from flask import Flask, render_template, request, session, jsonify, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request, session, jsonify, redirect, url_for, send_from_directory, Response
 import requests
 import math
 import os
+import json
+import queue
+import threading
+
+try:
+    from google.cloud import firestore as _fs_module
+    _FS_AVAILABLE = True
+except ImportError:
+    _FS_AVAILABLE = False
+
+_FIRESTORE_DB = os.environ.get('FIRESTORE_DATABASE', 'ultimas-lecturas')
+_FIRESTORE_PROJECT = os.environ.get('GCP_PROJECT_ID')
+_fs_client = None
+
+def _get_firestore():
+    global _fs_client
+    if not _FS_AVAILABLE:
+        return None
+    if _fs_client is None:
+        try:
+            kw = {'database': _FIRESTORE_DB}
+            if _FIRESTORE_PROJECT:
+                kw['project'] = _FIRESTORE_PROJECT
+            _fs_client = _fs_module.Client(**kw)
+        except Exception as e:
+            print(f'[Firestore] init error: {e}')
+    return _fs_client
 
 app = Flask(__name__)
 app.secret_key = os.environ['SECRET_KEY']
@@ -652,14 +679,111 @@ def actualizar_sensor_invernadero(inv_id):
         return jsonify({'error': 'API no disponible'}), 502
 
 
+@app.route('/stream/parcela/<int:parcela_id>')
+def stream_parcela(parcela_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    db = _get_firestore()
+    if not db:
+        def _empty():
+            yield 'data: {}\n\n'
+        return Response(_empty(), mimetype='text/event-stream')
+
+    uid = str(session['user_id'])
+    doc_ref = (db.collection('usuarios')
+                 .document(uid)
+                 .collection('parcelas')
+                 .document(str(parcela_id)))
+    q = queue.Queue()
+
+    def _on_snap(snapshots, changes, read_time):
+        for doc in snapshots:
+            q.put(doc.to_dict() or {})
+
+    unsubscribe = doc_ref.on_snapshot(_on_snap)
+
+    def _generate():
+        try:
+            while True:
+                try:
+                    data = q.get(timeout=25)
+                    yield f'data: {json.dumps(data)}\n\n'
+                except queue.Empty:
+                    yield ': keepalive\n\n'
+        except GeneratorExit:
+            unsubscribe()
+
+    return Response(_generate(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+
 @app.route('/stream/invernadero/<int:inv_id>')
 def stream_invernadero(inv_id):
     if 'user_id' not in session:
         return jsonify({'error': 'no autenticado'}), 401
-    from flask import Response
-    def empty_stream():
-        yield 'data: {"invernadero":{},"plantas":{}}\n\n'
-    return Response(empty_stream(), mimetype='text/event-stream')
+    if _DEV:
+        import time as _time
+        def _dev_stream():
+            try:
+                while True:
+                    plantas_fake = {
+                        str(p['id']): {'humedad_suelo': 55}
+                        for p in _dev_plants.get(inv_id, [])
+                    }
+                    fake = {'invernadero': {'temperatura': 24.0, 'humedad_ambiental': 78}, 'plantas': plantas_fake}
+                    yield f'data: {json.dumps(fake)}\n\n'
+                    _time.sleep(10)
+                    yield ': keepalive\n\n'
+            except GeneratorExit:
+                pass
+        return Response(_dev_stream(), mimetype='text/event-stream',
+                        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+    db = _get_firestore()
+    if not db:
+        def _empty():
+            yield 'data: {"invernadero":{},"plantas":{}}\n\n'
+        return Response(_empty(), mimetype='text/event-stream')
+
+    uid = str(session['user_id'])
+    inv_ref = (db.collection('usuarios')
+                 .document(uid)
+                 .collection('invernaderos')
+                 .document(str(inv_id)))
+    plantas_ref = inv_ref.collection('plantas')
+    q = queue.Queue()
+    state = {'invernadero': {}, 'plantas': {}}
+    lock = threading.Lock()
+
+    def _on_inv_snap(snapshots, changes, read_time):
+        with lock:
+            for doc in snapshots:
+                state['invernadero'] = doc.to_dict() or {}
+            snap = {'invernadero': dict(state['invernadero']), 'plantas': dict(state['plantas'])}
+        q.put(snap)
+
+    def _on_plantas_snap(snapshots, changes, read_time):
+        with lock:
+            state['plantas'] = {doc.id: doc.to_dict() for doc in snapshots}
+            snap = {'invernadero': dict(state['invernadero']), 'plantas': dict(state['plantas'])}
+        q.put(snap)
+
+    unsub_inv = inv_ref.on_snapshot(_on_inv_snap)
+    unsub_plantas = plantas_ref.on_snapshot(_on_plantas_snap)
+
+    def _generate():
+        try:
+            while True:
+                try:
+                    data = q.get(timeout=25)
+                    yield f'data: {json.dumps(data)}\n\n'
+                except queue.Empty:
+                    yield ': keepalive\n\n'
+        except GeneratorExit:
+            unsub_inv()
+            unsub_plantas()
+
+    return Response(_generate(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 @app.route('/registrar-accion', methods=['POST'])
