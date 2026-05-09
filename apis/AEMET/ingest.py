@@ -27,7 +27,8 @@ OPENMETEO_URL  = (
     "?latitude={lat}&longitude={lon}"
     "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,"
     "precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,"
-    "wind_gusts_10m_max,uv_index_max,et0_fao_evapotranspiration,weather_code,shortwave_radiation_sum"
+    "wind_gusts_10m_max,uv_index_max,et0_fao_evapotranspiration,weather_code,shortwave_radiation_sum,"
+    "relative_humidity_2m_max,relative_humidity_2m_min"
     "&forecast_days=16&timezone=Europe%2FMadrid"
 )
 
@@ -76,9 +77,9 @@ def _get_period(items, periodo="00-24", key="value"):
     return None
 
 
-def _int_or_none(v):
+def _float_or_none(v):
     try:
-        return int(v)
+        return float(v)
     except (TypeError, ValueError):
         return None
 
@@ -87,6 +88,13 @@ def build_rows(om_data, aemet_data, fecha_consulta, codigo_ine):
     rows = []
     for fecha, om in om_data.items():
         aemet = aemet_data.get(fecha, {})
+        # Humedad: por defecto Open-Meteo. AEMET solo si OM no la trae (raro).
+        hum_max = om.get("relative_humidity_2m_max")
+        if hum_max is None:
+            hum_max = aemet.get("humedad_max")
+        hum_min = om.get("relative_humidity_2m_min")
+        if hum_min is None:
+            hum_min = aemet.get("humedad_min")
         rows.append((
             codigo_ine, fecha, fecha_consulta,
             om.get("temperature_2m_max"),
@@ -101,8 +109,8 @@ def build_rows(om_data, aemet_data, fecha_consulta, codigo_ine):
             om.get("et0_fao_evapotranspiration"),
             om.get("shortwave_radiation_sum"),
             om.get("weather_code"),
-            _int_or_none(aemet.get("humedad_max")),
-            _int_or_none(aemet.get("humedad_min")),
+            _float_or_none(hum_max),
+            _float_or_none(hum_min),
             aemet.get("estado_cielo_cod"),
             aemet.get("estado_cielo_desc"),
             json.dumps(om),
@@ -185,7 +193,18 @@ def sync_municipios_desde_parcelas(conn_agro):
         log.warning("Sin parcelas con coordenadas en logindb")
         return
 
+    codigos_activos = [f'{int(p):02d}{int(m):03d}' for p, m, _, _ in rows]
+
     with conn_agro.cursor() as cur:
+        # 1) Desactivar municipios que ya no tienen parcelas
+        cur.execute(
+            "UPDATE municipios_monitorizados SET activo = FALSE "
+            "WHERE NOT (codigo_ine = ANY(%s))",
+            (codigos_activos,),
+        )
+        desactivados = cur.rowcount
+
+        # 2) Upsert los municipios actuales como activos
         for provincia, municipio, lat, lon in rows:
             codigo_ine = f'{int(provincia):02d}{int(municipio):03d}'
             cur.execute("""
@@ -198,7 +217,10 @@ def sync_municipios_desde_parcelas(conn_agro):
                     activo = TRUE
             """, (codigo_ine, f'Municipio {codigo_ine}', str(provincia), lat, lon))
     conn_agro.commit()
-    log.info(f"Sync municipios_monitorizados: {len(rows)} entradas upserteadas desde parcelas_usuario")
+    log.info(
+        f"Sync municipios_monitorizados: {len(rows)} activos upserteados desde "
+        f"parcelas_usuario, {desactivados} obsoletos desactivados"
+    )
 
 
 def main():
@@ -217,15 +239,31 @@ def main():
     fecha_consulta = datetime.now(timezone.utc)
 
     for codigo_ine, lat, lon in municipios:
+        # 1) Open-Meteo (sin rate limit, casi nunca falla) — base imprescindible
         try:
-            om_data   = fetch_openmeteo(lat, lon)
+            om_data = fetch_openmeteo(lat, lon)
+        except Exception as e:
+            log.error(f"{codigo_ine}: Open-Meteo falló, saltando municipio: {e}")
+            time.sleep(2)
+            continue
+
+        # 2) AEMET (con rate limit) — opcional: si falla, escribimos solo Open-Meteo
+        try:
             aemet_data = fetch_aemet(codigo_ine)
+        except Exception as e:
+            log.warning(f"{codigo_ine}: AEMET falló, escribiendo solo Open-Meteo: {e}")
+            aemet_data = {}
+
+        # 3) Upsert con lo que tengamos (build_rows ya tolera aemet_data vacío)
+        try:
             rows = build_rows(om_data, aemet_data, fecha_consulta, codigo_ine)
             upsert(conn, rows)
-            log.info(f"{codigo_ine}: {len(rows)} días insertados/actualizados en Cloud SQL")
+            fuente = "OM+AEMET" if aemet_data else "OM"
+            log.info(f"{codigo_ine}: {len(rows)} días [{fuente}] insertados/actualizados en Cloud SQL")
         except Exception as e:
             conn.rollback()
-            log.error(f"{codigo_ine}: {e}")
+            log.error(f"{codigo_ine}: error al upsertar: {e}")
+
         time.sleep(2)
 
     conn.close()
