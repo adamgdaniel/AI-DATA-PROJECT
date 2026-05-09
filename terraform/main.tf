@@ -252,8 +252,9 @@ resource "google_cloudbuild_trigger" "login_frontend" {
   filename = "frontend/cloudbuild.yaml"
 
   substitutions = {
-    _AGENT_URL = google_cloud_run_v2_service.agent.uri
-
+    _AGENT_URL    = google_cloud_run_v2_service.agent.uri
+    _DATA_API_URL = google_cloud_run_v2_service.data_api.uri
+  }
 
   service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
 }
@@ -275,6 +276,11 @@ resource "google_cloudbuild_trigger" "login_api" {
   included_files = ["logging/api/**"]
 
   filename = "logging/api/cloudbuild.yaml"
+
+  substitutions = {
+    _TEST_USERNAME = "testuser"
+    _TEST_PASSWORD = var.test_password
+  }
 
   service_account = "projects/${var.project_id}/serviceAccounts/${var.project_number}-compute@developer.gserviceaccount.com"
 }

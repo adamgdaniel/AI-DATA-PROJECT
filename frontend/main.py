@@ -614,9 +614,11 @@ def actualizar_sensor_planta(inv_id, planta_id):
                 p['sensor_entity_id'] = (request.json or {}).get('sensor_entity_id')
         return jsonify({'success': True})
     try:
+        body = dict(request.json or {})
+        body['user_id'] = session['user_id']
         resp = requests.put(
             f'{DATA_API_URL}/invernaderos/{inv_id}/plantas/{planta_id}/sensor',
-            json=request.json, timeout=10
+            json=body, timeout=10
         )
         return jsonify(resp.json()), resp.status_code
     except Exception:
@@ -632,9 +634,11 @@ def actualizar_sensor_invernadero(inv_id):
             _dev_gh[inv_id]['sensor_entity_id'] = (request.json or {}).get('sensor_entity_id')
         return jsonify({'success': True})
     try:
+        body = dict(request.json or {})
+        body['user_id'] = session['user_id']
         resp = requests.put(
             f'{DATA_API_URL}/invernaderos/{inv_id}/sensor',
-            json=request.json, timeout=10
+            json=body, timeout=10
         )
         return jsonify(resp.json()), resp.status_code
     except Exception:

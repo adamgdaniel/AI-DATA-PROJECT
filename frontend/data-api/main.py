@@ -128,13 +128,17 @@ def get_invernaderos():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, nombre, sensor_entity_id, created_at FROM invernaderos
+        SELECT id, nombre, temperatura_entity_id, hum_amb_entity_id, created_at FROM invernaderos
         WHERE usuario_id = %s ORDER BY created_at ASC
     """, (usuario_id,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    return jsonify([{'id': r[0], 'nombre': r[1], 'sensor_entity_id': r[2], 'created_at': r[3].isoformat()} for r in rows])
+    return jsonify([{
+        'id': r[0], 'nombre': r[1],
+        'temperatura_entity_id': r[2], 'hum_amb_entity_id': r[3],
+        'created_at': r[4].isoformat()
+    } for r in rows])
 
 
 @app.route('/invernaderos', methods=['POST'])
@@ -159,11 +163,28 @@ def crear_invernadero():
 @app.route('/invernaderos/<int:invernadero_id>/sensor', methods=['PUT'])
 def update_invernadero_sensor(invernadero_id):
     data = request.json
-    sensor_entity_id = data.get('sensor_entity_id')
+    sensor_type = data.get('sensor_type')  # 'temperatura' o 'hum_amb'
+    entity_id = data.get('sensor_entity_id')
+
+    col = 'temperatura_entity_id' if sensor_type == 'temperatura' else 'hum_amb_entity_id'
+
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("UPDATE invernaderos SET sensor_entity_id = %s WHERE id = %s",
-                (sensor_entity_id, invernadero_id))
+    cur.execute(f"UPDATE invernaderos SET {col} = %s WHERE id = %s", (entity_id, invernadero_id))
+
+    if entity_id and data.get('connection_id') and data.get('user_id'):
+        db_type = 'temperature' if sensor_type == 'temperatura' else 'ambient_humidity'
+        cur.execute("""
+            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
+            VALUES (%s, %s, %s, %s, 'invernadero', %s, %s)
+            ON CONFLICT (sensor_id) DO UPDATE SET
+                location_id = EXCLUDED.location_id,
+                location_type = EXCLUDED.location_type,
+                sensor_type = EXCLUDED.sensor_type,
+                connection_id = EXCLUDED.connection_id,
+                display_name = EXCLUDED.display_name
+        """, (entity_id, data['connection_id'], data['user_id'], invernadero_id, db_type, data.get('display_name')))
+
     conn.commit()
     cur.close()
     conn.close()
@@ -189,14 +210,14 @@ def get_plantas(invernadero_id):
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, tipo, variedad, grid_col, grid_row, sensor_entity_id
+        SELECT id, tipo, variedad, grid_col, grid_row, soil_entity_id
         FROM plantas_invernadero WHERE invernadero_id = %s ORDER BY id ASC
     """, (invernadero_id,))
     rows = cur.fetchall()
     cur.close()
     conn.close()
     return jsonify([{
-        'id': r[0], 'tipo': r[1], 'variedad': r[2], 'grid_col': r[3], 'grid_row': r[4], 'sensor_entity_id': r[5]
+        'id': r[0], 'tipo': r[1], 'variedad': r[2], 'grid_col': r[3], 'grid_row': r[4], 'soil_entity_id': r[5]
     } for r in rows])
 
 
@@ -237,13 +258,26 @@ def eliminar_planta(invernadero_id, planta_id):
 @app.route('/invernaderos/<int:invernadero_id>/plantas/<int:planta_id>/sensor', methods=['PUT'])
 def update_planta_sensor(invernadero_id, planta_id):
     data = request.json
-    sensor_entity_id = data.get('sensor_entity_id')
+    entity_id = data.get('soil_entity_id')
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        UPDATE plantas_invernadero SET sensor_entity_id = %s
+        UPDATE plantas_invernadero SET soil_entity_id = %s
         WHERE id = %s AND invernadero_id = %s
-    """, (sensor_entity_id, planta_id, invernadero_id))
+    """, (entity_id, planta_id, invernadero_id))
+
+    if entity_id and data.get('connection_id') and data.get('user_id'):
+        cur.execute("""
+            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
+            VALUES (%s, %s, %s, %s, 'planta', 'soil_moisture', %s)
+            ON CONFLICT (sensor_id) DO UPDATE SET
+                location_id = EXCLUDED.location_id,
+                location_type = EXCLUDED.location_type,
+                sensor_type = EXCLUDED.sensor_type,
+                connection_id = EXCLUDED.connection_id,
+                display_name = EXCLUDED.display_name
+        """, (entity_id, data['connection_id'], data['user_id'], planta_id, data.get('display_name')))
+
     conn.commit()
     cur.close()
     conn.close()

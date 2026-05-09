@@ -1,0 +1,75 @@
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-invernaderos-repo/invernaderos:latest'
+      - 'dataflow-v2/invernaderos/'
+
+  # Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-invernaderos-repo/invernaderos:latest'
+
+  # Cancel running job if exists (no-op on first deploy)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        JOB=$$(gcloud dataflow jobs list \
+          --project=$PROJECT_ID \
+          --region=europe-west3 \
+          --filter="name=dataflow-invernaderos AND state=Running" \
+          --format="value(id)" \
+          --limit=1)
+        if [ -n "$$JOB" ]; then
+          gcloud dataflow jobs cancel "$$JOB" \
+            --project=$PROJECT_ID \
+            --region=europe-west3
+          echo "Cancel enviado. Esperando estado terminal..."
+          for i in $(seq 1 36); do
+            STATUS=$$(gcloud dataflow jobs describe "$$JOB" \
+              --project=$PROJECT_ID \
+              --region=europe-west3 \
+              --format="value(currentState)" 2>/dev/null)
+            echo "  Estado (intento $$i/36): $$STATUS"
+            if [ "$$STATUS" = "JOB_STATE_CANCELLED" ] || \
+               [ "$$STATUS" = "JOB_STATE_DONE" ]      || \
+               [ "$$STATUS" = "JOB_STATE_FAILED" ]; then
+              echo "Job terminado con estado: $$STATUS"
+              break
+            fi
+            sleep 10
+          done
+        else
+          echo "No hay job en ejecución. Primer despliegue."
+        fi
+
+  # Run Dataflow job
+  - name: 'europe-west1-docker.pkg.dev/$PROJECT_ID/dataflow-invernaderos-repo/invernaderos:latest'
+    args:
+      - '--runner=DataflowRunner'
+      - '--project=$PROJECT_ID'
+      - '--region=europe-west3'
+      - '--job_name=dataflow-invernaderos'
+      - '--num_workers=1'
+      - '--max_num_workers=1'
+      - '--requirements_file=/app/requirements.txt'
+    env:
+      - 'GCP_PROJECT=$PROJECT_ID'
+      - 'INSTANCE_CONNECTION_NAME=$_INSTANCE_CONNECTION_NAME'
+      - 'DB_USER=$_DB_USER'
+      - 'DB_PASSWORD=$_DB_PASSWORD'
+      - 'DB_NAME=$_DB_NAME'
+
+substitutions:
+  _INSTANCE_CONNECTION_NAME: 'project-7f8b4dee-2b72-40f2-941:europe-west1:login-db'
+  _DB_USER: 'loginuser'
+  _DB_PASSWORD: ${DB_PASSWORD}
+  _DB_NAME: 'logindb'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -9,7 +9,7 @@ Este archivo lo lee Claude automáticamente en cada sesión. Lo que escribas aqu
 
 # Concepto del proyecto
 Vamos a desarrollar un proyecto para el master de Data/IA. Se trata de una herramienta agéntica centrada en el seguimiendo y cuidado de plantaciones agrícolas. El usuario podrá logearse, interactuar con un front end desplegado en un cloud run, y la herramienta se conectará a varias APIs públicas para obtener información, y usará contexto a nivel de usuario y memoria. 
-La idea es que al entrar al front end y logearse, el usuario verá un mapa (creado idealmente con React) con las parcelas agrícolas que vamos a delimitar usando una capa a partir de la API de SIGPAC, que nos proporciona los polígonos y coordenadas de las parcelas. El usuario puede clickar sobre una parcela y "reclamarla" (asignarla como suya). Al hacer esto aparecerá un pequeño formulario donde el usuario (agricultor) tendrá que indicar tipo y varidead de cosecha (naranjas navelinas, manzanos golden, ...) y el año aproximado de siembra, en caso de ser cultivo de arbol. Eso guardará en una base de datos está relación e información. La herramienta hará el seguimiento de los indicadores de la parcela (lluvia, temperatura, humedad, etc) tanto de los últimos 30 dias como de las previsiones. La fuente principal de datos meteorológicos es **Open-Meteo** (coordenadas, 16 días de previsión, precipitación en mm, ET₀, radiación solar). **AEMET** se usa como fuente secundaria únicamente para obtener el estado del cielo en español y la humedad relativa diaria (días 1-7). Esta la usará el modelo de IA (entrenado con cuidados necesarios de múltiples cultivos) para hacer las sugerencias e indicaciones de cuando haria falta regar un campo, abonarlo, etc. El agricultor también puede marcar estas acciones como hechas a través de la UI para cada campo, para que el modelo sepa que aunque hace x dias que no llueve, el agricultor regó hace 3 dias, por ejemplo, y mostrar en la UI las recomendaciones para cada parcela. 
+La idea es que al entrar al front end y logearse, el usuario verá un mapa (creado idealmente con React) con las parcelas agrícolas que vamos a delimitar usando una capa a partir de la API de SIGPAC, que nos proporciona los polígonos y coordenadas de las parcelas. El usuario puede clickar sobre una parcela y "reclamarla" (asignarla como suya). Al hacer esto aparecerá un pequeño formulario donde el usuario (agricultor) tendrá que indicar tipo y varidead de cosecha (naranjas navelinas, manzanos golden, ...) y el año aproximado de siembra, en caso de ser cultivo de arbol. Eso guardará en una base de datos está relación e información. La herramienta hará el seguimiento de los indicadores de la parcela (lluvia, temperatura, humedad, etc) tanto de los últimos 30 dias como de las previsiones. La fuente de datos meteorológicos es **Open-Meteo** (coordenadas, 15 días de previsión horaria, precipitación en mm, ET₀, radiación solar, estado del cielo vía código WMO traducido al español). Esta la usará el modelo de IA (entrenado con cuidados necesarios de múltiples cultivos) para hacer las sugerencias e indicaciones de cuando haria falta regar un campo, abonarlo, etc. El agricultor también puede marcar estas acciones como hechas a través de la UI para cada campo, para que el modelo sepa que aunque hace x dias que no llueve, el agricultor regó hace 3 dias, por ejemplo, y mostrar en la UI las recomendaciones para cada parcela. 
 Adicionalmente, la plataforma integrará sensores IoT opcionales: el agricultor podrá colocar dispositivos físicos en su parcela (sensores de humedad del suelo, temperatura, etc.) y sus lecturas se incorporarán como datos de entrada al modelo, complementando los datos meteorológicos para mejorar las sugerencias.
 Todos los recursos que crees deben ser lo más limitados posibles para que la aplicación funcione con pocos usuarios, pero reudciendo el coste de recursos al máximo.
 
@@ -51,39 +51,72 @@ Pages:
 ## Arquitectura acordada
 
 ```
-Sensor Zigbee
-     ↓
-Home Assistant (Raspberry Pi, red local)
-     ↓  [automation: on state change → HTTP POST]
-Cloud Run /ingest  ←──── Cloud SQL (lookup sensor_id → parcel_id + metadatos)
-     ↓
-Pub/Sub (lecturas crudas)
-     ↓
-Dataflow (job batch, se ejecuta cada hora)
-     ↓
-BigQuery (1 registro por sensor por hora)
-     ↓
-Model serving / API
+[Open-Meteo API]
+      ↑
+[Meteo Cloud Run Job — cada 20 min]
+  Lee:    municipios_monitorizados (Cloud SQL)
+  Guarda: prevision_meteorologica (Cloud SQL, 1 fila/municipio/hora, 15 días)
+          municipios/{municipio_id} (Firestore, condiciones hora actual)
+
+[Home Assistant — Raspberry Pi, red local]
+      ↑  polling cada 10 min
+[IoT Cloud Run Job — cada 10 min]
+  Lee:    ha_connections (Cloud SQL) → usuarios con HA configurado
+          sensor_entity_ids de parcelas_usuario + invernaderos + plantas_invernadero
+  Llama:  GET {ha_url}/api/states/{sensor_entity_id}  por cada sensor linkado
+  Publica: Pub/Sub topic "sensor-readings"
+              ├── suscripción sus_parcelas      → Dataflow Parcelas
+              └── suscripción sus_invernaderos  → Dataflow Invernaderos
+
+[Dataflow Parcelas — cada 20 min]
+  Lee:    parcelas_usuario (Cloud SQL) — info de parcelas
+          prevision_meteorologica (Cloud SQL) — fila WHERE timestamp = hora actual del municipio
+          sus_parcelas (Pub/Sub) — lecturas sensor últimos 20 min
+  Lógica: meteo es el baseline; si la parcela tiene sensor, sobreescribe
+          temperatura / humedad_ambiental / humedad_suelo según tipo de sensor
+  Escribe: BigQuery lecturas_parcelas
+           Firestore usuarios/{uid}/parcelas/{parcela_id}
+
+[Dataflow Invernaderos — cada 10 min]
+  Lee:    invernaderos + plantas_invernadero (Cloud SQL) — info estructural
+          sus_invernaderos (Pub/Sub) — lecturas sensor últimos 10 min
+  Lógica: solo datos de sensor (invernaderos son espacios cerrados, sin meteo)
+  Escribe: BigQuery lecturas_plantas
+           Firestore usuarios/{uid}/invernaderos/{inv_id} y .../plantas/{plant_id}
 ```
 
-**Decisión clave — push en lugar de pull:** Home Assistant envía los datos mediante una automation que hace HTTP POST al endpoint de Cloud Run cada vez que el sensor registra un cambio. Cloud Run no sondea a Home Assistant. Esto evita exponer la Raspberry Pi a internet de forma permanente (solo necesita salida, no entrada).
+**Decisión clave — pull en lugar de push:** El IoT Cloud Run sondea Home Assistant cada 10 minutos. HA no necesita exponer ningún endpoint ni tener automation. La Raspberry Pi solo necesita salida a internet, no entrada. El Cloud Run consulta `ha_connections` para saber a qué instancias llamar y qué `sensor_entity_id` pedir en cada una.
 
-## Justificación del uso de Dataflow
+**Referencia de implementación:** `dataflow/sample_dataflow_from_another_project.py`. Best practices obligatorias extraídas de ese modelo:
+- **Side inputs para Cloud SQL:** usar `PeriodicImpulse + GlobalWindows + AsSingleton` para cargar datos de referencia (parcelas, meteo) una sola vez y refrescarlos periódicamente. Nunca consultar la DB dentro de un `process()` que se ejecuta por cada mensaje.
+- **`AccumulationMode.DISCARDING`** en los side inputs para no acumular versiones antiguas en memoria.
+- **`default_value={}`** en `AsSingleton` para evitar errores si el side input aún no ha disparado al arrancar.
+- **Ciclo de vida de DoFns:** abrir conexiones (Cloud SQL, Firestore) en `setup()`, lógica en `process()`, cerrar en `teardown()`. Nunca en `__init__()`.
+- **Firestore:** usar `set(element, merge=True)` para no sobreescribir campos que escribe otro servicio (p.ej. `ultimo_riego` lo escribe el frontend, no Dataflow).
+- **`FixedWindows`** para el stream de Pub/Sub; usar `beam.DoFn.WindowParam` para obtener el timestamp de inicio de ventana y usarlo como `timestamp` en la fila de BQ.
 
-El sensor envía lecturas cada pocos minutos. Usar Dataflow en modo batch horario está justificado por tres razones técnicas reales:
+**Por qué dos Dataflow separados:** Las parcelas dependen de datos meteorológicos (Open-Meteo vía Cloud SQL) y tienen cadencia de 20 min. Los invernaderos dependen solo de sensores y tienen cadencia de 10 min. Unirlos en un job forzaría al más lento a dictar el ritmo del más rápido.
 
-1. **Reducción de ruido**: los sensores Zigbee pueden emitir lecturas ruidosas o duplicadas. Agregar en ventanas de 1 hora produce valores estables para el modelo.
-2. **Consistencia temporal con Open-Meteo**: los datos meteorológicos de Open-Meteo tienen resolución horaria. Que los datos del sensor también sean horarios permite un join limpio y coherente en el modelo de IA.
-3. **Separación de responsabilidades y resiliencia**: Pub/Sub absorbe las lecturas crudas sin pérdida aunque Dataflow no esté procesando en ese momento. El pipeline Apache Beam gestiona natively el windowing, mensajes desordenados (late data) y es testeable unitariamente. El código escala a múltiples sensores sin cambios.
+**Por qué Dataflow y no Cloud Run directo para el join:** Dataflow (Apache Beam) gestiona nativamente el windowing de Pub/Sub, mensajes desordenados y la escritura atómica a BQ + Firestore. Para el equipo de IA es crítico recibir en BigQuery filas limpias con toda la info ya cruzada (parcela + meteo + sensor). Cloud Run no está diseñado para este tipo de join con estado.
 
-Lo que produce Dataflow por cada ventana de 1 hora y sensor: media, mínimo y máximo de cada métrica, más el enriquecimiento con `parcel_id` y metadatos de cultivo obtenidos de Cloud SQL.
+## Tablas Cloud SQL relevantes para el pipeline
 
-## Bases de datos
+| Tabla | Contenido clave |
+|---|---|
+| `users` | `id`, `username`, `password_hash`, `email` — cuentas de usuario |
+| `parcelas_usuario` | `id`, `usuario_id`, `parcela_id`, `provincia`, `municipio`, `poligono`, `parcela`, `recinto`, `cultivo`, `variedad`, `edad_cultivo`, `superficie`, `lat`, `lng`, `geometria`, `zonas`, `grid` |
+| `invernaderos` | `id`, `usuario_id`, `nombre`, `temperatura_entity_id`, `hum_amb_entity_id` — entity IDs de HA para temperatura y humedad ambiental del invernadero |
+| `plantas_invernadero` | `id`, `invernadero_id`, `tipo`, `variedad`, `grid_col`, `grid_row`, `soil_entity_id` — entity ID de HA para humedad de suelo de la planta |
+| `ha_connections` | `id`, `user_id`, `ha_url`, `ha_token` (cifrados con Fernet), `display_name`, `last_seen_at` |
+| `sensors` | `sensor_id` (entity ID de HA), `connection_id`, `user_id`, `location_id`, `location_type` (`'parcela'`/`'invernadero'`/`'planta'`), `sensor_type` (`'temperature'`/`'ambient_humidity'`/`'soil_moisture'`), `active` — **registro central de todos los sensores vinculados** |
 
-| Qué | Dónde | Por qué |
-|---|---|---|
-| Registro de sensores (sensor_id, coordenadas, parcel_id) | Cloud SQL (PostgreSQL) | Datos relacionales, pocas escrituras, ya usado en el proyecto |
-| Lecturas agregadas por hora | BigQuery | Barato para series temporales, consumo directo por el modelo de IA |
+**Cómo se puebla `sensors`:**
+- Sensores de parcela: el usuario los registra desde la página de detalle de parcela → IoT API `POST /ha/sensores`
+- Sensores de invernadero/planta: el usuario los asigna desde la página de invernaderos → data-api `PUT /invernaderos/<id>/sensor` y `PUT /plantas/<id>/sensor`, que escriben en `sensors` con `ON CONFLICT DO NOTHING`
+
+**Cómo lee el IoT puller:** consulta `sensors JOIN ha_connections` filtrando `location_type = 'parcela'`. Para invernaderos/plantas el Dataflow lee las columnas `temperatura_entity_id`, `hum_amb_entity_id`, `soil_entity_id` directamente de sus tablas.
+
+**Nota sobre `estado_cielo`:** Se deriva del campo `weather_code` (código WMO estándar que devuelve Open-Meteo) usando una tabla de mapeo estática a español. No se usa AEMET.
 
 # ARQUITECTURA
 
@@ -127,54 +160,96 @@ Escrita por el frontend/API cuando el agricultor registra una acción. No es hor
 El modelo obtiene la última acción por entidad con `MAX(timestamp)` agrupado.
 
 ## Pub/Sub
-Buffer entre el sensor y el procesamiento. **Entra:** el IoT API (Cloud Run) publica cada lectura cruda recibida de Home Assistant. **Sale:** Dataflow IoT las consume en batch cada hora. Garantiza que no se pierden lecturas aunque Dataflow no esté procesando en ese momento.
+Buffer de lecturas de sensores IoT. Un único topic `sensor-readings` con dos suscripciones independientes:
+- `sus_parcelas` → consumida por Dataflow Parcelas
+- `sus_invernaderos` → consumida por Dataflow Invernaderos
+
+Cada mensaje publicado por el IoT Cloud Run tiene esta estructura:
+
+```json
+// Atributos del mensaje (para filtrado en Dataflow)
+{
+  "entity_type": "parcela" | "planta",
+  "entity_id":   "12-345-1-2-3",
+  "usuario_id":  "42",
+  "sensor_tipo": "temperatura" | "humedad_ambiental" | "humedad_suelo"
+}
+
+// Body (JSON serializado)
+{
+  "valor": 23.5,
+  "unidad": "°C",
+  "sensor_entity_id": "sensor.zigbee_temp_01",
+  "timestamp_lectura": "2025-05-08T15:22:00Z"
+}
+```
+
+Cada Dataflow filtra los mensajes por `entity_type` en los atributos para procesar solo los que le corresponden.
 
 ## Dataflow (Apache Beam)
-Un único job batch horario (`dataflow/`). Lee de dos fuentes en el mismo pipeline y hace merge antes de escribir:
 
-1. **Pub/Sub** → lecturas IoT de la última hora (agrega media/min/max por ventana).
-2. **HTTP** → Open-Meteo y AEMET para todas las parcelas.
-3. **Merge por entidad:**
-   - Parcelas: baseline meteorológico (Open-Meteo/AEMET) + override con sensor si existe.
-   - Invernaderos/plantas: solo sensor, sin fallback meteorológico (espacios cerrados).
-4. **Sale** → BigQuery (histórico) y Firestore (estado actual, una escritura atómica por entidad).
+### Dataflow Parcelas — cadencia 20 min
+**Fuentes:**
+1. `parcelas_usuario` (Cloud SQL) — metadatos de parcela (cultivo, variedad, municipio, usuario_id)
+2. `prevision_meteorologica` (Cloud SQL) — fila más reciente no futura por municipio:
+   `WHERE municipio_id = X AND timestamp <= NOW() ORDER BY timestamp DESC LIMIT 1`
+   Esto tolera que el meteo job aún no haya escrito el slot de la hora actual.
+3. `sus_parcelas` (Pub/Sub) — lecturas de sensores de los últimos 20 min
 
-Un solo job evita race conditions entre dos jobs escribiendo al mismo documento Firestore.
+**Lógica de merge:**
+- Baseline = datos de Open-Meteo del municipio de la parcela
+- Si hay lecturas de sensor para esa parcela en Pub/Sub, sobreescribe campo a campo según `sensor_tipo`
+- `humedad_suelo` solo existe si llega del sensor (Open-Meteo no la proporciona)
+- `fuente_temperatura` = `'sensor'` o `'openmeteo'` según el caso
+
+**Salida:** BigQuery `lecturas_parcelas` + Firestore `usuarios/{uid}/parcelas/{parcela_id}`
+
+### Dataflow Invernaderos — cadencia 10 min
+**Fuentes:**
+1. `invernaderos` + `plantas_invernadero` (Cloud SQL) — estructura y metadatos
+2. `sus_invernaderos` (Pub/Sub) — lecturas de sensores de los últimos 10 min
+
+**Lógica:** Solo datos de sensor. Sin fallback meteorológico (espacios cerrados). Si no hay lectura de sensor en la ventana, no escribe fila en BQ para esa planta.
+
+**Salida:** BigQuery `lecturas_plantas` + Firestore `usuarios/{uid}/invernaderos/{inv_id}` y `.../plantas/{plant_id}`
 
 ## Firestore
-Estado actual de parcelas, invernaderos y plantas. No es un histórico — cada escritura sobreescribe el estado anterior. El histórico completo vive en BigQuery.
-
-**Reglas de estructura:**
-- Los campos que no aplican a una entidad se omiten (no se guarda `null`).
-- `humedad_suelo` solo existe si hay sensor IoT asociado.
-- Las plantas están anidadas dentro de su invernadero (subcollection), no a nivel de usuario.
+Estado actual para el frontend. No es un histórico — cada escritura sobreescribe. El histórico vive en BigQuery.
 
 **Árbol de colecciones:**
 ```
+municipios/{municipio_id}              ← escribe: Meteo Cloud Run
+  temperatura, humedad_ambiental, precipitacion_mm
+  estado_cielo, et0, radiacion_solar
+  updated_at
+
 usuarios/{uid}/
-  parcelas/{parcela_id}
-    temperatura, humedad_ambiental, humedad_suelo
-    ultimo_riego, ultima_poda, ultimo_abonado, tipo_abono
+  parcelas/{parcela_id}                ← escribe: Dataflow Parcelas + Frontend/API
+    temperatura, humedad_ambiental     (Open-Meteo o sensor)
+    humedad_suelo                      (solo si hay sensor)
+    precipitacion_mm, et0, radiacion_solar, estado_cielo
+    forecast: [{fecha, temp_max, temp_min, precipitacion_mm, et0, estado_cielo}×15]
+    ultimo_riego, ultima_poda, ultimo_abonado, tipo_abono   (escribe: Frontend/API)
+    fuente_temperatura
     updated_at
 
-  invernaderos/{inv_id}
-    temperatura, humedad_ambiental          ← sin humedad_suelo
+  invernaderos/{inv_id}                ← escribe: Dataflow Invernaderos
+    temperatura, humedad_ambiental
     updated_at
 
-    plantas/{planta_id}
-      humedad_suelo                          ← solo si tiene sensor IoT
+    plantas/{plant_id}                 ← escribe: Dataflow Invernaderos + Frontend/API
+      humedad_suelo                    (solo si hay sensor)
       ultimo_riego, ultima_poda, ultimo_abonado, tipo_abono
       updated_at
 ```
 
-**Quién escribe qué:**
-- **Dataflow** (job único): temperatura, humedad_ambiental, humedad_suelo. Para parcelas usa Open-Meteo/AEMET como baseline y el sensor como override si existe. Para invernaderos/plantas, solo sensor.
-- **Frontend/API**: ultimo_riego, ultima_poda, ultimo_abonado, tipo_abono (acción manual del agricultor).
-
-**Output:** el frontend se suscribe via SDK Firestore (WebSocket). Cada cambio en un documento se recibe en tiempo real sin polling.
+**Reglas:**
+- Campos sin valor se omiten (no se guardan como `null`)
+- El frontend se suscribe vía SDK Firestore (WebSocket) — recibe cambios en tiempo real sin polling
+- `ultimo_riego` etc. los escribe exclusivamente el Frontend/API cuando el agricultor registra una acción manual
 
 ## Artifact Registry
-Almacena las imágenes Docker de los servicios. **Entra:** Cloud Build sube una imagen nueva en cada deploy. **Sale:** Cloud Run descarga la imagen para arrancar el servicio. Repositorios: `login-repo` (auth API), `frontend-repo` (frontend, data-api), `iot-repo` (IoT API, IoT puller, Dataflow IoT), `aemet-repo` (AEMET ingest), `model-serving-repo` (modelo IA).
+Repositorios Docker, uno por servicio: `login-repo` (auth API), `frontend-repo` (frontend, data-api), `iot-repo` (IoT Cloud Run Job), `meteo-repo` (Meteo Cloud Run Job), `dataflow-parcelas-repo`, `dataflow-invernaderos-repo`, `model-serving-repo` (modelo IA).
 
 ## Secret Manager
 Guarda credenciales y claves sensibles (DB password, API keys, secret key de sesión). **Entra:** se crean manualmente o via Terraform. **Sale:** Cloud Run los inyecta como variables de entorno al arrancar los contenedores.

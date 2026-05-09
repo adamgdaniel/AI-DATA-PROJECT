@@ -18,6 +18,10 @@ variable "secret_key" {
   sensitive = true
 }
 
+variable "test_password" {
+  sensitive = true
+}
+
 variable "fake_sensors_user_id" {
   description = "ID del usuario al que se asocian los sensores fake"
   default     = 1
