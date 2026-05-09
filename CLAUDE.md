@@ -51,12 +51,17 @@ Pages:
 ## Arquitectura acordada
 
 ```
-[Open-Meteo API]
+[Open-Meteo API + AEMET API]
       ↑
-[Meteo Cloud Run Job — cada 20 min]
-  Lee:    municipios_monitorizados (Cloud SQL)
-  Guarda: prevision_meteorologica (Cloud SQL, 1 fila/municipio/hora, 15 días)
-          municipios/{municipio_id} (Firestore, condiciones hora actual)
+[AEMET Cloud Run Job — cada hora]
+  1) sync municipios: lee parcelas_usuario (logindb) y upserta los municipios
+     únicos en municipios_monitorizados (agrodb) con activo=TRUE, marcando
+     como activo=FALSE los municipios que ya no tienen parcelas que los usen.
+  2) ingesta meteo: para cada municipio activo
+     - Open-Meteo: tmax, tmin, precipitacion_mm, et0, radiacion_solar,
+       weather_code, humedad_max, humedad_min (FUENTE PRINCIPAL)
+     - AEMET: estado_cielo_desc (best-effort; tolera fallos 429/timeout)
+  Escribe: prevision_meteorologica (Cloud SQL, 1 fila/municipio/día, 16 días)
 
 [Home Assistant — Raspberry Pi, red local]
       ↑  polling cada 10 min
@@ -68,12 +73,14 @@ Pages:
               ├── suscripción sus_parcelas      → Dataflow Parcelas
               └── suscripción sus_invernaderos  → Dataflow Invernaderos
 
-[Dataflow Parcelas — cada 20 min]
+[Dataflow Parcelas — cada 10 min]
   Lee:    parcelas_usuario (Cloud SQL) — info de parcelas
-          prevision_meteorologica (Cloud SQL) — fila WHERE timestamp = hora actual del municipio
-          sus_parcelas (Pub/Sub) — lecturas sensor últimos 20 min
-  Lógica: meteo es el baseline; si la parcela tiene sensor, sobreescribe
-          temperatura / humedad_ambiental / humedad_suelo según tipo de sensor
+          prevision_meteorologica (Cloud SQL) — última fila <= hoy por municipio
+          sus_parcelas (Pub/Sub) — lecturas sensor últimos 10 min
+  Lógica: meteo es el baseline (siempre presente gracias a Open-Meteo);
+          si la parcela tiene sensor, sobreescribe
+          temperatura / humedad_ambiental / humedad_suelo según tipo de sensor.
+          Merge con CoGroupByKey: meteo_stream + sensor_stream en FixedWindows(10min).
   Escribe: BigQuery lecturas_parcelas
            Firestore usuarios/{uid}/parcelas/{parcela_id}
 
@@ -95,7 +102,7 @@ Pages:
 - **Firestore:** usar `set(element, merge=True)` para no sobreescribir campos que escribe otro servicio (p.ej. `ultimo_riego` lo escribe el frontend, no Dataflow).
 - **`FixedWindows`** para el stream de Pub/Sub; usar `beam.DoFn.WindowParam` para obtener el timestamp de inicio de ventana y usarlo como `timestamp` en la fila de BQ.
 
-**Por qué dos Dataflow separados:** Las parcelas dependen de datos meteorológicos (Open-Meteo vía Cloud SQL) y tienen cadencia de 20 min. Los invernaderos dependen solo de sensores y tienen cadencia de 10 min. Unirlos en un job forzaría al más lento a dictar el ritmo del más rápido.
+**Por qué dos Dataflow separados:** Las parcelas dependen de datos meteorológicos (Open-Meteo vía Cloud SQL) además de los sensores; los invernaderos dependen solo de sensores. Aunque ambos corren a 10 min, las dependencias y los joins son distintos, así que mantenerlos separados simplifica el pipeline y evita que un fallo de meteo afecte a invernaderos.
 
 **Por qué Dataflow y no Cloud Run directo para el join:** Dataflow (Apache Beam) gestiona nativamente el windowing de Pub/Sub, mensajes desordenados y la escritura atómica a BQ + Firestore. Para el equipo de IA es crítico recibir en BigQuery filas limpias con toda la info ya cruzada (parcela + meteo + sensor). Cloud Run no está diseñado para este tipo de join con estado.
 
@@ -116,7 +123,7 @@ Pages:
 
 **Cómo lee el IoT puller:** consulta `sensors JOIN ha_connections` filtrando `location_type = 'parcela'`. Para invernaderos/plantas el Dataflow lee las columnas `temperatura_entity_id`, `hum_amb_entity_id`, `soil_entity_id` directamente de sus tablas.
 
-**Nota sobre `estado_cielo`:** Se deriva del campo `weather_code` (código WMO estándar que devuelve Open-Meteo) usando una tabla de mapeo estática a español. No se usa AEMET.
+**Nota sobre `estado_cielo`:** Por defecto viene de AEMET (`estado_cielo_desc`). Si AEMET falla (rate limit, timeout, etc.), el Dataflow hace fallback al `weather_code` (código WMO estándar de Open-Meteo) traducido a español con una tabla de mapeo estática. Así el campo nunca queda vacío.
 
 # ARQUITECTURA
 
@@ -188,21 +195,27 @@ Cada Dataflow filtra los mensajes por `entity_type` en los atributos para proces
 
 ## Dataflow (Apache Beam)
 
-### Dataflow Parcelas — cadencia 20 min
+### Dataflow Parcelas — cadencia 10 min
 **Fuentes:**
-1. `parcelas_usuario` (Cloud SQL) — metadatos de parcela (cultivo, variedad, municipio, usuario_id)
-2. `prevision_meteorologica` (Cloud SQL) — fila más reciente no futura por municipio:
-   `WHERE municipio_id = X AND timestamp <= NOW() ORDER BY timestamp DESC LIMIT 1`
-   Esto tolera que el meteo job aún no haya escrito el slot de la hora actual.
-3. `sus_parcelas` (Pub/Sub) — lecturas de sensores de los últimos 20 min
+1. `parcelas_usuario` (Cloud SQL `logindb`) — metadatos de parcela (cultivo, variedad, provincia/municipio, usuario_id)
+2. `prevision_meteorologica` (Cloud SQL `agrodb`) — última fila <= hoy por municipio:
+   `SELECT DISTINCT ON (codigo_ine) ... WHERE fecha_prevision <= CURRENT_DATE ORDER BY codigo_ine, fecha_prevision DESC`
+3. `sus_parcelas` (Pub/Sub) — lecturas de sensores de los últimos 10 min
 
-**Lógica de merge:**
-- Baseline = datos de Open-Meteo del municipio de la parcela
-- Si hay lecturas de sensor para esa parcela en Pub/Sub, sobreescribe campo a campo según `sensor_tipo`
+**Arquitectura del merge (CoGroupByKey):**
+- `meteo_stream`: `PeriodicImpulse(600s)` → carga SQL → explota a `(parcel_id, info)` → `FixedWindows(10min)`
+- `sensor_stream`: Pub/Sub → parse → filter `entity_type=parcela` → `(entity_id, msg)` → `FixedWindows(10min)`
+- `CoGroupByKey` empareja ambos streams en la misma ventana, por parcel_id
+- Una sola escritura por parcela por ventana, tanto a BQ como a Firestore
+
+**Lógica de merge campo a campo:**
+- Baseline = datos meteo del municipio (Open-Meteo, vía SQL)
+- Si hay lecturas de sensor en la ventana, sobreescribe `temperatura`/`humedad_ambiental`/`humedad_suelo` según `sensor_tipo`
 - `humedad_suelo` solo existe si llega del sensor (Open-Meteo no la proporciona)
-- `fuente_temperatura` = `'sensor'` o `'openmeteo'` según el caso
+- `fuente_temperatura` = `'sensor'` si hay lectura de sensor de temperatura, `'openmeteo'` en caso contrario
+- `timestamp` de BQ = inicio de ventana (`window.start.to_utc_datetime()`)
 
-**Salida:** BigQuery `lecturas_parcelas` + Firestore `usuarios/{uid}/parcelas/{parcela_id}`
+**Salida:** BigQuery `lecturas_parcelas` + Firestore `usuarios/{uid}/parcelas/{parcela_id}` (con `merge=True`, omitiendo campos `None`)
 
 ### Dataflow Invernaderos — cadencia 10 min
 **Fuentes:**
@@ -218,11 +231,6 @@ Estado actual para el frontend. No es un histórico — cada escritura sobreescr
 
 **Árbol de colecciones:**
 ```
-municipios/{municipio_id}              ← escribe: Meteo Cloud Run
-  temperatura, humedad_ambiental, precipitacion_mm
-  estado_cielo, et0, radiacion_solar
-  updated_at
-
 usuarios/{uid}/
   parcelas/{parcela_id}                ← escribe: Dataflow Parcelas + Frontend/API
     temperatura, humedad_ambiental     (Open-Meteo o sensor)
@@ -242,6 +250,8 @@ usuarios/{uid}/
       ultimo_riego, ultima_poda, ultimo_abonado, tipo_abono
       updated_at
 ```
+
+**Nota:** Anteriormente existía una colección `municipios/{municipio_id}` escrita por un servicio de meteo. Ese servicio ya no existe — el AEMET job escribe solo a Cloud SQL y el Dataflow lee de ahí.
 
 **Reglas:**
 - Campos sin valor se omiten (no se guardan como `null`)

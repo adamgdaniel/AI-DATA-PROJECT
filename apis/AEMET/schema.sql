@@ -27,9 +27,11 @@ CREATE TABLE IF NOT EXISTS prevision_meteorologica (
     radiacion_solar          NUMERIC(6,2),    -- MJ/m²
     weather_code             SMALLINT,        -- código WMO
 
-    -- AEMET (solo días 1-7, NULL para días 8-16)
-    humedad_max              SMALLINT,
-    humedad_min              SMALLINT,
+    -- Humedad: Open-Meteo por defecto, AEMET como fallback
+    humedad_max              NUMERIC(4,1),
+    humedad_min              NUMERIC(4,1),
+    -- Estado del cielo: solo AEMET (NULL si AEMET falla; el Dataflow hace
+    -- fallback a WMO_ESTADO[weather_code] para no dejar el campo vacío)
     estado_cielo_cod         VARCHAR(5),
     estado_cielo_desc        VARCHAR(100),
 
