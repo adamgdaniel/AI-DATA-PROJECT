@@ -175,14 +175,15 @@ def update_invernadero_sensor(invernadero_id):
     if entity_id and data.get('connection_id') and data.get('user_id'):
         db_type = 'temperature' if sensor_type == 'temperatura' else 'ambient_humidity'
         cur.execute("""
-            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type)
-            VALUES (%s, %s, %s, %s, 'invernadero', %s)
+            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
+            VALUES (%s, %s, %s, %s, 'invernadero', %s, %s)
             ON CONFLICT (sensor_id) DO UPDATE SET
                 location_id = EXCLUDED.location_id,
                 location_type = EXCLUDED.location_type,
                 sensor_type = EXCLUDED.sensor_type,
-                connection_id = EXCLUDED.connection_id
-        """, (entity_id, data['connection_id'], data['user_id'], invernadero_id, db_type))
+                connection_id = EXCLUDED.connection_id,
+                display_name = EXCLUDED.display_name
+        """, (entity_id, data['connection_id'], data['user_id'], invernadero_id, db_type, data.get('display_name')))
 
     conn.commit()
     cur.close()
@@ -267,14 +268,15 @@ def update_planta_sensor(invernadero_id, planta_id):
 
     if entity_id and data.get('connection_id') and data.get('user_id'):
         cur.execute("""
-            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type)
-            VALUES (%s, %s, %s, %s, 'planta', 'soil_moisture')
+            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
+            VALUES (%s, %s, %s, %s, 'planta', 'soil_moisture', %s)
             ON CONFLICT (sensor_id) DO UPDATE SET
                 location_id = EXCLUDED.location_id,
                 location_type = EXCLUDED.location_type,
                 sensor_type = EXCLUDED.sensor_type,
-                connection_id = EXCLUDED.connection_id
-        """, (entity_id, data['connection_id'], data['user_id'], planta_id))
+                connection_id = EXCLUDED.connection_id,
+                display_name = EXCLUDED.display_name
+        """, (entity_id, data['connection_id'], data['user_id'], planta_id, data.get('display_name')))
 
     conn.commit()
     cur.close()

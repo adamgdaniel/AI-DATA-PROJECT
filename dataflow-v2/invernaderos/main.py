@@ -395,10 +395,14 @@ def run(argv=None):
         )
     )
 
-    # Ventanas de 10 minutos
+    # Ventanas de 2 minutos con trigger por tiempo de procesamiento para no depender del watermark
     windowed = (
         sensors['ok']
-        | 'FixedWindows' >> beam.WindowInto(FixedWindows(2 * 60))
+        | 'FixedWindows' >> beam.WindowInto(
+            FixedWindows(2 * 60),
+            trigger=Repeatedly(AfterProcessingTime(30)),
+            accumulation_mode=AccumulationMode.DISCARDING
+        )
     )
 
     # Agrupar lecturas por invernadero_id dentro de la ventana
