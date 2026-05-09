@@ -267,46 +267,49 @@ def run(argv=None):
     options.view_as(StandardOptions).streaming = True
     options.view_as(SetupOptions).save_main_session = True
 
-    with beam.Pipeline(options=options) as p:
+    p = beam.Pipeline(options=options)
 
-        # --- Side input: invernaderos + plantas, refrescado cada 5 min (test) ---
-        cache = (
-            p
-            | "Reloj" >> PeriodicImpulse(fire_interval=300, apply_windowing=True)
-            | "VentanaGlobal" >> beam.WindowInto(
-                window.GlobalWindows(),
-                trigger=trigger.Repeatedly(trigger.AfterCount(1)),
-                accumulation_mode=trigger.AccumulationMode.DISCARDING)
-            | "CargarSQL" >> beam.ParDo(CargarInvernaderosYPlantas(
-                PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME))
-        )
-        vista = beam.pvalue.AsSingleton(cache, default_value={'invernaderos': {}, 'plantas': {}})
+    # --- Side input: invernaderos + plantas, refrescado cada 5 min (test) ---
+    cache = (
+        p
+        | "Reloj" >> PeriodicImpulse(fire_interval=300, apply_windowing=True)
+        | "VentanaGlobal" >> beam.WindowInto(
+            window.GlobalWindows(),
+            trigger=trigger.Repeatedly(trigger.AfterCount(1)),
+            accumulation_mode=trigger.AccumulationMode.DISCARDING)
+        | "CargarSQL" >> beam.ParDo(CargarInvernaderosYPlantas(
+            PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME))
+    )
+    vista = beam.pvalue.AsSingleton(cache, default_value={'invernaderos': {}, 'plantas': {}})
 
-        # --- Stream principal ---
-        parsed = (
-            p
-            | "LeerPubSub" >> beam.io.ReadFromPubSub(
-                subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
-            | "ParsearMensaje" >> beam.Map(parsearMensaje)
-            | "FiltrarInvOPlanta" >> beam.Filter(filtrarInvernaderoOPlanta)
-        )
+    # --- Stream principal ---
+    parsed = (
+        p
+        | "LeerPubSub" >> beam.io.ReadFromPubSub(
+            subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
+        | "ParsearMensaje" >> beam.Map(parsearMensaje)
+        | "FiltrarInvOPlanta" >> beam.Filter(filtrarInvernaderoOPlanta)
+    )
 
-        # --- Sink Firestore: 1 doc por mensaje ---
-        (parsed
-         | "PrepararFirestore" >> beam.FlatMap(filaFirestore, cache=vista)
-         | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
+    # --- Sink Firestore: 1 doc por mensaje ---
+    (parsed
+     | "PrepararFirestore" >> beam.FlatMap(filaFirestore, cache=vista)
+     | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
 
-        # --- Sink BigQuery: agregación por ventana fija, 1 fila por planta y ventana ---
-        (parsed
-         | "ExpandirAPlantas" >> beam.FlatMap(expandirAPlantas, cache=vista)
-         | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
-         | "AgruparPorPlanta" >> beam.GroupByKey()
-         | "CombinarLecturas" >> beam.FlatMap(combinarLecturasPlanta, cache=vista)
-         | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
-             table=BQ_TABLE,
-             schema=BQ_SCHEMA,
-             write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
-             create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER))
+    # --- Sink BigQuery: agregación por ventana fija, 1 fila por planta y ventana ---
+    (parsed
+     | "ExpandirAPlantas" >> beam.FlatMap(expandirAPlantas, cache=vista)
+     | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
+     | "AgruparPorPlanta" >> beam.GroupByKey()
+     | "CombinarLecturas" >> beam.FlatMap(combinarLecturasPlanta, cache=vista)
+     | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
+         table=BQ_TABLE,
+         schema=BQ_SCHEMA,
+         write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
+         create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER))
+
+    p.run()
+    logger.info('Dataflow invernaderos streaming job submitted')
 
 
 if __name__ == '__main__':

@@ -311,46 +311,49 @@ def run(argv=None):
     options.view_as(StandardOptions).streaming = True
     options.view_as(SetupOptions).save_main_session = True
 
-    with beam.Pipeline(options=options) as p:
+    p = beam.Pipeline(options=options)
 
-        # --- Side input: parcelas + meteo, refrescado cada 5 min (test) ---
-        parcelas_meteo = (
-            p
-            | "Reloj" >> PeriodicImpulse(fire_interval=300, apply_windowing=True)
-            | "VentanaGlobal" >> beam.WindowInto(
-                window.GlobalWindows(),
-                trigger=trigger.Repeatedly(trigger.AfterCount(1)),
-                accumulation_mode=trigger.AccumulationMode.DISCARDING)
-            | "CargarSQL" >> beam.ParDo(CargarParcelasYMeteo(
-                PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME, DB_NAME_METEO))
-        )
-        vista_parcelas = beam.pvalue.AsSingleton(parcelas_meteo, default_value={})
+    # --- Side input: parcelas + meteo, refrescado cada 5 min (test) ---
+    parcelas_meteo = (
+        p
+        | "Reloj" >> PeriodicImpulse(fire_interval=300, apply_windowing=True)
+        | "VentanaGlobal" >> beam.WindowInto(
+            window.GlobalWindows(),
+            trigger=trigger.Repeatedly(trigger.AfterCount(1)),
+            accumulation_mode=trigger.AccumulationMode.DISCARDING)
+        | "CargarSQL" >> beam.ParDo(CargarParcelasYMeteo(
+            PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME, DB_NAME_METEO))
+    )
+    vista_parcelas = beam.pvalue.AsSingleton(parcelas_meteo, default_value={})
 
-        # --- Stream principal: parsear y filtrar parcelas ---
-        parsed = (
-            p
-            | "LeerPubSub" >> beam.io.ReadFromPubSub(
-                subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
-            | "ParsearMensaje" >> beam.Map(parsearMensaje)
-            | "FiltrarParcelas" >> beam.Filter(filtrarParcela)
-        )
+    # --- Stream principal: parsear y filtrar parcelas ---
+    parsed = (
+        p
+        | "LeerPubSub" >> beam.io.ReadFromPubSub(
+            subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
+        | "ParsearMensaje" >> beam.Map(parsearMensaje)
+        | "FiltrarParcelas" >> beam.Filter(filtrarParcela)
+    )
 
-        # --- Sink Firestore: 1 update por mensaje (sin agregación) ---
-        (parsed
-         | "EnriquecerFirestore" >> beam.FlatMap(enriquecerConMeteo, parcelas_meteo=vista_parcelas)
-         | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
+    # --- Sink Firestore: 1 update por mensaje (sin agregación) ---
+    (parsed
+     | "EnriquecerFirestore" >> beam.FlatMap(enriquecerConMeteo, parcelas_meteo=vista_parcelas)
+     | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
 
-        # --- Sink BigQuery: agregación por ventana fija, 1 fila por parcela y ventana ---
-        (parsed
-         | "ClavePorParcela" >> beam.Map(lambda r: (r['entity_id'], r))
-         | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
-         | "AgruparPorParcela" >> beam.GroupByKey()
-         | "CombinarLecturas" >> beam.FlatMap(combinarLecturas, parcelas_meteo=vista_parcelas)
-         | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
-             table=BQ_TABLE,
-             schema=BQ_SCHEMA,
-             write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
-             create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER))
+    # --- Sink BigQuery: agregación por ventana fija, 1 fila por parcela y ventana ---
+    (parsed
+     | "ClavePorParcela" >> beam.Map(lambda r: (r['entity_id'], r))
+     | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
+     | "AgruparPorParcela" >> beam.GroupByKey()
+     | "CombinarLecturas" >> beam.FlatMap(combinarLecturas, parcelas_meteo=vista_parcelas)
+     | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
+         table=BQ_TABLE,
+         schema=BQ_SCHEMA,
+         write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
+         create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER))
+
+    p.run()
+    logger.info('Dataflow parcelas streaming job submitted')
 
 
 if __name__ == '__main__':
