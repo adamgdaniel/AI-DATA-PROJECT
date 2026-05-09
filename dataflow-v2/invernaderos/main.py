@@ -124,10 +124,11 @@ def _media(valores):
     return sum(valores) / len(valores) if valores else None
 
 
-def combinarLecturasPlanta(elemento, cache):
+def combinarLecturasPlanta(elemento, cache, ventana=beam.DoFn.WindowParam):
     """Recibe (plant_id, [lecturas de la ventana]) y emite UNA fila para BQ.
     - Media de cada sensor (temperatura, humedad_ambiental, humedad_suelo).
     - Sin lectura → null. Sin fallback meteorológico (espacios cerrados).
+    - Timestamp = inicio de la ventana (con minutos, para identificar el más reciente).
     """
     plant_id, lecturas = elemento
     plantas = cache.get('plantas', {})
@@ -148,11 +149,13 @@ def combinarLecturasPlanta(elemento, cache):
         elif st == 'humedad_suelo':
             suelos.append(v)
 
+    ts = ventana.start.to_utc_datetime().strftime('%Y-%m-%dT%H:%M:%S')
+
     yield {
         'user_id': p['user_id'],
         'greenhouse_id': p['invernadero_id'],
         'plant_id': plant_id,
-        'timestamp': datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat(),
+        'timestamp': ts,
         'temperatura': _media(temps),
         'humedad_ambiental': _media(hums),
         'humedad_suelo': _media(suelos),

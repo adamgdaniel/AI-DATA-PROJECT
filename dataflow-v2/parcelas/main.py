@@ -115,10 +115,11 @@ def _media(valores):
     return sum(valores) / len(valores) if valores else None
 
 
-def combinarLecturas(elemento, parcelas_meteo):
+def combinarLecturas(elemento, parcelas_meteo, ventana=beam.DoFn.WindowParam):
     """Recibe (parcel_id, [lecturas de la ventana]) y emite UNA fila para BQ.
     - Si hay varias lecturas del mismo sensor, hace la media.
     - Si no hay lectura de sensor, usa meteo (excepto humedad_suelo, que queda null).
+    - Timestamp = inicio de la ventana (con minutos, para que la IA identifique el más reciente).
     """
     parcela_id, lecturas = elemento
     info = parcelas_meteo.get(parcela_id)
@@ -145,10 +146,12 @@ def combinarLecturas(elemento, parcelas_meteo):
     hum_media = _media(hums)
     suelo_media = _media(suelos)
 
+    ts = ventana.start.to_utc_datetime().strftime('%Y-%m-%dT%H:%M:%S')
+
     yield {
         'user_id': info['user_id'],
         'parcel_id': parcela_id,
-        'timestamp': datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat(),
+        'timestamp': ts,
         'temperatura': temp_media if temp_media is not None else info.get('temperatura'),
         'humedad_ambiental': hum_media if hum_media is not None else info.get('humedad_ambiental'),
         'humedad_suelo': suelo_media,
