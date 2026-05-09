@@ -15,6 +15,12 @@ log = logging.getLogger(__name__)
 AEMET_API_KEY = os.environ["AEMET_API_KEY"]
 DATABASE_URL  = os.environ["DATABASE_URL"]
 
+# Conexión a logindb (donde viven las parcelas) para sincronizar municipios_monitorizados
+INSTANCE_CONNECTION_NAME = os.environ.get("INSTANCE_CONNECTION_NAME")
+LOGINDB_NAME             = os.environ.get("LOGINDB_NAME")
+LOGINDB_USER             = os.environ.get("LOGINDB_USER")
+LOGINDB_PASSWORD         = os.environ.get("LOGINDB_PASSWORD")
+
 AEMET_URL      = "https://opendata.aemet.es/opendata/api/prediccion/especifica/municipio/diaria/{codigo}?api_key={key}"
 OPENMETEO_URL  = (
     "https://api.open-meteo.com/v1/forecast"
@@ -142,8 +148,63 @@ def upsert(conn, rows):
 
 
 
+def sync_municipios_desde_parcelas(conn_agro):
+    """
+    Lee las parcelas registradas en logindb y upserta sus municipios en
+    municipios_monitorizados (agrodb), para que la ingesta AEMET tenga
+    siempre municipios activos sin necesidad de poblar la tabla a mano.
+    """
+    if not all([INSTANCE_CONNECTION_NAME, LOGINDB_NAME, LOGINDB_USER, LOGINDB_PASSWORD]):
+        log.warning("Sin credenciales de logindb; saltando sync de municipios")
+        return
+
+    conn_login = psycopg2.connect(
+        host=f"/cloudsql/{INSTANCE_CONNECTION_NAME}",
+        database=LOGINDB_NAME,
+        user=LOGINDB_USER,
+        password=LOGINDB_PASSWORD,
+    )
+    try:
+        with conn_login.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    provincia,
+                    municipio,
+                    AVG(lat)::float AS lat,
+                    AVG(lng)::float AS lon
+                FROM parcelas_usuario
+                WHERE lat IS NOT NULL AND lng IS NOT NULL
+                  AND provincia IS NOT NULL AND municipio IS NOT NULL
+                GROUP BY provincia, municipio
+            """)
+            rows = cur.fetchall()
+    finally:
+        conn_login.close()
+
+    if not rows:
+        log.warning("Sin parcelas con coordenadas en logindb")
+        return
+
+    with conn_agro.cursor() as cur:
+        for provincia, municipio, lat, lon in rows:
+            codigo_ine = f'{int(provincia):02d}{int(municipio):03d}'
+            cur.execute("""
+                INSERT INTO municipios_monitorizados
+                    (codigo_ine, nombre, provincia, lat, lon, activo)
+                VALUES (%s, %s, %s, %s, %s, TRUE)
+                ON CONFLICT (codigo_ine) DO UPDATE SET
+                    lat    = EXCLUDED.lat,
+                    lon    = EXCLUDED.lon,
+                    activo = TRUE
+            """, (codigo_ine, f'Municipio {codigo_ine}', str(provincia), lat, lon))
+    conn_agro.commit()
+    log.info(f"Sync municipios_monitorizados: {len(rows)} entradas upserteadas desde parcelas_usuario")
+
+
 def main():
     conn = psycopg2.connect(DATABASE_URL)
+
+    sync_municipios_desde_parcelas(conn)
 
     with conn.cursor() as cur:
         cur.execute("SELECT codigo_ine, lat, lon FROM municipios_monitorizados WHERE activo = TRUE")

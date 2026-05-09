@@ -77,6 +77,24 @@ resource "google_cloud_run_v2_job" "aemet_ingest" {
           value = var.project_id
         }
 
+        # --- Conexión secundaria a logindb para sincronizar municipios_monitorizados ---
+        env {
+          name  = "INSTANCE_CONNECTION_NAME"
+          value = google_sql_database_instance.main.connection_name
+        }
+        env {
+          name  = "LOGINDB_NAME"
+          value = google_sql_database.main.name
+        }
+        env {
+          name  = "LOGINDB_USER"
+          value = google_sql_user.main.name
+        }
+        env {
+          name  = "LOGINDB_PASSWORD"
+          value = var.db_password
+        }
+
         volume_mounts {
           name       = "cloudsql"
           mount_path = "/cloudsql"
@@ -118,26 +136,10 @@ resource "google_cloud_run_v2_job_iam_member" "scheduler_invoke_aemet" {
   member   = "serviceAccount:${google_service_account.scheduler.email}"
 }
 
-# --- Cloud Scheduler: 2 ejecuciones al día (7:00 y 15:00 hora española) ---
-resource "google_cloud_scheduler_job" "aemet_morning" {
-  name      = "aemet-ingest-morning"
-  schedule  = "0 7 * * *"
-  time_zone = "Europe/Madrid"
-  region    = var.region
-
-  http_target {
-    http_method = "POST"
-    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${google_cloud_run_v2_job.aemet_ingest.name}:run"
-
-    oauth_token {
-      service_account_email = google_service_account.scheduler.email
-    }
-  }
-}
-
-resource "google_cloud_scheduler_job" "aemet_afternoon" {
-  name      = "aemet-ingest-afternoon"
-  schedule  = "0 15 * * *"
+# --- Cloud Scheduler: cada hora en punto ---
+resource "google_cloud_scheduler_job" "aemet_hourly" {
+  name      = "aemet-ingest-hourly"
+  schedule  = "0 * * * *"
   time_zone = "Europe/Madrid"
   region    = var.region
 
