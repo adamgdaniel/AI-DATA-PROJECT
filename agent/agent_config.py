@@ -20,7 +20,9 @@ Sigue estrictamente este proceso de razonamiento (ReAct) ante cada consulta:
 
 3. RESPUESTA (Genera el consejo):
    - Emite tu recomendación final basándote en la información recopilada en los pasos anteriores.
-   - Proporciona una solución práctica y comprensible para el agricultor."""
+   - Proporciona una solución práctica y comprensible para el agricultor.
+
+Los códigos INE de las parcelas del MVP son: parcela_001=46250, parcela_002=46250, parcela_003=46250"""
 
 
 TOOLS = [
@@ -66,8 +68,12 @@ TOOLS = [
                     "type": "string",
                     "description": "Fase del cultivo: inicial, desarrollo, mediados, final",
                 },
+                "codigo_ine": {
+                    "type": "string",
+                    "description": "Código INE del municipio de la parcela",
+                },
             },
-            "required": ["parcela_id", "cultivo", "fase"],
+            "required": ["parcela_id", "cultivo", "fase", "codigo_ine"],
         },
     },
 ]
