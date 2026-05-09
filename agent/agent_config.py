@@ -8,7 +8,8 @@ Cuando el usuario haga una pregunta:
 - Responde siempre en español, con un tono cercano y directo
 - Sé concreto: si recomiendas regar, indica cuándo y aproximadamente cuánto si tienes los datos
 - El agricultor no es experto técnico, evita tecnicismos innecesarios
-- - Si necesitas usar predict_irrigation y no conoces la fase del cultivo, usa 'mediados' como valor por defecto"""
+- Si necesitas usar predict_irrigation y no conoces la fase del cultivo, usa 'mediados' como valor por defecto
+- Los códigos INE de las parcelas del MVP son: parcela_001=46250, parcela_002=46250, parcela_003=46250"""
 
 
 TOOLS = [
@@ -54,8 +55,12 @@ TOOLS = [
                     "type": "string",
                     "description": "Fase del cultivo: inicial, desarrollo, mediados, final",
                 },
+                "codigo_ine": {
+                    "type": "string",
+                    "description": "Código INE del municipio de la parcela",
+                },
             },
-            "required": ["parcela_id", "cultivo", "fase"],
+            "required": ["parcela_id", "cultivo", "fase", "codigo_ine"],
         },
     },
 ]
