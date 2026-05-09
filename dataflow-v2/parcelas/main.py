@@ -29,6 +29,9 @@ BQ_SCHEMA = (
     'fecha_plantacion_aprox:DATE,estado_cielo:STRING,sensor_id:STRING'
 )
 
+# Tamaño de la ventana de agregación BQ (en segundos). 300 = 5 min para tests, 1200 = 20 min en prod.
+WINDOW_SECONDS = 300
+
 WMO_ESTADO = {
     0: 'Despejado', 1: 'Mayormente despejado', 2: 'Parcialmente nublado', 3: 'Nublado',
     45: 'Niebla', 48: 'Niebla con escarcha',
@@ -69,7 +72,7 @@ def filtrarParcela(reading):
 
 
 def enriquecerConMeteo(reading, parcelas_meteo):
-    """Cruza la lectura del sensor con los datos de parcela + meteo cacheados."""
+    """Cruza la lectura del sensor con los datos de parcela + meteo cacheados (para Firestore)."""
     parcela_id = reading.get('entity_id')
     info = parcelas_meteo.get(parcela_id)
     if not info:
@@ -106,6 +109,59 @@ def enriquecerConMeteo(reading, parcelas_meteo):
         fila['humedad_suelo'] = valor
 
     yield fila
+
+
+def _media(valores):
+    return sum(valores) / len(valores) if valores else None
+
+
+def combinarLecturas(elemento, parcelas_meteo):
+    """Recibe (parcel_id, [lecturas de la ventana]) y emite UNA fila para BQ.
+    - Si hay varias lecturas del mismo sensor, hace la media.
+    - Si no hay lectura de sensor, usa meteo (excepto humedad_suelo, que queda null).
+    """
+    parcela_id, lecturas = elemento
+    info = parcelas_meteo.get(parcela_id)
+    if not info:
+        logger.warning(f'[combinar] parcela {parcela_id!r} no encontrada en caché')
+        return
+
+    temps, hums, suelos = [], [], []
+    sensor_id = None
+    for r in lecturas:
+        sensor_id = sensor_id or r.get('sensor_id')
+        v = r.get('valor')
+        if v is None:
+            continue
+        st = r.get('sensor_tipo')
+        if st == 'temperatura':
+            temps.append(v)
+        elif st == 'humedad_ambiental':
+            hums.append(v)
+        elif st == 'humedad_suelo':
+            suelos.append(v)
+
+    temp_media = _media(temps)
+    hum_media = _media(hums)
+    suelo_media = _media(suelos)
+
+    yield {
+        'user_id': info['user_id'],
+        'parcel_id': parcela_id,
+        'timestamp': datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat(),
+        'temperatura': temp_media if temp_media is not None else info.get('temperatura'),
+        'humedad_ambiental': hum_media if hum_media is not None else info.get('humedad_ambiental'),
+        'humedad_suelo': suelo_media,
+        'precipitacion_mm': info.get('precipitacion_mm'),
+        'et0': info.get('et0'),
+        'radiacion_solar': info.get('radiacion_solar'),
+        'fuente_temperatura': 'sensor' if temp_media is not None else 'openmeteo',
+        'tipo_cultivo': info.get('cultivo'),
+        'variedad': info.get('variedad'),
+        'fecha_plantacion_aprox': None,
+        'estado_cielo': info.get('estado_cielo'),
+        'sensor_id': sensor_id,
+    }
 
 
 ### CLASES
@@ -267,21 +323,26 @@ def run(argv=None):
         )
         vista_parcelas = beam.pvalue.AsSingleton(parcelas_meteo, default_value={})
 
-        # --- Stream principal ---
-        filas = (
+        # --- Stream principal: parsear y filtrar parcelas ---
+        parsed = (
             p
             | "LeerPubSub" >> beam.io.ReadFromPubSub(
                 subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
             | "ParsearMensaje" >> beam.Map(parsearMensaje)
             | "FiltrarParcelas" >> beam.Filter(filtrarParcela)
-            | "Enriquecer" >> beam.FlatMap(enriquecerConMeteo, parcelas_meteo=vista_parcelas)
         )
 
-        # --- Sinks ---
-        (filas
+        # --- Sink Firestore: 1 update por mensaje (sin agregación) ---
+        (parsed
+         | "EnriquecerFirestore" >> beam.FlatMap(enriquecerConMeteo, parcelas_meteo=vista_parcelas)
          | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
 
-        (filas
+        # --- Sink BigQuery: agregación por ventana fija, 1 fila por parcela y ventana ---
+        (parsed
+         | "ClavePorParcela" >> beam.Map(lambda r: (r['entity_id'], r))
+         | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
+         | "AgruparPorParcela" >> beam.GroupByKey()
+         | "CombinarLecturas" >> beam.FlatMap(combinarLecturas, parcelas_meteo=vista_parcelas)
          | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
              table=BQ_TABLE,
              schema=BQ_SCHEMA,

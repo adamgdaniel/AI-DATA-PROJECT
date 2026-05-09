@@ -26,6 +26,9 @@ BQ_SCHEMA = (
     'tipo_cultivo:STRING,variedad:STRING,fecha_plantacion:DATE'
 )
 
+# Tamaño de la ventana de agregación BQ (en segundos). 300 = 5 min para tests, 600 = 10 min en prod.
+WINDOW_SECONDS = 300
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -92,53 +95,71 @@ def filaFirestore(reading, cache):
         }
 
 
-def filasBigQuery(reading, cache):
-    """Convierte una lectura en filas BQ. Invernadero → N filas (1 por planta). Planta → 1 fila."""
+def expandirAPlantas(reading, cache):
+    """Fan-out a clave por planta:
+    - invernadero → N pares (plant_id, lectura), uno por planta del invernadero.
+    - planta → 1 par (plant_id, lectura).
+    """
     invs = cache.get('invernaderos', {})
     plantas = cache.get('plantas', {})
     entity_type = reading.get('entity_type')
     entity_id = reading.get('entity_id')
-    sensor_tipo = reading.get('sensor_tipo')
-    valor = reading.get('valor')
-    ts = datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat()
 
     if entity_type == 'invernadero':
-        inv = invs.get(entity_id)
-        if not inv:
+        if entity_id not in invs:
+            logger.warning(f'invernadero {entity_id!r} no encontrado en caché')
             return
-        # 1 fila por cada planta del invernadero
         for plant_id, p in plantas.items():
-            if p['invernadero_id'] != entity_id:
-                continue
-            yield {
-                'user_id': inv['user_id'],
-                'greenhouse_id': entity_id,
-                'plant_id': plant_id,
-                'timestamp': ts,
-                'temperatura': valor if sensor_tipo == 'temperatura' else None,
-                'humedad_ambiental': valor if sensor_tipo == 'humedad_ambiental' else None,
-                'humedad_suelo': None,
-                'tipo_cultivo': p.get('tipo'),
-                'variedad': p.get('variedad'),
-                'fecha_plantacion': None,
-            }
+            if p['invernadero_id'] == entity_id:
+                yield (plant_id, reading)
 
     elif entity_type == 'planta':
-        p = plantas.get(entity_id)
-        if not p:
+        if entity_id not in plantas:
+            logger.warning(f'planta {entity_id!r} no encontrada en caché')
             return
-        yield {
-            'user_id': p['user_id'],
-            'greenhouse_id': p['invernadero_id'],
-            'plant_id': entity_id,
-            'timestamp': ts,
-            'temperatura': None,
-            'humedad_ambiental': None,
-            'humedad_suelo': valor if sensor_tipo == 'humedad_suelo' else None,
-            'tipo_cultivo': p.get('tipo'),
-            'variedad': p.get('variedad'),
-            'fecha_plantacion': None,
-        }
+        yield (entity_id, reading)
+
+
+def _media(valores):
+    return sum(valores) / len(valores) if valores else None
+
+
+def combinarLecturasPlanta(elemento, cache):
+    """Recibe (plant_id, [lecturas de la ventana]) y emite UNA fila para BQ.
+    - Media de cada sensor (temperatura, humedad_ambiental, humedad_suelo).
+    - Sin lectura → null. Sin fallback meteorológico (espacios cerrados).
+    """
+    plant_id, lecturas = elemento
+    plantas = cache.get('plantas', {})
+    p = plantas.get(plant_id)
+    if not p:
+        return
+
+    temps, hums, suelos = [], [], []
+    for r in lecturas:
+        v = r.get('valor')
+        if v is None:
+            continue
+        st = r.get('sensor_tipo')
+        if st == 'temperatura':
+            temps.append(v)
+        elif st == 'humedad_ambiental':
+            hums.append(v)
+        elif st == 'humedad_suelo':
+            suelos.append(v)
+
+    yield {
+        'user_id': p['user_id'],
+        'greenhouse_id': p['invernadero_id'],
+        'plant_id': plant_id,
+        'timestamp': datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat(),
+        'temperatura': _media(temps),
+        'humedad_ambiental': _media(hums),
+        'humedad_suelo': _media(suelos),
+        'tipo_cultivo': p.get('tipo'),
+        'variedad': p.get('variedad'),
+        'fecha_plantacion': None,
+    }
 
 
 ### CLASES
@@ -272,9 +293,12 @@ def run(argv=None):
          | "PrepararFirestore" >> beam.FlatMap(filaFirestore, cache=vista)
          | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
 
-        # --- Sink BigQuery: fan-out a 1 fila por planta para mensajes de invernadero ---
+        # --- Sink BigQuery: agregación por ventana fija, 1 fila por planta y ventana ---
         (parsed
-         | "PrepararBQ" >> beam.FlatMap(filasBigQuery, cache=vista)
+         | "ExpandirAPlantas" >> beam.FlatMap(expandirAPlantas, cache=vista)
+         | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
+         | "AgruparPorPlanta" >> beam.GroupByKey()
+         | "CombinarLecturas" >> beam.FlatMap(combinarLecturasPlanta, cache=vista)
          | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
              table=BQ_TABLE,
              schema=BQ_SCHEMA,
