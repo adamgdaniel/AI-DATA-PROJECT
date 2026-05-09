@@ -1,8 +1,5 @@
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions
-from apache_beam.transforms.window import GlobalWindows
-from apache_beam.transforms.periodicsequence import PeriodicImpulse
-from apache_beam.transforms.trigger import Repeatedly, AfterProcessingTime, AccumulationMode
 import json
 import logging
 from datetime import datetime
@@ -25,16 +22,27 @@ PUBSUB_SUBSCRIPTION = os.environ.get('PUBSUB_SUBSCRIPTION', f'projects/{PROJECT_
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+CACHE_TTL_SECONDS = 600
 
-class LoadInvernaderosSQL(beam.DoFn):
 
-    def __init__(self, instance_connection_name, db_user, db_password, db_name):
+class EscribirInvernadero(beam.DoFn):
+    """
+    Carga invernaderos y plantas desde Cloud SQL en setup() y refresca cada 10 min.
+    Sin side inputs, sin windowing. Cada mensaje se procesa y escribe al llegar.
+    """
+
+    def __init__(self, project_id, instance_connection_name, db_user, db_password, db_name):
+        self.project_id = project_id
         self.instance_connection_name = instance_connection_name
         self.db_user = db_user
         self.db_password = db_password
         self.db_name = db_name
         self._connector = None
         self._conn = None
+        self._fs = None
+        self._invernaderos = {}
+        self._plant_to_inv = {}
+        self._loaded_at = None
 
     def setup(self):
         from google.cloud.sql.connector import Connector
@@ -46,8 +54,10 @@ class LoadInvernaderosSQL(beam.DoFn):
             password=self.db_password,
             db=self.db_name
         )
+        self._fs = firestore.Client(project=self.project_id)
+        self._cargar_datos()
 
-    def process(self, element):
+    def _cargar_datos(self):
         try:
             cursor = self._conn.cursor()
             cursor.execute("SELECT id, usuario_id, nombre FROM invernaderos")
@@ -65,100 +75,65 @@ class LoadInvernaderosSQL(beam.DoFn):
                 plant_to_inv[str(row[0])] = str(row[1])
 
             cursor.close()
-            logger.info(f'[LoadInvernaderos] {len(invernaderos)} invernaderos, {len(plant_to_inv)} plantas')
-            yield {'invernaderos': invernaderos, 'plant_to_inv': plant_to_inv}
+            self._invernaderos = invernaderos
+            self._plant_to_inv = plant_to_inv
+            self._loaded_at = datetime.utcnow()
+            logger.info(f'[EscribirInvernadero] {len(invernaderos)} invernaderos, {len(plant_to_inv)} plantas cargados')
         except Exception as e:
-            logger.error(f'[LoadInvernaderos] Error: {e}')
-            yield {'invernaderos': {}, 'plant_to_inv': {}}
+            logger.error(f'[EscribirInvernadero] Error cargando datos: {e}')
+
+    def process(self, element):
+        # Refrescar caché si ha pasado el TTL
+        if self._loaded_at is None or (datetime.utcnow() - self._loaded_at).seconds > CACHE_TTL_SECONDS:
+            self._cargar_datos()
+
+        try:
+            attrs = element.attributes
+            entity_type = attrs.get('entity_type', '')
+
+            if entity_type not in ('invernadero', 'planta'):
+                return
+
+            entity_id = attrs.get('entity_id', '')
+            sensor_tipo = attrs.get('sensor_tipo', '')
+            body = json.loads(element.data.decode('utf-8'))
+            valor = body.get('valor')
+            doc = {sensor_tipo: valor, 'updated_at': datetime.utcnow().isoformat()}
+
+            if entity_type == 'invernadero':
+                if entity_id not in self._invernaderos:
+                    logger.warning(f'[EscribirInvernadero] invernadero {entity_id!r} no encontrado')
+                    return
+                inv = self._invernaderos[entity_id]
+                self._fs\
+                    .collection('usuarios').document(inv['user_id'])\
+                    .collection('invernaderos').document(entity_id)\
+                    .set(doc, merge=True)
+                logger.info(f'[EscribirInvernadero] OK inv={entity_id} {sensor_tipo}={valor}')
+
+            elif entity_type == 'planta':
+                inv_id = self._plant_to_inv.get(entity_id)
+                if not inv_id or inv_id not in self._invernaderos:
+                    logger.warning(f'[EscribirInvernadero] planta {entity_id!r} no encontrada')
+                    return
+                inv = self._invernaderos[inv_id]
+                self._fs\
+                    .collection('usuarios').document(inv['user_id'])\
+                    .collection('invernaderos').document(inv_id)\
+                    .collection('plantas').document(entity_id)\
+                    .set(doc, merge=True)
+                logger.info(f'[EscribirInvernadero] OK planta={entity_id} {sensor_tipo}={valor}')
+
+        except Exception as e:
+            logger.error(f'[EscribirInvernadero] Error: {e}')
 
     def teardown(self):
         if self._conn:
             self._conn.close()
         if self._connector:
             self._connector.close()
-
-
-def parsear_mensaje(element):
-    """Convierte PubsubMessage a dict plano. Devuelve None si no es de invernadero/planta."""
-    try:
-        attrs = element.attributes
-        entity_type = attrs.get('entity_type', '')
-        if entity_type not in ('invernadero', 'planta'):
-            return None
-        body = json.loads(element.data.decode('utf-8'))
-        return {
-            'entity_type': entity_type,
-            'entity_id': attrs.get('entity_id', ''),
-            'usuario_id': attrs.get('usuario_id', ''),
-            'sensor_tipo': attrs.get('sensor_tipo', ''),
-            'valor': body.get('valor'),
-        }
-    except Exception as e:
-        logger.error(f'[parsear_mensaje] Error: {e}')
-        return None
-
-
-class EscribirEnFirestore(beam.DoFn):
-    """
-    Recibe un dict con la lectura y escribe en Firestore usando el side input.
-    Sin GroupByKey, sin FixedWindows — cada mensaje se escribe al llegar.
-    """
-
-    def __init__(self, project_id):
-        self.project_id = project_id
-        self.fs_client = None
-
-    def setup(self):
-        self.fs_client = firestore.Client(project=self.project_id)
-
-    def process(self, lectura, inv_metadata):
-        if lectura is None:
-            return
-
-        try:
-            entity_type = lectura['entity_type']
-            entity_id = lectura['entity_id']
-            sensor_tipo = lectura['sensor_tipo']
-            valor = lectura['valor']
-
-            invernaderos = inv_metadata.get('invernaderos', {})
-            plant_to_inv = inv_metadata.get('plant_to_inv', {})
-
-            if entity_type == 'invernadero':
-                if entity_id not in invernaderos:
-                    logger.warning(f'[EscribirEnFirestore] invernadero {entity_id!r} no encontrado. Dict tiene {len(invernaderos)} keys.')
-                    return
-                inv = invernaderos[entity_id]
-                doc = {sensor_tipo: valor, 'updated_at': datetime.utcnow().isoformat()}
-                self.fs_client\
-                    .collection('usuarios').document(inv['user_id'])\
-                    .collection('invernaderos').document(entity_id)\
-                    .set(doc, merge=True)
-                logger.info(f'[EscribirEnFirestore] OK invernadero={entity_id} {sensor_tipo}={valor}')
-
-            elif entity_type == 'planta':
-                inv_id = plant_to_inv.get(entity_id)
-                if not inv_id:
-                    logger.warning(f'[EscribirEnFirestore] planta {entity_id!r} no encontrada')
-                    return
-                if inv_id not in invernaderos:
-                    logger.warning(f'[EscribirEnFirestore] invernadero {inv_id!r} de planta no encontrado')
-                    return
-                inv = invernaderos[inv_id]
-                doc = {sensor_tipo: valor, 'updated_at': datetime.utcnow().isoformat()}
-                self.fs_client\
-                    .collection('usuarios').document(inv['user_id'])\
-                    .collection('invernaderos').document(inv_id)\
-                    .collection('plantas').document(entity_id)\
-                    .set(doc, merge=True)
-                logger.info(f'[EscribirEnFirestore] OK planta={entity_id} {sensor_tipo}={valor}')
-
-        except Exception as e:
-            logger.error(f'[EscribirEnFirestore] Error: {e}')
-
-    def teardown(self):
-        if self.fs_client:
-            self.fs_client.close()
+        if self._fs:
+            self._fs.close()
 
 
 def run(argv=None):
@@ -168,30 +143,16 @@ def run(argv=None):
 
     p = beam.Pipeline(options=pipeline_options)
 
-    inv_pcoll = (
-        p
-        | 'PeriodicImpulse_Inv' >> PeriodicImpulse(fire_interval=60)
-        | 'GlobalWindow_Inv' >> beam.WindowInto(
-            GlobalWindows(),
-            trigger=Repeatedly(AfterProcessingTime(60)),
-            accumulation_mode=AccumulationMode.DISCARDING
-        )
-        | 'LoadInvernaderos' >> beam.ParDo(
-            LoadInvernaderosSQL(INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME)
-        )
-    )
-
-    inv_side = beam.pvalue.AsSingleton(
-        inv_pcoll, default_value={'invernaderos': {}, 'plant_to_inv': {}}
-    )
-
     _ = (
         p
         | 'ReadFromPubSub' >> beam.io.ReadFromPubSub(
             subscription=PUBSUB_SUBSCRIPTION, with_attributes=True
         )
-        | 'ParsearMensaje' >> beam.Map(parsear_mensaje)
-        | 'EscribirEnFirestore' >> beam.ParDo(EscribirEnFirestore(PROJECT_ID), inv_metadata=inv_side)
+        | 'EscribirInvernadero' >> beam.ParDo(
+            EscribirInvernadero(
+                PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME
+            )
+        )
     )
 
     p.run()
