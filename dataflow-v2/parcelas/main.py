@@ -179,6 +179,8 @@ class ParseSensor(beam.DoFn):
             attrs = element.attributes
             body = json.loads(element.data.decode('utf-8'))
 
+            logger.info(f'[ParseSensor] entity_type={attrs.get("entity_type")!r} entity_id={attrs.get("entity_id")!r} sensor_tipo={attrs.get("sensor_tipo")!r}')
+
             # Filtrar: solo mensajes de parcela
             if attrs.get('entity_type') != 'parcela':
                 return
