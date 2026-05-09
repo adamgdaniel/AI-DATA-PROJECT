@@ -367,10 +367,10 @@ def run(argv=None):
     # Side input: invernaderos + plantas — refresco cada 10 min
     inv_pcoll = (
         p
-        | 'PeriodicImpulse_Inv' >> PeriodicImpulse(fire_interval=600)
+        | 'PeriodicImpulse_Inv' >> PeriodicImpulse(fire_interval=60)
         | 'GlobalWindow_Inv' >> beam.WindowInto(
             GlobalWindows(),
-            trigger=Repeatedly(AfterProcessingTime(600)),
+            trigger=Repeatedly(AfterProcessingTime(60)),
             accumulation_mode=AccumulationMode.DISCARDING
         )
         | 'LoadInvernaderos' >> beam.ParDo(
@@ -398,7 +398,7 @@ def run(argv=None):
     # Ventanas de 10 minutos
     windowed = (
         sensors['ok']
-        | 'FixedWindows' >> beam.WindowInto(FixedWindows(10 * 60))
+        | 'FixedWindows' >> beam.WindowInto(FixedWindows(2 * 60))
     )
 
     # Agrupar lecturas por invernadero_id dentro de la ventana
