@@ -177,7 +177,11 @@ def update_invernadero_sensor(invernadero_id):
         cur.execute("""
             INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type)
             VALUES (%s, %s, %s, %s, 'invernadero', %s)
-            ON CONFLICT (sensor_id) DO NOTHING
+            ON CONFLICT (sensor_id) DO UPDATE SET
+                location_id = EXCLUDED.location_id,
+                location_type = EXCLUDED.location_type,
+                sensor_type = EXCLUDED.sensor_type,
+                connection_id = EXCLUDED.connection_id
         """, (entity_id, data['connection_id'], data['user_id'], invernadero_id, db_type))
 
     conn.commit()
@@ -265,7 +269,11 @@ def update_planta_sensor(invernadero_id, planta_id):
         cur.execute("""
             INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type)
             VALUES (%s, %s, %s, %s, 'planta', 'soil_moisture')
-            ON CONFLICT (sensor_id) DO NOTHING
+            ON CONFLICT (sensor_id) DO UPDATE SET
+                location_id = EXCLUDED.location_id,
+                location_type = EXCLUDED.location_type,
+                sensor_type = EXCLUDED.sensor_type,
+                connection_id = EXCLUDED.connection_id
         """, (entity_id, data['connection_id'], data['user_id'], planta_id))
 
     conn.commit()
