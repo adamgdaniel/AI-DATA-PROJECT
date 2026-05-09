@@ -124,10 +124,11 @@ def _media(valores):
     return sum(valores) / len(valores) if valores else None
 
 
-def combinarLecturasPlanta(elemento, cache):
+def combinarLecturasPlanta(elemento, cache, ventana=beam.DoFn.WindowParam):
     """Recibe (plant_id, [lecturas de la ventana]) y emite UNA fila para BQ.
     - Media de cada sensor (temperatura, humedad_ambiental, humedad_suelo).
     - Sin lectura → null. Sin fallback meteorológico (espacios cerrados).
+    - Timestamp = inicio de la ventana (con minutos, para identificar el más reciente).
     """
     plant_id, lecturas = elemento
     plantas = cache.get('plantas', {})
@@ -148,11 +149,13 @@ def combinarLecturasPlanta(elemento, cache):
         elif st == 'humedad_suelo':
             suelos.append(v)
 
+    ts = ventana.start.to_utc_datetime().strftime('%Y-%m-%dT%H:%M:%S')
+
     yield {
         'user_id': p['user_id'],
         'greenhouse_id': p['invernadero_id'],
         'plant_id': plant_id,
-        'timestamp': datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat(),
+        'timestamp': ts,
         'temperatura': _media(temps),
         'humedad_ambiental': _media(hums),
         'humedad_suelo': _media(suelos),
@@ -264,46 +267,49 @@ def run(argv=None):
     options.view_as(StandardOptions).streaming = True
     options.view_as(SetupOptions).save_main_session = True
 
-    with beam.Pipeline(options=options) as p:
+    p = beam.Pipeline(options=options)
 
-        # --- Side input: invernaderos + plantas, refrescado cada 5 min (test) ---
-        cache = (
-            p
-            | "Reloj" >> PeriodicImpulse(fire_interval=300, apply_windowing=True)
-            | "VentanaGlobal" >> beam.WindowInto(
-                window.GlobalWindows(),
-                trigger=trigger.Repeatedly(trigger.AfterCount(1)),
-                accumulation_mode=trigger.AccumulationMode.DISCARDING)
-            | "CargarSQL" >> beam.ParDo(CargarInvernaderosYPlantas(
-                PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME))
-        )
-        vista = beam.pvalue.AsSingleton(cache, default_value={'invernaderos': {}, 'plantas': {}})
+    # --- Side input: invernaderos + plantas, refrescado cada 5 min (test) ---
+    cache = (
+        p
+        | "Reloj" >> PeriodicImpulse(fire_interval=300, apply_windowing=True)
+        | "VentanaGlobal" >> beam.WindowInto(
+            window.GlobalWindows(),
+            trigger=trigger.Repeatedly(trigger.AfterCount(1)),
+            accumulation_mode=trigger.AccumulationMode.DISCARDING)
+        | "CargarSQL" >> beam.ParDo(CargarInvernaderosYPlantas(
+            PROJECT_ID, INSTANCE_CONNECTION_NAME, DB_USER, DB_PASSWORD, DB_NAME))
+    )
+    vista = beam.pvalue.AsSingleton(cache, default_value={'invernaderos': {}, 'plantas': {}})
 
-        # --- Stream principal ---
-        parsed = (
-            p
-            | "LeerPubSub" >> beam.io.ReadFromPubSub(
-                subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
-            | "ParsearMensaje" >> beam.Map(parsearMensaje)
-            | "FiltrarInvOPlanta" >> beam.Filter(filtrarInvernaderoOPlanta)
-        )
+    # --- Stream principal ---
+    parsed = (
+        p
+        | "LeerPubSub" >> beam.io.ReadFromPubSub(
+            subscription=PUBSUB_SUBSCRIPTION, with_attributes=True)
+        | "ParsearMensaje" >> beam.Map(parsearMensaje)
+        | "FiltrarInvOPlanta" >> beam.Filter(filtrarInvernaderoOPlanta)
+    )
 
-        # --- Sink Firestore: 1 doc por mensaje ---
-        (parsed
-         | "PrepararFirestore" >> beam.FlatMap(filaFirestore, cache=vista)
-         | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
+    # --- Sink Firestore: 1 doc por mensaje ---
+    (parsed
+     | "PrepararFirestore" >> beam.FlatMap(filaFirestore, cache=vista)
+     | "EscribirFirestore" >> beam.ParDo(EscribirFirestore(PROJECT_ID, 'ultimas-lecturas')))
 
-        # --- Sink BigQuery: agregación por ventana fija, 1 fila por planta y ventana ---
-        (parsed
-         | "ExpandirAPlantas" >> beam.FlatMap(expandirAPlantas, cache=vista)
-         | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
-         | "AgruparPorPlanta" >> beam.GroupByKey()
-         | "CombinarLecturas" >> beam.FlatMap(combinarLecturasPlanta, cache=vista)
-         | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
-             table=BQ_TABLE,
-             schema=BQ_SCHEMA,
-             write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
-             create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER))
+    # --- Sink BigQuery: agregación por ventana fija, 1 fila por planta y ventana ---
+    (parsed
+     | "ExpandirAPlantas" >> beam.FlatMap(expandirAPlantas, cache=vista)
+     | "VentanaFija" >> beam.WindowInto(window.FixedWindows(WINDOW_SECONDS))
+     | "AgruparPorPlanta" >> beam.GroupByKey()
+     | "CombinarLecturas" >> beam.FlatMap(combinarLecturasPlanta, cache=vista)
+     | "EscribirBigQuery" >> beam.io.WriteToBigQuery(
+         table=BQ_TABLE,
+         schema=BQ_SCHEMA,
+         write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
+         create_disposition=beam.io.BigQueryDisposition.CREATE_NEVER))
+
+    p.run()
+    logger.info('Dataflow invernaderos streaming job submitted')
 
 
 if __name__ == '__main__':

@@ -116,6 +116,8 @@ def mergearParcelaConSensores(elemento):
     hum_media = _media(hums)
     suelo_media = _media(suelos)
 
+    ts = ventana.start.to_utc_datetime().strftime('%Y-%m-%dT%H:%M:%S')
+
     yield {
         'user_id': info['user_id'],
         'parcel_id': parcel_id,

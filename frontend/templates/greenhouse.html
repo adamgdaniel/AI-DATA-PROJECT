@@ -360,19 +360,19 @@
   <div id="toolbar-inner">
     <div class="crop-btn" draggable="true" data-crop="tomate"
          ondragstart="onCropDragStart(event,'tomate')" onclick="selectCrop('tomate')">
-      <img class="icon" src="/icons/Tomato.webp"/><span>Tomate</span>
+      <img class="icon" src="/icons/icons-invernadero/tomate-removebg-preview.png"/><span>Tomate</span>
     </div>
     <div class="crop-btn" draggable="true" data-crop="pepino"
          ondragstart="onCropDragStart(event,'pepino')" onclick="selectCrop('pepino')">
-      <img class="icon" src="/icons/cucumber.png"/><span>Pepino</span>
+      <img class="icon" src="/icons/icons-invernadero/pepino-removebg-preview.png"/><span>Pepino</span>
     </div>
     <div class="crop-btn" draggable="true" data-crop="pimiento"
          ondragstart="onCropDragStart(event,'pimiento')" onclick="selectCrop('pimiento')">
-      <img class="icon" src="/icons/Bell_Pepper.webp"/><span>Pimiento</span>
+      <img class="icon" src="/icons/icons-invernadero/pimiento-removebg-preview.png"/><span>Pimiento</span>
     </div>
     <div class="crop-btn" draggable="true" data-crop="calabacin"
          ondragstart="onCropDragStart(event,'calabacin')" onclick="selectCrop('calabacin')">
-      <img class="icon" src="/icons/Zucchini.webp"/><span>Calabacín</span>
+      <img class="icon" src="/icons/icons-invernadero/calabacin-removebg-preview.png"/><span>Calabacín</span>
     </div>
     <span id="toolbar-hint">Arrastra o selecciona un cultivo y haz clic en la cuadrícula</span>
   </div>
@@ -423,10 +423,10 @@
 
 <script>
 const CROPS = {
-  tomate:    { img: '/icons/Tomato.webp',      label: 'Tomate',    color: '#c0392b' },
-  pepino:    { img: '/icons/cucumber.png',     label: 'Pepino',    color: '#27ae60' },
-  pimiento:  { img: '/icons/Bell_Pepper.webp', label: 'Pimiento',  color: '#e67e22' },
-  calabacin: { img: '/icons/Zucchini.webp',    label: 'Calabacín', color: '#2ecc71' }
+  tomate:    { img: '/icons/icons-invernadero/tomate-removebg-preview.png',      label: 'Tomate',    color: '#c0392b' },
+  pepino:    { img: '/icons/icons-invernadero/pepino-removebg-preview.png',     label: 'Pepino',    color: '#27ae60' },
+  pimiento:  { img: '/icons/icons-invernadero/pimiento-removebg-preview.png', label: 'Pimiento',  color: '#e67e22' },
+  calabacin: { img: '/icons/icons-invernadero/calabacin-removebg-preview.png',    label: 'Calabacín', color: '#2ecc71' }
 };
 
 const VARIETIES = {
@@ -434,6 +434,25 @@ const VARIETIES = {
   pimiento:  ['California', 'Lamuyo'],
   pepino:    ['Holandés'],
   calabacin: ['Verde oscuro']
+};
+
+// Mapeo de iconos por variedad
+const VARIETY_ICONS = {
+  tomate: {
+    'Rama/LongLife': '/icons/icons-invernadero/tomate_long_life-removebg-preview.png',
+    'Pera': '/icons/icons-invernadero/tomate_pera-removebg-preview.png',
+    'Cherry': '/icons/icons-invernadero/cherry-removebg-preview.png'
+  },
+  pepino: {
+    'Holandés': '/icons/icons-invernadero/pepino_holandes-removebg-preview.png'
+  },
+  pimiento: {
+    'California': '/icons/icons-invernadero/pimiento-removebg-preview.png',
+    'Lamuyo': '/icons/icons-invernadero/lamuyo-removebg-preview.png'
+  },
+  calabacin: {
+    'Verde oscuro': '/icons/icons-invernadero/calabacin_verde_oscuro-removebg-preview.png'
+  }
 };
 
 const GRID_COLS = 10;
@@ -1054,5 +1073,6 @@ document.getElementById('gh-sensor-modal').addEventListener('click', e => {
 
 init();
 </script>
+{% include '_chat_widget.html' %}
 </body>
 </html>
