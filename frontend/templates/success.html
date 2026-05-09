@@ -234,50 +234,6 @@
       .header-nav a span { display: none; }
     }
 
-    /* ── Chat flotante ── */
-    #chat-btn {
-      position: fixed; bottom: 22px; right: 22px; z-index: 1200;
-      background: #061b0e; color: white;
-      border: none; border-radius: 50px;
-      padding: 12px 18px; font-size: 15px; cursor: pointer;
-      box-shadow: 0 3px 10px rgba(0,0,0,.25);
-      display: flex; align-items: center; gap: 7px;
-    }
-    #chat-panel {
-      position: fixed; bottom: 75px; right: 22px; z-index: 1200;
-      width: 340px; max-height: 480px;
-      background: white; border: 1px solid #c3c8c1;
-      border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,.2);
-      display: none; flex-direction: column; overflow: hidden;
-    }
-    #chat-header {
-      background: #061b0e; color: white;
-      padding: 10px 14px; font-size: 14px; font-weight: bold;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    #chat-header button {
-      background: none; border: none; color: white;
-      font-size: 18px; cursor: pointer; line-height: 1;
-    }
-    #chat-messages {
-      flex: 1; overflow-y: auto; padding: 12px;
-      display: flex; flex-direction: column; gap: 8px;
-      min-height: 200px;
-    }
-    .chat-msg { font-size: 13px; line-height: 1.45; max-width: 90%; }
-    .chat-msg.user { align-self: flex-end; background: #d0e9d4; border-radius: 8px 8px 2px 8px; padding: 7px 10px; }
-    .chat-msg.agent { align-self: flex-start; background: #f3f4f5; border-radius: 8px 8px 8px 2px; padding: 7px 10px; }
-    .chat-msg.error { align-self: flex-start; background: #ffdad6; color: #ba1a1a; border-radius: 8px; padding: 7px 10px; }
-    #chat-footer { padding: 10px; border-top: 1px solid #edeeef; display: flex; gap: 7px; }
-    #chat-input {
-      flex: 1; resize: none; border: 1px solid #c3c8c1; border-radius: 6px;
-      padding: 7px; font-size: 13px; font-family: inherit;
-    }
-    #chat-send {
-      background: #061b0e; color: white; border: none;
-      border-radius: 6px; padding: 7px 13px; cursor: pointer; font-size: 13px;
-    }
-    #chat-send:disabled { opacity: 0.5; cursor: default; }
   </style>
 </head>
 <body>
@@ -395,19 +351,7 @@
     </div>
   </div>
 
-  <!-- Chat flotante con el agente IA -->
-  <button id="chat-btn" onclick="toggleChat()">💬 Hablar con el agente</button>
-  <div id="chat-panel">
-    <div id="chat-header">
-      <span>🤖 Agente AgroMonitor</span>
-      <button onclick="toggleChat()">✕</button>
-    </div>
-    <div id="chat-messages"></div>
-    <div id="chat-footer">
-      <textarea id="chat-input" rows="2" placeholder="Escribe tu pregunta..."></textarea>
-      <button id="chat-send" onclick="enviarMensaje()">Enviar</button>
-    </div>
-  </div>
+  {% include '_chat_widget.html' %}
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -699,6 +643,7 @@
 
     function mostrarDetalleParcela(p) {
       currentParcela = p;
+      window.currentParcela = p;
       document.getElementById('info-panel').style.display = 'none';
       abrirSensorStream(p);
       document.getElementById('dp-icon').innerHTML = `<img src="${CROP_IMGS[p.cultivo] || ''}" style="width:34px;height:34px;object-fit:contain">`;
@@ -947,58 +892,8 @@
       .catch(() => alert('Error de conexión.'));
     }
 
-    // ── Chat con el agente ────────────────────────────────────────────────
-    function toggleChat() {
-      const panel = document.getElementById('chat-panel');
-      panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
-    }
-
-    function appendMsg(text, role) {
-      const div = document.createElement('div');
-      div.className = `chat-msg ${role}`;
-      div.textContent = text;
-      const msgs = document.getElementById('chat-messages');
-      msgs.appendChild(div);
-      msgs.scrollTop = msgs.scrollHeight;
-    }
-
-    function enviarMensaje() {
-      const input = document.getElementById('chat-input');
-      const send  = document.getElementById('chat-send');
-      const texto = input.value.trim();
-      if (!texto) return;
-
-      appendMsg(texto, 'user');
-      input.value = '';
-      send.disabled = true;
-      appendMsg('...', 'agent');
-
-      const body = { mensaje: texto };
-      if (currentParcela && currentParcela.parcela_id) {
-        body.parcela_id = currentParcela.parcela_id;
-      }
-
-      fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-      .then(r => r.json())
-      .then(data => {
-        const msgs = document.getElementById('chat-messages');
-        msgs.lastChild.remove();
-        appendMsg(data.respuesta || data.error || 'Sin respuesta', data.error ? 'error' : 'agent');
-      })
-      .catch(() => {
-        document.getElementById('chat-messages').lastChild.remove();
-        appendMsg('Error de conexión con el agente.', 'error');
-      })
-      .finally(() => { send.disabled = false; });
-    }
-
-    document.getElementById('chat-input').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje(); }
-    });
+    // El chat con el agente vive ahora en `_chat_widget.html` y comparte
+    // `currentParcela` mediante `window.currentParcela` (definido abajo).
 
     cargarParcelas();
     setTimeout(() => map.invalidateSize(), 100);

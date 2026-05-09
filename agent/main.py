@@ -14,7 +14,7 @@ app = FastAPI()
 GCP_PROJECT   = os.environ.get("GCP_PROJECT_ID", "project-7f8b4dee-2b72-40f2-941")
 SENSOR_API_URL = os.environ.get("SENSOR_API_URL", "http://sensor-api:8080")
 
-client = genai.Client(vertexai=True, project=GCP_PROJECT, location="europe-west1")
+client = genai.Client(vertexai=True, project=GCP_PROJECT, location="global")
 
 MODEL = "gemini-2.0-flash"
 
