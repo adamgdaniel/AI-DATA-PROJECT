@@ -124,6 +124,8 @@ class ParseSensorInvernadero(beam.DoFn):
             attrs = element.attributes
             entity_type = attrs.get('entity_type')
 
+            logger.info(f'[ParseSensor] entity_type={entity_type!r} entity_id={attrs.get("entity_id")!r} sensor_tipo={attrs.get("sensor_tipo")!r}')
+
             if entity_type not in ('invernadero', 'planta'):
                 return
 
