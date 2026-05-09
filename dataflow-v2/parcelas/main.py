@@ -1,6 +1,6 @@
 import apache_beam as beam
 from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions, SetupOptions
-from apache_beam.transforms.window import FixedWindows, GlobalWindows
+from apache_beam.transforms.window import GlobalWindows
 from apache_beam.transforms.periodicsequence import PeriodicImpulse
 from apache_beam.transforms.trigger import Repeatedly, AfterProcessingTime, AccumulationMode
 import json
@@ -217,7 +217,7 @@ class ParseSensor(beam.DoFn):
 class EnrichSensorWithParcelaAndMeteo(beam.DoFn):
     """Enriquece sensor con datos de parcela y meteorología usando side inputs."""
 
-    def process(self, sensor, parcelas_dict=None, meteo_dict=None, window=beam.DoFn.WindowParam):
+    def process(self, sensor, parcelas_dict=None, meteo_dict=None):
         try:
             if not parcelas_dict:
                 parcelas_dict = {}
@@ -246,8 +246,13 @@ class EnrichSensorWithParcelaAndMeteo(beam.DoFn):
             sensor_type = sensor.get('sensor_tipo', '').lower()
             value = float(sensor.get('valor', 0) or 0)
 
-            # Obtener timestamp de la ventana
-            window_start = window.start.to_utc_datetime().isoformat()
+            # Timestamp de la lectura del sensor (normalizado a UTC sin offset)
+            ts_raw = sensor.get('timestamp_lectura') or datetime.utcnow().isoformat()
+            if ts_raw.endswith('Z'):
+                ts_raw = ts_raw[:-1]
+            elif '+' in ts_raw:
+                ts_raw = ts_raw.split('+')[0]
+            timestamp = ts_raw
 
             enriched = {
                 'user_id': str(parcela.get('usuario_id')),
@@ -258,7 +263,7 @@ class EnrichSensorWithParcelaAndMeteo(beam.DoFn):
                 'variedad': parcela.get('variedad'),
                 'lat': parcela.get('lat'),
                 'lng': parcela.get('lng'),
-                'timestamp': window_start,
+                'timestamp': timestamp,
                 'temperatura': None,
                 'humedad_ambiental': None,
                 'humedad_suelo': None,
@@ -464,15 +469,9 @@ def run(argv=None):
     # Dead letters del parseo
     dead_letters_parse = sensors['dead_letter']
 
-    # Windowing: 20 minutos (FixedWindows)
-    windowed_sensors = (
-        sensors['ok']
-        | 'FixedWindows_Sensors' >> beam.WindowInto(FixedWindows(2 * 60))
-    )
-
-    # Enriquecer con parcelas y meteorología
+    # Enriquecer con parcelas y meteorología — sin windowing, cada lectura se procesa al llegar
     enriched = (
-        windowed_sensors
+        sensors['ok']
         | 'EnrichWithMetadata' >> beam.ParDo(
             EnrichSensorWithParcelaAndMeteo(),
             parcelas_dict=beam.pvalue.AsSingleton(parcelas_pcoll, default_value={}),

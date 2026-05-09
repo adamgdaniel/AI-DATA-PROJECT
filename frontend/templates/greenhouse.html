@@ -838,7 +838,7 @@ async function discoverAndPickSensor() {
     return;
   }
   const opts = soilSensors.map(s =>
-    `<option value="${s.sensor_id}" data-conn="${connId}">${s.display_name} — ${s.state}${s.unit || ''}</option>`
+    `<option value="${s.sensor_id}" data-conn="${connId}" data-display="${s.display_name}">${s.display_name} — ${s.state}${s.unit || ''}</option>`
   ).join('');
   section.innerHTML = `
     <label style="font-size:12px;color:#95d5b2">Sensor de humedad de suelo</label>
@@ -848,13 +848,15 @@ async function discoverAndPickSensor() {
 }
 
 async function linkSensor(connectionId) {
-  const entityId = document.getElementById('sensor-entity-select').value;
+  const select = document.getElementById('sensor-entity-select');
+  const entityId = select.value;
+  const displayName = select.options[select.selectedIndex]?.getAttribute('data-display') || entityId;
   if (!entityId || !modalPlant || !currentGhId) return;
   try {
     const r = await fetch(`/actualizar-sensor-planta/${currentGhId}/${modalPlant.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ soil_entity_id: entityId, connection_id: connectionId })
+      body: JSON.stringify({ soil_entity_id: entityId, connection_id: connectionId, display_name: displayName })
     });
     if (r.ok) {
       modalPlant.soil_entity_id = entityId;
@@ -973,7 +975,7 @@ async function discoverGhSensors(tipo) {
     return;
   }
   const opts = relevant.map(s =>
-    `<option value="${s.sensor_id}">${s.display_name} — ${s.state}${s.unit || ''}</option>`
+    `<option value="${s.sensor_id}" data-display="${s.display_name}">${s.display_name} — ${s.state}${s.unit || ''}</option>`
   ).join('');
   list.innerHTML = `
     <label style="font-size:12px;color:#95d5b2">Sensor</label>
@@ -983,13 +985,15 @@ async function discoverGhSensors(tipo) {
 }
 
 async function linkGhSensor(tipo, connectionId) {
-  const entityId = document.getElementById('gh-sensor-entity-select').value;
+  const select = document.getElementById('gh-sensor-entity-select');
+  const entityId = select.value;
+  const displayName = select.options[select.selectedIndex]?.getAttribute('data-display') || entityId;
   if (!entityId || !currentGhId) return;
   try {
     const r = await fetch(`/actualizar-sensor-invernadero/${currentGhId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sensor_type: tipo, sensor_entity_id: entityId, connection_id: connectionId })
+      body: JSON.stringify({ sensor_type: tipo, sensor_entity_id: entityId, connection_id: connectionId, display_name: displayName })
     });
     if (r.ok) {
       const idx = greenhouses.findIndex(g => g.id === currentGhId);
