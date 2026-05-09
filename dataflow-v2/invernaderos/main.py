@@ -54,7 +54,7 @@ class EscribirInvernadero(beam.DoFn):
             password=self.db_password,
             db=self.db_name
         )
-        self._fs = firestore.Client(project=self.project_id)
+        self._fs = firestore.Client(project=self.project_id, database='ultimas-lecturas')
         self._cargar_datos()
 
     def _cargar_datos(self):
