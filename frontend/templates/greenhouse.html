@@ -4,6 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AgroMonitor – Invernaderos</title>
+  <link rel="icon" type="image/png" href="/icons/logo_dark_green.png"/>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
@@ -53,7 +54,7 @@
     }
 
     body {
-      background: url('/icons/bg_inv_v8.jpg') center center / cover no-repeat;
+      background: url('/icons/invernadero_fondo.png') center center / cover no-repeat;
       height: 100vh;
       overflow: hidden;
     }
@@ -102,27 +103,24 @@
       display: none; /* We use the soil-chip instead if data exists */
     }
 
-    /* THE FINAL FIX FOR SOIL CHIP */
+    /* SOIL CHIP - PROPORTIONAL FIX */
     .soil-chip {
       position: absolute;
-      top: -100px; 
+      top: -65px; 
       left: 50%;
-      transform: translateX(-50%) rotateZ(-45deg) rotateX(-60deg) scaleY(2.3);
+      transform: translateX(-50%) rotateZ(-45deg) rotateX(-60deg) scale(1.1);
       transform-origin: bottom center;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      border-left: 5px solid #b2f746;
+      background: rgba(6, 27, 14, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-left: 4px solid #b2f746;
       color: #ffffff;
-      padding: 0 10px; 
-      width: 100px;
-      height: 55px;
-      font-size: 20px; 
-      font-weight: 900;
-      line-height: 55px; 
-      letter-spacing: -0.5px;
+      padding: 4px 10px; 
+      border-radius: 8px;
+      font-size: 15px; 
+      font-weight: 800;
       white-space: nowrap;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
       z-index: 9999;
       display: flex;
       align-items: center;
@@ -160,7 +158,9 @@
         </div>
       </div>
       <h1 class="text-4xl font-black text-white tracking-tight drop-shadow-lg">Invernaderos</h1>
-      <p class="text-tertiary-fixed font-medium tracking-widest uppercase text-xs opacity-80">Gestión de cultivos bajo cubierta</p>
+      <div class="inline-block px-4 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mt-2">
+        <p class="text-tertiary-fixed font-bold tracking-widest uppercase text-[10px]">Gestión de cultivos bajo cubierta</p>
+      </div>
     </div>
 
     <div class="space-y-3">
