@@ -100,11 +100,6 @@
     var body = { mensaje: texto };
     var parcelaId = getParcelaContext();
     if (parcelaId) body.parcela_id = parcelaId;
-    if (typeof window.misParcelasData !== 'undefined' && window.misParcelasData.length > 0) {
-      body.parcelas_usuario = window.misParcelasData.map(function(p) {
-        return { nombre: p.nombre, parcela_id: p.parcela_id, cultivo: p.cultivo };
-      });
-    }
 
     fetch('/chat', {
       method: 'POST',
