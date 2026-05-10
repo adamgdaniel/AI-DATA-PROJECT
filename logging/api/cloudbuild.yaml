@@ -13,6 +13,6 @@ steps:
       - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/login-repo/login-api:latest
       - --region=europe-west1
       - --platform=managed
-      - --update-env-vars=TEST_USERNAME=$_TEST_USERNAME,TEST_PASSWORD=$_TEST_PASSWORD
+      - --update-env-vars=TEST_USERNAME=$_TEST_USERNAME,TEST_PASSWORD=$_TEST_PASSWORD,GCP_PROJECT_ID=$PROJECT_ID
 options:
   logging: CLOUD_LOGGING_ONLY
