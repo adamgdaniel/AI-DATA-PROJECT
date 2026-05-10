@@ -480,13 +480,12 @@ function renderGrid() {
     el.style.gridColumn = `${plant.grid_col + 1} / span 2`;
     el.style.zIndex = 5;
     
-    // Icon resolution from variety
-    const iconPath = (VARIETY_ICONS[plant.tipo] && VARIETY_ICONS[plant.tipo][plant.variedad]) 
-                     ? VARIETY_ICONS[plant.tipo][plant.variedad] 
-                     : (CROPS[plant.tipo] ? CROPS[plant.tipo].img : '');
+    // Icon resolution from variety (Merged Logic)
+    const variantImg = (VARIETY_ICONS[plant.tipo] || {})[plant.variedad];
+    const fallbackImg = CROPS[plant.tipo] && CROPS[plant.tipo].img;
+    const imgSrc = variantImg || fallbackImg;
     
-    const cropImg = iconPath ? `<img src="${iconPath}">` : '🌱';
-    el.innerHTML = cropImg;
+    el.innerHTML = imgSrc ? `<img src="${imgSrc}">` : '🌱';
 
     if (plant.soil_entity_id) {
       const dot = document.createElement('div');
