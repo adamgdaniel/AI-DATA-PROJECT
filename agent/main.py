@@ -90,15 +90,16 @@ def chat(req: ChatRequest):
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT + f"\n\nFecha actual: {today}.",
         tools=_build_tools(),
-        max_output_tokens=150,
+        max_output_tokens=400,
     )
 
     chat_session = client.chats.create(model=MODEL, config=config)
     response = chat_session.send_message(prompt)
 
     for _ in range(3):
+        parts = response.candidates[0].content.parts if response.candidates[0].content else []
         tool_parts = [
-            p for p in response.candidates[0].content.parts
+            p for p in parts
             if hasattr(p, "function_call") and p.function_call and p.function_call.name
         ]
         if not tool_parts:
@@ -113,8 +114,9 @@ def chat(req: ChatRequest):
         ]
         response = chat_session.send_message(tool_responses)
 
+    final_parts = response.candidates[0].content.parts if response.candidates[0].content else []
     texto_final = "".join(
-        p.text for p in response.candidates[0].content.parts
+        p.text for p in final_parts
         if hasattr(p, "text") and p.text
     )
     return {"respuesta": texto_final.strip()}
