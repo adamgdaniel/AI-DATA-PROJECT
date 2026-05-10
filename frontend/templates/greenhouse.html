@@ -175,7 +175,7 @@
     </div>
 
     <div class="pt-8">
-      <a href="/mapas" class="text-white/60 hover:text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors">
+      <a href="/mapa" class="text-white/60 hover:text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors">
         <span class="material-symbols-outlined text-lg">arrow_back</span>
         Volver a mis parcelas
       </a>
@@ -354,8 +354,8 @@ let ghSensorData = { invernadero: {}, plantas: {} };
 let ghStream = null;
 
 // ── Landing helpers ───────────────────────────────────
-function showLanding() { document.getElementById('landing').classList.remove('hidden'); }
-function hideLanding() { document.getElementById('landing').classList.add('hidden'); }
+function showLanding() { document.getElementById('landing').style.display = 'flex'; }
+function hideLanding() { document.getElementById('landing').style.display = 'none'; }
 
 async function exitToLanding() {
   if (ghStream) { ghStream.close(); ghStream = null; }

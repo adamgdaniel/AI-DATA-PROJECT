@@ -63,7 +63,9 @@
     .sensor-popup .leaflet-popup-tip { background: rgba(6, 27, 14, 0.8) !important; }
 
     .crop-marker { background: none !important; border: none !important; }
-    .parcela-glow { filter: drop-shadow(0 0 6px #4ade80) drop-shadow(0 0 14px #4ade8088); }
+    
+    /* Clean selection style without blur/stains */
+    .selected-parcel { pointer-events: none; }
     
     /* Weather horizontal scroll */
     #dp-weather-cards::-webkit-scrollbar { height: 4px; }
@@ -410,8 +412,10 @@
 
           if (p.geometry) {
             selectionLayer = L.layerGroup([
-              L.geoJSON(p.geometry, { style: { color: '#4ade80', weight: 8, opacity: 0.2, fillColor: '#4ade80', fillOpacity: 0.1, className: 'parcela-glow' } }),
-              L.geoJSON(p.geometry, { style: { color: '#22c55e', weight: 2, opacity: 0.9, dashArray: '4,4', fillColor: '#86efac', fillOpacity: 0.2 } })
+              // Thick white glow base (simulated with high opacity but thin line for sharp start)
+              L.geoJSON(p.geometry, { style: { color: '#ffffff', weight: 6, opacity: 0.3, fill: false } }),
+              // Sharp dashed lime top
+              L.geoJSON(p.geometry, { style: { color: '#b2f746', weight: 2, opacity: 1, dashArray: '8, 8', fillColor: '#b2f746', fillOpacity: 0.15 } })
             ]).addTo(map);
           }
 
@@ -515,16 +519,16 @@
             const color = CROP_COLORS[p.cultivo] || '#95a5a6';
 
             if (p.geometria) {
-              L.geoJSON(p.geometria, { style: { color, weight: 2, fillColor: color, fillOpacity: 0.3 } })
+              L.geoJSON(p.geometria, { style: { color, weight: 3, opacity: 0.8, fillColor: color, fillOpacity: 0.3 } })
                 .on('click', (e) => { L.DomEvent.stopPropagation(e); mostrarDetalleParcela(p); })
                 .addTo(misParcelasLayer);
             }
 
             if (p.lat && p.lng) {
               const icon = L.divIcon({
-                html: `<div class="p-1 bg-white rounded-full shadow-lg border-2 border-white"><img src="${CROP_IMGS[p.cultivo]}" class="w-5 h-5 object-contain"></div>`,
+                html: `<div class="drop-shadow-xl"><img src="${CROP_IMGS[p.cultivo]}" class="w-8 h-8 object-contain"></div>`,
                 className: 'crop-marker',
-                iconAnchor: [12, 12]
+                iconAnchor: [16, 16]
               });
               L.marker([p.lat, p.lng], { icon })
                 .on('click', (e) => { L.DomEvent.stopPropagation(e); mostrarDetalleParcela(p); })
@@ -534,7 +538,7 @@
           
           if (!window._initZoom && misParcelasData[0]) {
             window._initZoom = true;
-            map.flyTo([misParcelasData[0].lat, misParcelasData[0].lng], 15);
+            map.flyTo([misParcelasData[0].lat, misParcelasData[0].lng], 18);
           }
         });
     }
@@ -542,7 +546,7 @@
     function focusParcela(id) {
       const p = misParcelasData.find(mp => mp.parcela_id === id);
       if (p && p.lat) {
-        map.setView([p.lat, p.lng], 15);
+        map.setView([p.lat, p.lng], 18);
         mostrarDetalleParcela(p);
       }
     }
