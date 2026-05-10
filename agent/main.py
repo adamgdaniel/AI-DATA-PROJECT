@@ -138,8 +138,7 @@ def chat(req: ChatRequest):
         p.text for p in final_parts
         if hasattr(p, "text") and p.text
     )
-    palabras = texto_final.strip().split()
-    out = " ".join(palabras[:150])
+    out = texto_final.strip()
     logger.info("agent.chat output respuesta=%s", out)
     return {"respuesta": out}
 
