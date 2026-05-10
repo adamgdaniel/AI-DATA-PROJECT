@@ -488,6 +488,85 @@ def iot_eliminar_sensor():
         return jsonify({'error': 'Error contactando IoT API'}), 502
 
 
+@app.route('/iot/descubrir-valvulas')
+def iot_descubrir_valvulas():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    connection_id = request.args.get('connection_id')
+    if not connection_id or not IOT_API_URL:
+        return jsonify([]), 200
+    try:
+        resp = requests.get(f'{IOT_API_URL}/ha/valvulas/discover',
+                            params={'connection_id': connection_id}, timeout=20)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify([]), 200
+
+
+@app.route('/iot/registrar-valvula', methods=['POST'])
+def iot_registrar_valvula():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not IOT_API_URL:
+        return jsonify({'error': 'Servicio IoT no configurado'}), 503
+    data = request.json
+    data['user_id'] = session['user_id']
+    try:
+        resp = requests.post(f'{IOT_API_URL}/ha/valvulas', json=data, timeout=10)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'Error de conexión'}), 503
+
+
+@app.route('/iot/mis-valvulas')
+def iot_mis_valvulas():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not IOT_API_URL:
+        return jsonify([]), 200
+    parcela_usuario_id = request.args.get('parcela_usuario_id')
+    params = {'parcela_usuario_id': parcela_usuario_id, 'user_id': session['user_id']} \
+             if parcela_usuario_id else {'user_id': session['user_id']}
+    try:
+        resp = requests.get(f'{IOT_API_URL}/ha/valvulas', params=params, timeout=10)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify([]), 200
+
+
+@app.route('/iot/eliminar-valvula', methods=['POST'])
+def iot_eliminar_valvula():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not IOT_API_URL:
+        return jsonify({'error': 'Servicio IoT no configurado'}), 503
+    body = request.json or {}
+    sensor_id = body.get('sensor_id')
+    location_id = body.get('location_id')
+    try:
+        resp = requests.delete(f'{IOT_API_URL}/ha/valvulas',
+                               params={'sensor_id': sensor_id, 'user_id': session['user_id'],
+                                       'location_id': location_id}, timeout=10)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'Error de conexión'}), 503
+
+
+@app.route('/iot/comando', methods=['POST'])
+def iot_comando():
+    if 'user_id' not in session:
+        return jsonify({'error': 'no autenticado'}), 401
+    if not IOT_API_URL:
+        return jsonify({'error': 'Servicio IoT no configurado'}), 503
+    data = request.json or {}
+    data['user_id'] = session['user_id']
+    try:
+        resp = requests.post(f'{IOT_API_URL}/ha/comando', json=data, timeout=15)
+        return jsonify(resp.json()), resp.status_code
+    except Exception:
+        return jsonify({'error': 'Error de conexión'}), 503
+
+
 @app.route('/invernadero')
 def invernadero():
     if 'user_id' not in session:

@@ -265,6 +265,28 @@
              </div>
           </div>
 
+          <!-- Válvulas de riego -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between px-1">
+              <h5 class="text-[10px] font-bold text-outline uppercase tracking-widest">Válvulas / Riego</h5>
+              <button onclick="abrirPanelValvula()" class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-lg hover:bg-primary/20 transition-colors">
+                + Añadir
+              </button>
+            </div>
+            <div id="dp-valvulas-list" class="space-y-2"></div>
+            <div id="add-valvula-panel" class="hidden p-3 bg-primary/5 rounded-xl space-y-3 border border-primary/10">
+              <div class="space-y-1">
+                <label class="text-[9px] font-bold text-outline uppercase px-1">Conexión HA</label>
+                <select id="valvula-conn-sel" onchange="onValvulaConexionChange()" class="w-full bg-white/80 border-white/40 rounded-lg text-xs py-1.5 focus:ring-primary focus:border-primary"></select>
+              </div>
+              <div id="valvulas-desc" class="hidden space-y-1">
+                <p class="text-[9px] font-bold text-outline uppercase px-1">Disponibles</p>
+                <div id="valvulas-desc-list" class="space-y-1 max-h-32 overflow-y-auto pr-1"></div>
+              </div>
+              <button onclick="cerrarPanelValvula()" class="w-full py-1.5 text-[10px] font-bold text-outline hover:text-primary transition-colors">Cancelar</button>
+            </div>
+          </div>
+
           <button onclick="eliminarParcela()" class="w-full border border-error/20 text-error py-2.5 rounded-xl font-bold text-[10px] hover:bg-error hover:text-white transition-all uppercase tracking-wider">
             Eliminar esta Parcela
           </button>
@@ -580,7 +602,8 @@
       document.getElementById('dp-sup').textContent = p.superficie || '-';
       
       cerrarPanelSensor();
-      if (p.id) cargarSensoresParcela(p.id);
+      cerrarPanelValvula();
+      if (p.id) { cargarSensoresParcela(p.id); cargarValvulasParcela(p.id); }
       abrirSensorStream(p);
 
       // Previsión
@@ -747,6 +770,129 @@
         body: JSON.stringify({ sensor_id: sid })
       })
       .then(() => cargarSensoresParcela(currentParcela.id));
+    }
+
+    // Válvulas de riego
+    function cargarValvulasParcela(id) {
+      const list = document.getElementById('dp-valvulas-list');
+      list.innerHTML = '<p class="text-[10px] text-outline px-1">Cargando...</p>';
+      fetch(`/iot/mis-valvulas?parcela_usuario_id=${id}`)
+        .then(r => r.json())
+        .then(valvulas => {
+          if (!valvulas.length) {
+            list.innerHTML = '<p class="text-[10px] text-outline px-1">Sin válvulas.</p>';
+            return;
+          }
+          list.innerHTML = valvulas.map(v => `
+            <div class="p-2 rounded-xl bg-white/40 border border-white/60 space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0">
+                  <div class="text-[10px] font-bold text-primary truncate">${v.display_name || v.sensor_id}</div>
+                  <div class="text-[9px] text-outline uppercase font-bold">${v.sensor_id}</div>
+                </div>
+                <button onclick="eliminarValvula('${v.sensor_id}')" class="text-error/40 hover:text-error transition-colors p-1">
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+              </div>
+              <div class="flex gap-1">
+                <button onclick="activarRiego('${v.sensor_id}', 2)" class="flex-1 py-1.5 text-[10px] font-bold bg-tertiary/10 hover:bg-tertiary text-primary hover:text-white rounded-lg transition-all">
+                  <span class="material-symbols-outlined text-sm align-middle">water_drop</span> 2 min
+                </button>
+                <button onclick="activarRiego('${v.sensor_id}', 5)" class="flex-1 py-1.5 text-[10px] font-bold bg-tertiary/10 hover:bg-tertiary text-primary hover:text-white rounded-lg transition-all">
+                  <span class="material-symbols-outlined text-sm align-middle">water_drop</span> 5 min
+                </button>
+                <button onclick="activarRiego('${v.sensor_id}', 15)" class="flex-1 py-1.5 text-[10px] font-bold bg-tertiary/10 hover:bg-tertiary text-primary hover:text-white rounded-lg transition-all">
+                  <span class="material-symbols-outlined text-sm align-middle">water_drop</span> 15 min
+                </button>
+              </div>
+            </div>
+          `).join('');
+        });
+    }
+
+    async function activarRiego(sensorId, minutos) {
+      try {
+        const r = await fetch('/iot/comando', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sensor_id: sensorId, action: 'on', duration_minutes: minutos })
+        });
+        const data = await r.json();
+        if (data.success) {
+          mostrarToast(`💧 Riego activado ${minutos} min — se apagará automáticamente`);
+        } else {
+          mostrarToast(`Error: ${data.error || 'No se pudo activar'}`);
+        }
+      } catch {
+        mostrarToast('Error de conexión con el servidor');
+      }
+    }
+
+    function abrirPanelValvula() {
+      const panel = document.getElementById('add-valvula-panel');
+      const sel = document.getElementById('valvula-conn-sel');
+      panel.classList.remove('hidden');
+      sel.innerHTML = '<option>Cargando...</option>';
+      fetch('/mis-conexiones-ha')
+        .then(r => r.json())
+        .then(conns => {
+          sel.innerHTML = '<option value="">-- Conexión --</option>' +
+            conns.map(c => `<option value="${c.connection_id}">${c.display_name || c.ha_url}</option>`).join('');
+        });
+    }
+
+    function cerrarPanelValvula() {
+      const panel = document.getElementById('add-valvula-panel');
+      if (panel) panel.classList.add('hidden');
+    }
+
+    function onValvulaConexionChange() {
+      const id = document.getElementById('valvula-conn-sel').value;
+      const wrap = document.getElementById('valvulas-desc');
+      const list = document.getElementById('valvulas-desc-list');
+      if (!id) return wrap.classList.add('hidden');
+      wrap.classList.remove('hidden');
+      list.innerHTML = '<p class="text-[9px] text-outline">Buscando...</p>';
+      fetch(`/iot/descubrir-valvulas?connection_id=${id}`)
+        .then(r => r.json())
+        .then(valvulas => {
+          if (!valvulas.length) {
+            list.innerHTML = '<p class="text-[9px] text-outline">No se encontraron dispositivos.</p>';
+            return;
+          }
+          list.innerHTML = valvulas.map(v => `
+            <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white/60 border border-white/80">
+              <div class="min-w-0 flex-1">
+                <div class="text-[10px] font-bold text-primary truncate">${v.display_name || v.sensor_id}</div>
+                <div class="text-[8px] text-outline uppercase">${v.domain} · ${v.state ?? ''}</div>
+              </div>
+              <button onclick="añadirValvula('${v.sensor_id}','${(v.display_name||v.sensor_id).replace(/'/g,"\\'")}',${id})" class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md hover:bg-primary/20 transition-colors">OK</button>
+            </div>
+          `).join('');
+        });
+    }
+
+    function añadirValvula(sid, dname, cid) {
+      fetch('/iot/registrar-valvula', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sensor_id: sid, display_name: dname, connection_id: cid, location_id: currentParcela.id })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) { cerrarPanelValvula(); cargarValvulasParcela(currentParcela.id); }
+        else mostrarToast(data.error || 'Error al registrar');
+      });
+    }
+
+    function eliminarValvula(sid) {
+      if (!confirm('¿Eliminar válvula/dispositivo?')) return;
+      fetch('/iot/eliminar-valvula', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sensor_id: sid, location_id: currentParcela.id })
+      })
+      .then(() => cargarValvulasParcela(currentParcela.id));
     }
 
     function eliminarParcela() {

@@ -41,7 +41,7 @@ DEVICE_CLASS_MAP = {
     'humidity': 'ambient_humidity'
 }
 
-VALVE_DOMAINS = ('switch', 'valve')
+VALVE_DOMAINS = ('switch', 'valve', 'light', 'input_boolean')
 
 
 def get_db():
@@ -308,15 +308,6 @@ def ha_valvulas_discover():
         if domain not in VALVE_DOMAINS:
             continue
         attrs = entity.get('attributes', {}) or {}
-        device_class = attrs.get('device_class', '')
-        friendly = (attrs.get('friendly_name') or entity_id).lower()
-        looks_like_valve = (
-            domain == 'valve'
-            or device_class in ('water', 'valve', 'irrigation')
-            or any(k in friendly for k in ('riego', 'valvula', 'válvula', 'valve', 'irrig'))
-        )
-        if not looks_like_valve:
-            continue
         valvulas.append({
             'sensor_id':    entity_id,
             'display_name': attrs.get('friendly_name', entity_id),
