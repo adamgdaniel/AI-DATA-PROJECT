@@ -409,7 +409,7 @@
   right: 24px;
   z-index: 9999;
   max-width: 310px;
-  background: rgba(55, 55, 60, .88);
+  background: rgba(55, 55, 60, .58);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, .08);
@@ -450,7 +450,7 @@
   right: 22px;
   width: 16px;
   height: 16px;
-  background: rgba(55, 55, 60, .88);
+  background: rgba(55, 55, 60, .58);
   border-right: 1px solid rgba(255, 255, 255, .08);
   border-bottom: 1px solid rgba(255, 255, 255, .08);
   transform: rotate(45deg);
