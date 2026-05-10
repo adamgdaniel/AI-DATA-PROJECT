@@ -126,6 +126,22 @@
     ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
   </style>
   <link rel="stylesheet" href="/static/theme-override.css"/>
+  <style>
+    /* Restore map-page glass header — overrides theme-override.css */
+    header {
+      background: rgba(255, 255, 255, 0.85) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      border-bottom: none !important;
+      border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    }
+    header span { color: inherit !important; }
+    header a    { color: inherit !important; }
+    #inv-sensor-widget {
+      background: rgba(108, 162, 0, 0.08) !important;
+      border: 1px solid rgba(108, 162, 0, 0.15) !important;
+    }
+  </style>
 </head>
 <body class="font-sans antialiased text-primary">
 
