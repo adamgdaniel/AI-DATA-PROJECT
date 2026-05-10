@@ -1,3 +1,4 @@
+import logging
 import os
 import requests
 from datetime import datetime
@@ -9,6 +10,9 @@ from google.genai import types
 
 from agent_config import SYSTEM_PROMPT, TOOLS
 from tool_executor import execute_tool
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -94,6 +98,12 @@ def chat(req: ChatRequest):
     )
 
     chat_session = client.chats.create(model=MODEL, config=config)
+    logger.info(
+        "agent.chat input user_id=%s parcela_id=%s prompt=%s",
+        req.user_id,
+        req.parcela_id,
+        prompt,
+    )
     response = chat_session.send_message(prompt)
 
     for _ in range(3):
@@ -105,13 +115,23 @@ def chat(req: ChatRequest):
         if not tool_parts:
             break
 
-        tool_responses = [
-            types.Part.from_function_response(
-                name=p.function_call.name,
-                response=execute_tool(p.function_call.name, dict(p.function_call.args)),
+        tool_responses = []
+        for p in tool_parts:
+            fc = p.function_call
+            tool_args = dict(fc.args)
+            logger.info(
+                "agent.chat tool_request name=%s args=%s",
+                fc.name,
+                tool_args,
             )
-            for p in tool_parts
-        ]
+            tool_payload = execute_tool(fc.name, tool_args)
+            logger.info("agent.chat tool_response payload=%s", tool_payload)
+            tool_responses.append(
+                types.Part.from_function_response(
+                    name=fc.name,
+                    response=tool_payload,
+                )
+            )
         response = chat_session.send_message(tool_responses)
 
     final_parts = response.candidates[0].content.parts if response.candidates[0].content else []
@@ -119,7 +139,9 @@ def chat(req: ChatRequest):
         p.text for p in final_parts
         if hasattr(p, "text") and p.text
     )
-    return {"respuesta": texto_final.strip()}
+    out = texto_final.strip()
+    logger.info("agent.chat output respuesta=%s", out)
+    return {"respuesta": out}
 
 
 @app.get("/health")
