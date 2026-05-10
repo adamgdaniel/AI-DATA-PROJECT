@@ -506,18 +506,32 @@ async function discoverAndPickSensor() {
   const soilSensors = sensors.filter(s => s.sensor_type === 'soil_moisture');
   if (!soilSensors.length) { section.innerHTML = '<p class="text-[9px] font-bold text-error uppercase text-center">No hay sensores de humedad.</p>'; return; }
   let opts = soilSensors.map(s => `<option value="${s.sensor_id}" data-display="${s.display_name}">${s.display_name} (${s.state}%)</option>`).join('');
-  section.innerHTML = `<select class="w-full bg-white/50 border-white/60 rounded-xl text-xs" id="sensor-entity-select">${opts}</select><button class="w-full py-3 bg-tertiary text-white font-black uppercase rounded-xl text-[10px]" onclick="linkSensor(${connId})">Vincular</button>`;
+  section.innerHTML = `<select class="w-full bg-white/50 border-white/60 rounded-xl text-xs" id="sensor-entity-select">${opts}</select><button id="btn-vincular" class="w-full py-3 bg-tertiary text-white font-black uppercase rounded-xl text-[10px]" onclick="linkSensor(${connId}, this)">Vincular</button><p id="vincular-msg" class="text-center text-[10px] font-bold mt-1 hidden"></p>`;
 }
 
-async function linkSensor(connId) {
+async function linkSensor(connId, btn) {
   const entityId = document.getElementById('sensor-entity-select').value;
-  const displayName = document.getElementById('sensor-entity-select').selectedOptions[0].dataset.display;
-  const r = await fetch(`/actualizar-sensor-planta/${invId}/${modalPlant.id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ soil_entity_id: entityId, connection_id: connId, display_name: displayName })
-  });
-  if (r.ok) { modalPlant.soil_entity_id = entityId; loadPlantas(); openPlantModal(modalPlant); }
+  const displayName = document.getElementById('sensor-entity-select').selectedOptions[0]?.dataset.display || '';
+  const msg = document.getElementById('vincular-msg');
+  if (btn) { btn.disabled = true; btn.textContent = 'Vinculando…'; }
+  try {
+    const r = await fetch(`/actualizar-sensor-planta/${invId}/${modalPlant.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soil_entity_id: entityId, connection_id: connId, display_name: displayName })
+    });
+    if (r.ok) {
+      modalPlant.soil_entity_id = entityId;
+      loadPlantas();
+      openPlantModal(modalPlant);
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Vincular'; }
+      if (msg) { msg.textContent = 'Error al vincular. Inténtalo de nuevo.'; msg.className = 'text-center text-[10px] font-bold mt-1 text-error'; }
+    }
+  } catch {
+    if (btn) { btn.disabled = false; btn.textContent = 'Vincular'; }
+    if (msg) { msg.textContent = 'Error de conexión.'; msg.className = 'text-center text-[10px] font-bold mt-1 text-error'; }
+  }
 }
 
 async function unlinkSensor() {
