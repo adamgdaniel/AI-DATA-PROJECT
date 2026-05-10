@@ -328,28 +328,43 @@ def ha_registrar_valvula():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute(
-        "SELECT id FROM parcelas_usuario WHERE id = %s AND usuario_id = %s",
-        (data['location_id'], data['user_id'])
-    )
+    location_type = data.get('location_type', 'parcela')
+    if location_type not in ('parcela', 'planta'):
+        cur.close(); conn.close()
+        return jsonify({'error': 'location_type debe ser parcela o planta'}), 400
+
+    if location_type == 'parcela':
+        cur.execute(
+            "SELECT id FROM parcelas_usuario WHERE id = %s AND usuario_id = %s",
+            (data['location_id'], data['user_id'])
+        )
+        ownership_error = 'Parcela no encontrada o no pertenece al usuario'
+    else:
+        cur.execute("""
+            SELECT pi.id FROM plantas_invernadero pi
+            JOIN invernaderos i ON i.id = pi.invernadero_id
+            WHERE pi.id = %s AND i.usuario_id = %s
+        """, (data['location_id'], data['user_id']))
+        ownership_error = 'Planta no encontrada o no pertenece al usuario'
+
     if not cur.fetchone():
         cur.close()
         conn.close()
-        return jsonify({'error': 'Parcela no encontrada o no pertenece al usuario'}), 403
+        return jsonify({'error': ownership_error}), 403
 
     try:
         cur.execute("""
             INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
-            VALUES (%s, %s, %s, %s, 'parcela', 'valve', %s)
+            VALUES (%s, %s, %s, %s, %s, 'valve', %s)
         """, (
             data['sensor_id'], data['connection_id'], data['user_id'],
-            data['location_id'], data.get('display_name')
+            data['location_id'], location_type, data.get('display_name')
         ))
         conn.commit()
         return jsonify({'success': True}), 201
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
-        return jsonify({'error': 'Esta válvula ya está registrada en esta parcela'}), 409
+        return jsonify({'error': 'Este dispositivo ya está registrado en esta ubicación'}), 409
     finally:
         cur.close()
         conn.close()
@@ -358,21 +373,22 @@ def ha_registrar_valvula():
 @app.route('/ha/valvulas', methods=['GET'])
 def ha_get_valvulas():
     user_id = request.args.get('user_id')
-    parcela_usuario_id = request.args.get('parcela_usuario_id')
+    location_id = request.args.get('location_id') or request.args.get('parcela_usuario_id')
+    location_type = request.args.get('location_type', 'parcela')
 
-    if not user_id and not parcela_usuario_id:
-        return jsonify({'error': 'user_id o parcela_usuario_id requerido'}), 400
+    if not user_id and not location_id:
+        return jsonify({'error': 'user_id o location_id requerido'}), 400
 
     conn = get_db()
     cur = conn.cursor()
 
-    if parcela_usuario_id:
+    if location_id:
         cur.execute("""
             SELECT sensor_id, display_name, active, created_at
             FROM sensors
-            WHERE location_id = %s AND location_type = 'parcela'
+            WHERE location_id = %s AND location_type = %s
               AND sensor_type = 'valve' AND active = TRUE
-        """, (parcela_usuario_id,))
+        """, (location_id, location_type))
     else:
         cur.execute("""
             SELECT sensor_id, display_name, active, created_at
@@ -401,20 +417,22 @@ def ha_eliminar_valvula():
     if not all([sensor_id, user_id, location_id]):
         return jsonify({'error': 'sensor_id, user_id y location_id requeridos'}), 400
 
+    location_type = request.args.get('location_type', 'parcela')
+
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        DELETE FROM sensors 
-        WHERE sensor_id = %s AND user_id = %s AND location_id = %s 
-          AND sensor_type = 'valve' AND location_type = 'parcela'
-    """, (sensor_id, user_id, location_id))
+        DELETE FROM sensors
+        WHERE sensor_id = %s AND user_id = %s AND location_id = %s
+          AND sensor_type = 'valve' AND location_type = %s
+    """, (sensor_id, user_id, location_id, location_type))
     deleted = cur.rowcount
     conn.commit()
     cur.close()
     conn.close()
 
     if not deleted:
-        return jsonify({'error': 'Válvula no encontrada en esta parcela'}), 404
+        return jsonify({'error': 'Dispositivo no encontrado en esta ubicación'}), 404
     return jsonify({'success': True})
 
 

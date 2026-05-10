@@ -524,9 +524,12 @@ def iot_mis_valvulas():
         return jsonify({'error': 'no autenticado'}), 401
     if not IOT_API_URL:
         return jsonify([]), 200
-    parcela_usuario_id = request.args.get('parcela_usuario_id')
-    params = {'parcela_usuario_id': parcela_usuario_id, 'user_id': session['user_id']} \
-             if parcela_usuario_id else {'user_id': session['user_id']}
+    location_id = request.args.get('location_id') or request.args.get('parcela_usuario_id')
+    location_type = request.args.get('location_type', 'parcela')
+    if location_id:
+        params = {'location_id': location_id, 'location_type': location_type, 'user_id': session['user_id']}
+    else:
+        params = {'user_id': session['user_id']}
     try:
         resp = requests.get(f'{IOT_API_URL}/ha/valvulas', params=params, timeout=10)
         return jsonify(resp.json()), resp.status_code
@@ -543,10 +546,11 @@ def iot_eliminar_valvula():
     body = request.json or {}
     sensor_id = body.get('sensor_id')
     location_id = body.get('location_id')
+    location_type = body.get('location_type', 'parcela')
     try:
         resp = requests.delete(f'{IOT_API_URL}/ha/valvulas',
                                params={'sensor_id': sensor_id, 'user_id': session['user_id'],
-                                       'location_id': location_id}, timeout=10)
+                                       'location_id': location_id, 'location_type': location_type}, timeout=10)
         return jsonify(resp.json()), resp.status_code
     except Exception:
         return jsonify({'error': 'Error de conexión'}), 503
