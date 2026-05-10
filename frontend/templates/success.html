@@ -262,6 +262,10 @@
         <div class="field"><label>Superficie</label><span id="f-sup">-</span> ha</div>
         <div class="field"><label>Uso SIGPAC</label><span id="f-uso">-</span></div>
         <div class="field">
+          <label>Nombre de la parcela</label>
+          <input type="text" id="f-nombre" maxlength="100" placeholder="Ej. La huerta de la abuela" />
+        </div>
+        <div class="field">
           <label>Cultivo</label>
           <select id="f-cultivo" onchange="onCultivoChange()">
             <option value="">-- Seleccionar cultivo --</option>
@@ -496,6 +500,7 @@
           document.getElementById('f-sup').textContent = p.superficie ?? '-';
           document.getElementById('f-uso').textContent = p.uso_sigpac ?? '-';
           document.getElementById('msg').textContent = '';
+          document.getElementById('f-nombre').value = '';
           document.getElementById('f-cultivo').value = '';
           document.getElementById('f-variedad-field').style.display = 'none';
           document.getElementById('f-edad-field').style.display = 'none';
@@ -529,6 +534,7 @@
     }
 
     function registrarParcela() {
+      const nombre = document.getElementById('f-nombre').value.trim();
       const cultivo = document.getElementById('f-cultivo').value;
       const variedad = document.getElementById('f-variedad').value;
       const edad_cultivo = document.getElementById('f-edad').value;
@@ -547,7 +553,7 @@
       fetch('/registrar-parcela', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...selectedParcel, cultivo, variedad, edad_cultivo })
+        body: JSON.stringify({ ...selectedParcel, nombre: nombre || null, cultivo, variedad, edad_cultivo })
       })
       .then(r => r.json())
       .then(data => {

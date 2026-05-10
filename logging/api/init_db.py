@@ -32,6 +32,7 @@ cur.execute("""
         poligono       INTEGER,
         parcela        INTEGER,
         recinto        INTEGER,
+        nombre         VARCHAR(100),
         cultivo        VARCHAR(100),
         variedad       VARCHAR(100),
         edad_cultivo   VARCHAR(20),
@@ -45,6 +46,8 @@ cur.execute("""
         UNIQUE(usuario_id, parcela_id)
     )
 """)
+
+cur.execute("ALTER TABLE parcelas_usuario ADD COLUMN IF NOT EXISTS nombre VARCHAR(100)")
 
 password_hash = bcrypt.hashpw(os.environ['TEST_PASSWORD'].encode(), bcrypt.gensalt()).decode()
 cur.execute(
