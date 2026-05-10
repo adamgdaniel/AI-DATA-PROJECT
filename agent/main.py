@@ -90,6 +90,7 @@ def chat(req: ChatRequest):
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT + f"\n\nFecha actual: {today}.",
         tools=_build_tools(),
+        max_output_tokens=150,
     )
 
     chat_session = client.chats.create(model=MODEL, config=config)
