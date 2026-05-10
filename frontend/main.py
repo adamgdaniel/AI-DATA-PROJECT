@@ -327,59 +327,6 @@ def eliminar_parcela(parcela_id):
         return jsonify({'error': f'API no disponible (status {resp.status_code})'}), 502
 
 
-@app.route('/parcela/<parcela_id>')
-def detalle_parcela(parcela_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    try:
-        resp = requests.get(f'{API_URL}/parcelas', params={'user_id': session['user_id']})
-        parcelas = resp.json()
-        parcela = next((p for p in parcelas if p['parcela_id'] == parcela_id), None)
-    except Exception:
-        parcela = None
-    if not parcela:
-        return redirect(url_for('mapa'))
-    return render_template('parcela_detail.html', parcela=parcela)
-
-
-@app.route('/parcela/<parcela_id>/grid', methods=['POST'])
-def update_grid(parcela_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'no autenticado'}), 401
-    data = request.json
-    data['user_id'] = session['user_id']
-    resp = requests.post(f'{API_URL}/parcelas/{parcela_id}/grid', json=data)
-    try:
-        return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify({'error': 'API error'}), 502
-
-
-@app.route('/parcela/<parcela_id>/zona', methods=['POST'])
-def añadir_zona(parcela_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'no autenticado'}), 401
-    data = request.json
-    data['user_id'] = session['user_id']
-    resp = requests.post(f'{API_URL}/parcelas/{parcela_id}/zona', json=data)
-    try:
-        return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify({'error': 'API error'}), 502
-
-
-@app.route('/parcela/<parcela_id>/zona/<zona_id>', methods=['DELETE'])
-def eliminar_zona(parcela_id, zona_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'no autenticado'}), 401
-    resp = requests.delete(
-        f'{API_URL}/parcelas/{parcela_id}/zona/{zona_id}',
-        json={'user_id': session['user_id']}
-    )
-    try:
-        return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify({'error': 'API error'}), 502
 
 
 @app.route('/tiempo-parcela')

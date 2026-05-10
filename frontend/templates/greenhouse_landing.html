@@ -33,10 +33,10 @@
 
   <style>
     .glass-panel {
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
 
     .glass-dark {
@@ -65,7 +65,35 @@
 </head>
 <body class="font-sans antialiased text-primary">
 
-<div class="relative z-10 w-full max-w-md space-y-8 text-center px-6">
+<!-- ── HEADER FLOTANTE (ESTILO MAPA) ──────────────────────────────── -->
+<header class="fixed top-4 left-4 right-4 z-[1000] flex items-center justify-between px-6 py-3 rounded-2xl glass-panel shadow-lg border border-white/40">
+  <div class="flex items-center gap-3">
+    <img src="/icons/logo_dark_green.png" alt="AgroMonitor" class="h-8 w-8 object-contain"/>
+    <span class="font-bold text-lg tracking-tight">AgroMonitor</span>
+  </div>
+  
+  <nav class="hidden md:flex items-center gap-1">
+    <a href="/invernadero" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/5 transition-colors text-sm font-bold text-primary">
+      <span class="material-symbols-outlined text-xl">home_work</span>
+      Invernaderos
+    </a>
+    <a href="/home-assistant" class="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-primary/5 transition-colors text-sm font-medium text-outline hover:text-primary">
+      <span class="material-symbols-outlined text-xl">settings_remote</span>
+      IoT
+    </a>
+    <div class="w-px h-6 bg-outline-variant mx-2"></div>
+    <a href="/logout" class="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-error/5 transition-colors text-sm font-medium text-error hover:text-error/80">
+      <span class="material-symbols-outlined text-xl">logout</span>
+      Salir
+    </a>
+  </nav>
+  
+  <button class="md:hidden p-2 rounded-xl hover:bg-primary/5">
+    <span class="material-symbols-outlined">menu</span>
+  </button>
+</header>
+
+<div class="relative z-10 w-full max-w-md space-y-8 text-center px-6 pt-20">
   <div class="space-y-2">
     <div class="flex justify-center mb-4">
       <div class="p-4 rounded-3xl glass-panel shadow-2xl">

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AgroMonitor – Invernaderos</title>
+  <title>AgroMonitor – Detalle Invernadero</title>
   <link rel="icon" type="image/png" href="/icons/logo_dark_green.png"/>
   
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
@@ -37,10 +37,10 @@
     }
 
     .glass-panel {
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
 
     .glass-dark {
@@ -54,6 +54,7 @@
       background: url('/icons/invernadero_fondo.png') center center / cover no-repeat;
       height: 100vh;
       overflow: hidden;
+      display: flex; flex-direction: column;
     }
 
     #iso-grid {
@@ -92,14 +93,6 @@
     .plant:hover { background: rgba(90, 50, 15, 0.6); }
     .plant img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; transform: translateY(-10px); filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); }
 
-    .sensor-dot {
-      position: absolute; top: 4px; right: 4px;
-      width: 10px; height: 100%; border-radius: 50%;
-      background: #b2f746; border: 2px solid #061b0e;
-      box-shadow: 0 0 10px #b2f74688;
-      display: none;
-    }
-
     /* SOIL CHIP - PROPORTIONAL FIX */
     .soil-chip {
       position: absolute;
@@ -126,6 +119,8 @@
       pointer-events: none;
     }
 
+    #grid-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
@@ -134,11 +129,12 @@
 </head>
 <body class="font-sans antialiased text-primary">
 
-<!-- ── MAIN HEADER ────────────────────────────────────────────────── -->
-<header class="fixed top-4 left-4 right-4 z-[1000] flex items-center justify-between px-6 py-3 rounded-2xl glass-panel shadow-lg">
+<!-- ── HEADER FLOTANTE (ESTILO MAPA) ──────────────────────────────── -->
+<header class="fixed top-4 left-4 right-4 z-[1000] flex items-center justify-between px-6 py-3 rounded-2xl glass-panel shadow-lg border border-white/40">
   <div class="flex items-center gap-4">
-    <a href="/invernadero" class="p-2 rounded-xl hover:bg-primary/5 text-primary transition-colors">
+    <a href="/invernadero" class="p-2 rounded-xl hover:bg-primary/5 text-primary transition-colors flex items-center gap-2">
       <span class="material-symbols-outlined">arrow_back</span>
+      <span class="hidden sm:inline font-bold text-sm">Volver</span>
     </a>
     <div class="w-px h-6 bg-outline-variant"></div>
     <div class="flex items-center gap-3">
@@ -147,6 +143,7 @@
     </div>
   </div>
 
+  <!-- Invernadero sensor widget -->
   <div id="inv-sensor-widget" class="hidden md:flex items-center gap-8 px-8 py-2 rounded-xl bg-primary/5 border border-primary/10">
     <div class="text-center">
       <p class="text-[9px] font-bold text-outline uppercase tracking-widest">Temperatura</p>
@@ -160,23 +157,25 @@
   </div>
 
   <div class="flex items-center gap-2">
-    <button id="btn-sensor-gh" onclick="openGhSensorModal()" class="p-2.5 rounded-xl hover:bg-primary/5 text-outline hover:text-primary transition-all">
+    <button onclick="openGhSensorModal()" class="p-2.5 rounded-xl hover:bg-primary/5 text-outline hover:text-primary transition-all" title="Ajustes Sensores">
       <span class="material-symbols-outlined">settings_remote</span>
     </button>
-    <button id="btn-del-gh" onclick="deleteGreenhouse()" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all">
+    <button onclick="deleteGreenhouse()" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all" title="Eliminar Invernadero">
       <span class="material-symbols-outlined">delete</span>
     </button>
+    <div class="w-px h-6 bg-outline-variant mx-1"></div>
+    <a href="/logout" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all" title="Salir">
+      <span class="material-symbols-outlined">logout</span>
+    </a>
   </div>
 </header>
 
-<!-- ── GRID AREA ─────────────────────────────────────────────────── -->
-<div id="grid-area" class="flex-1 flex items-center justify-center relative pt-12">
+<div id="grid-area">
   <div class="grid-scene">
     <div id="iso-grid"></div>
   </div>
 </div>
 
-<!-- ── TOOLBAR ────────────────────────────────────────────────────── -->
 <div id="toolbar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] p-3 rounded-[2.5rem] glass-dark shadow-2xl border border-white/10 flex items-center gap-4">
   <div id="toolbar-inner" class="flex items-center gap-2 px-2">
     <div class="crop-btn p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all group" 
@@ -224,7 +223,7 @@
 
 <!-- Modal: plant detail -->
 <div id="plant-modal" class="fixed inset-0 z-[3000] hidden items-center justify-center p-4 bg-primary/60 backdrop-blur-md">
-  <div class="w-full max-w-sm glass-panel rounded-3xl shadow-2xl p-8 border border-white/60">
+  <div class="w-full max-w-sm glass-panel rounded-3xl shadow-2xl p-8 border border-white/60 overflow-y-auto max-h-[85vh]">
     <button class="absolute top-6 right-6 text-outline hover:text-primary" onclick="closePlantModal()"><span class="material-symbols-outlined">close</span></button>
     <div id="plant-modal-content"></div>
   </div>
@@ -256,14 +255,14 @@ const VARIETY_ICONS = {
 };
 
 let plants = [];
-let greenhouses = [];
+let currentGreenhouse = null;
 let dragCrop = null;
 let selectedCrop = null;
 let ghSensorData = { invernadero: {}, plantas: {} };
 let ghStream = null;
 
 async function init() {
-  await loadGreenhouses();
+  await loadGreenhouseInfo();
   await loadPlantas();
   ghStream = new EventSource(`/stream/invernadero/${invId}`);
   ghStream.onmessage = (e) => {
@@ -271,11 +270,11 @@ async function init() {
   };
 }
 
-async function loadGreenhouses() {
+async function loadGreenhouseInfo() {
   const r = await fetch('/mis-invernaderos');
-  greenhouses = await r.json();
-  const gh = greenhouses.find(g => String(g.id) === invId);
-  if (gh) document.getElementById('header-gh-name').textContent = gh.nombre;
+  const ghs = await r.json();
+  currentGreenhouse = ghs.find(g => String(g.id) === invId);
+  if (currentGreenhouse) document.getElementById('header-gh-name').textContent = currentGreenhouse.nombre;
 }
 
 async function loadPlantas() {
@@ -339,6 +338,7 @@ function placePlant(row, col) {
   openVarietyModal(row, col, tipo);
 }
 
+let pendingPlant = null;
 function openVarietyModal(row, col, tipo) {
   pendingPlant = { row, col, tipo };
   const crop = CROPS[tipo];
@@ -396,18 +396,72 @@ function updateSensorWidget() {
   }
 }
 
-// Plant Modal and Sensor linking logic (Restored)
 let modalPlant = null;
 function openPlantModal(plant) {
   modalPlant = plant;
-  const crop = CROPS[plant.tipo];
-  const iconPath = (VARIETY_ICONS[plant.tipo] || {})[plant.variedad] || crop.img;
+  const crop = CROPS[plant.tipo] || { img: '', label: plant.tipo };
+  const iconPath = (VARIETY_ICONS[plant.tipo] && VARIETY_ICONS[plant.tipo][plant.variedad]) ? VARIETY_ICONS[plant.tipo][plant.variedad] : crop.img;
+
   let html = `
     <div class="flex items-center gap-4 mb-6">
       <div class="w-16 h-16 rounded-2xl bg-white/50 flex items-center justify-center p-2 shadow-inner"><img src="${iconPath}" class="w-full h-full object-contain"></div>
-      <div><h3 class="text-xl font-black text-primary leading-tight">${crop.label}</h3><p class="text-xs text-outline font-bold uppercase tracking-widest">${plant.variedad}</p></div>
-    </div>
-    <button class="w-full py-4 text-[10px] font-black uppercase border-2 border-error/20 text-error rounded-2xl hover:bg-error hover:text-white transition-all" onclick="removePlant()">Eliminar planta</button>`;
+      <div><h3 class="text-xl font-black text-primary leading-tight">${crop.label}</h3><p class="text-xs text-outline font-bold uppercase tracking-widest">${plant.variedad || 'Genérico'}</p></div>
+    </div>`;
+
+  if (plant.soil_entity_id) {
+    html += `
+      <div class="p-4 rounded-2xl bg-tertiary-fixed/20 border border-tertiary-fixed/40 mb-4">
+        <div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-tertiary text-lg">settings_input_antenna</span><span class="text-[10px] font-bold text-primary uppercase tracking-widest">Sensor vinculado</span></div>
+        <p class="text-xs font-mono text-primary truncate opacity-60">${plant.soil_entity_id}</p>
+        <div class="flex gap-2 mt-4">
+            <button class="flex-1 py-2 text-[10px] font-black uppercase bg-white/40 rounded-lg hover:bg-white/60 transition-all" onclick="openLinkSensor()">Cambiar</button>
+            <button class="flex-1 py-2 text-[10px] font-black uppercase bg-error/10 text-error rounded-lg hover:bg-error/20 transition-all" onclick="unlinkSensor()">Quitar</button>
+        </div>
+      </div>`;
+  } else {
+    html += `
+      <div class="p-4 rounded-2xl bg-primary/5 border border-dashed border-primary/20 mb-4 text-center">
+        <p class="text-[10px] font-bold text-outline uppercase tracking-widest mb-3">Sin sensor IoT</p>
+        <button class="w-full py-3 bg-primary text-white text-[10px] font-black uppercase rounded-xl" onclick="openLinkSensor()">Vincular dispositivo HA</button>
+      </div>`;
+  }
+
+  const plantaData = (ghSensorData.plantas || {})[String(plant.id)] || {};
+  const lastActions = [
+    { key: 'ultimo_riego',    emoji: '💧', label: 'Último riego' },
+    { key: 'ultima_poda',     emoji: '✂️', label: 'Última poda'  },
+    { key: 'ultimo_abonado',  emoji: '🌱', label: 'Último abono' }
+  ].filter(a => plantaData[a.key]);
+
+  let lastActionsHtml = '';
+  if (lastActions.length) {
+    lastActionsHtml = `<div class="mb-3 px-1 space-y-1">` +
+      lastActions.map(a => `
+        <div class="flex items-center justify-between">
+          <span class="text-[9px] font-bold text-outline">${a.emoji} ${a.label}</span>
+          <span class="text-[9px] font-bold text-primary">${formatDate(plantaData[a.key])}</span>
+        </div>`).join('') +
+      `</div>`;
+  }
+
+  html += `
+    <div class="border-t border-primary/10 pt-4 mt-2">
+      <p class="text-[9px] font-bold text-outline uppercase tracking-widest mb-3">Registrar acción</p>
+      ${lastActionsHtml}
+      <div class="grid grid-cols-3 gap-2 mb-2">
+        <button onclick="registrarAccion('riego')"   class="py-3 bg-blue-500/10  text-blue-900  text-[9px] font-black uppercase rounded-xl border border-blue-500/20  hover:bg-blue-500/20  transition-all">💧<br>Riego</button>
+        <button onclick="registrarAccion('poda')"    class="py-3 bg-amber-500/10 text-amber-900 text-[9px] font-black uppercase rounded-xl border border-amber-500/20 hover:bg-amber-500/20 transition-all">✂️<br>Poda</button>
+        <button onclick="registrarAccion('abonado')" class="py-3 bg-green-500/10 text-green-900 text-[9px] font-black uppercase rounded-xl border border-green-500/20 hover:bg-green-500/20 transition-all">🌱<br>Abono</button>
+      </div>
+      <div id="abono-input" class="hidden mb-2 space-y-2">
+        <input type="text" id="tipo-abono-input" placeholder="Tipo de abono (ej: NPK, compost…)" maxlength="60"
+               class="w-full bg-white/50 border-white/60 rounded-xl text-xs focus:ring-tertiary focus:border-tertiary"/>
+        <button onclick="confirmarAbonado()" class="w-full py-2 bg-tertiary text-white text-[9px] font-black uppercase rounded-xl">Confirmar abono</button>
+      </div>
+      <p id="accion-feedback" class="text-center text-[10px] font-bold mt-2 hidden"></p>
+    </div>`;
+
+  html += `<button class="w-full py-4 text-[10px] font-black uppercase border-2 border-error/20 text-error rounded-2xl hover:bg-error hover:text-white transition-all mt-4" onclick="removePlant()">Eliminar planta</button>`;
   document.getElementById('plant-modal-content').innerHTML = html;
   document.getElementById('plant-modal').classList.remove('hidden'); document.getElementById('plant-modal').classList.add('flex');
 }
@@ -415,21 +469,158 @@ function openPlantModal(plant) {
 function closePlantModal() { document.getElementById('plant-modal').classList.add('hidden'); }
 
 async function removePlant() {
+  if (!confirm('¿Eliminar esta planta?')) return;
   await fetch(`/eliminar-planta/${invId}/${modalPlant.id}`, { method: 'DELETE' });
   plants = plants.filter(p => p.id !== modalPlant.id);
   renderGrid(); closePlantModal();
 }
 
-function openGhSensorModal() {
-  const gh = greenhouses.find(g => String(g.id) === invId);
-  document.getElementById('gh-sensor-modal-content').innerHTML = `
-    <div class="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-      <p class="text-[10px] font-black uppercase text-primary mb-2">Sensores vinculados</p>
-      <p class="text-xs text-outline italic">Funcionalidad completa en el dashboard original.</p>
+async function openLinkSensor() {
+  const container = document.createElement('div');
+  container.id = "sensor-picker-section";
+  container.className = "mt-6 pt-6 border-t border-primary/10";
+  container.innerHTML = `<p class="text-center text-[10px] font-bold text-outline uppercase animate-pulse">Conectando...</p>`;
+  const existing = document.getElementById('sensor-picker-section');
+  if (existing) existing.remove();
+  document.getElementById('plant-modal-content').appendChild(container);
+
+  const r = await fetch('/mis-conexiones-ha');
+  const conns = await r.json();
+  if (!conns.length) { container.innerHTML = `<p class="text-[10px] font-bold text-error uppercase text-center">No hay conexiones HA.</p>`; return; }
+
+  let opts = conns.map(c => `<option value="${c.connection_id}">${c.display_name || c.ha_url}</option>`).join('');
+  container.innerHTML = `
+    <div class="space-y-3">
+        <select class="w-full bg-white/50 border-white/60 rounded-xl text-xs" id="ha-conn-select">${opts}</select>
+        <button class="w-full py-2 bg-primary/10 text-primary font-bold rounded-xl text-xs" onclick="discoverAndPickSensor()">Buscar Sensores</button>
+        <div id="sensor-list-section" class="space-y-2"></div>
     </div>`;
+}
+
+async function discoverAndPickSensor() {
+  const connId = document.getElementById('ha-conn-select').value;
+  const section = document.getElementById('sensor-list-section');
+  section.innerHTML = '<p class="text-center py-4 animate-spin material-symbols-outlined">sync</p>';
+  const r = await fetch(`/iot/descubrir-sensores?connection_id=${connId}`);
+  const sensors = await r.json();
+  const soilSensors = sensors.filter(s => s.sensor_type === 'soil_moisture');
+  if (!soilSensors.length) { section.innerHTML = '<p class="text-[9px] font-bold text-error uppercase text-center">No hay sensores de humedad.</p>'; return; }
+  let opts = soilSensors.map(s => `<option value="${s.sensor_id}" data-display="${s.display_name}">${s.display_name} (${s.state}%)</option>`).join('');
+  section.innerHTML = `<select class="w-full bg-white/50 border-white/60 rounded-xl text-xs" id="sensor-entity-select">${opts}</select><button class="w-full py-3 bg-tertiary text-white font-black uppercase rounded-xl text-[10px]" onclick="linkSensor(${connId})">Vincular</button>`;
+}
+
+async function linkSensor(connId) {
+  const entityId = document.getElementById('sensor-entity-select').value;
+  const displayName = document.getElementById('sensor-entity-select').selectedOptions[0].dataset.display;
+  const r = await fetch(`/actualizar-sensor-planta/${invId}/${modalPlant.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ soil_entity_id: entityId, connection_id: connId, display_name: displayName })
+  });
+  if (r.ok) { modalPlant.soil_entity_id = entityId; loadPlantas(); openPlantModal(modalPlant); }
+}
+
+async function unlinkSensor() {
+  await fetch(`/actualizar-sensor-planta/${invId}/${modalPlant.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ soil_entity_id: null }) });
+  modalPlant.soil_entity_id = null; loadPlantas(); openPlantModal(modalPlant);
+}
+
+function openGhSensorModal() {
+  const content = document.getElementById('gh-sensor-modal-content');
+  function sensorRow(label, entityId, tipo) {
+    const isLinked = !!entityId;
+    return `
+      <div class="p-4 rounded-2xl ${isLinked ? 'bg-tertiary-fixed/10 border-tertiary-fixed/30' : 'bg-primary/5 border-primary/10'} border">
+        <div class="flex items-center justify-between mb-3"><span class="text-[10px] font-black uppercase text-primary">${label}</span></div>
+        ${isLinked ? `<p class="text-[10px] font-mono text-outline truncate mb-4">${entityId}</p><div class="flex gap-2"><button class="flex-1 py-2 text-[9px] font-black uppercase bg-white/60 rounded-lg" onclick="openGhSensorPicker('${tipo}')">Cambiar</button><button class="flex-1 py-2 text-[9px] font-black uppercase bg-error/5 text-error rounded-lg" onclick="unlinkGhSensor('${tipo}')">Quitar</button></div>` : `<button class="w-full py-3 bg-primary text-white text-[9px] font-black uppercase rounded-xl" onclick="openGhSensorPicker('${tipo}')">+ Vincular Sensor</button>`}
+      </div>`;
+  }
+  content.innerHTML = sensorRow('🌡 Temperatura Amb.', currentGreenhouse.temperatura_entity_id, 'temperatura') + sensorRow('💧 Humedad Amb.', currentGreenhouse.hum_amb_entity_id, 'hum_amb');
   document.getElementById('gh-sensor-modal').classList.remove('hidden'); document.getElementById('gh-sensor-modal').classList.add('flex');
 }
+
 function closeGhSensorModal() { document.getElementById('gh-sensor-modal').classList.add('hidden'); }
+
+async function openGhSensorPicker(tipo) {
+  const content = document.getElementById('gh-sensor-modal-content');
+  content.innerHTML = '<p class="text-center py-12 animate-spin material-symbols-outlined text-3xl">sync</p>';
+  const r = await fetch('/mis-conexiones-ha');
+  const conns = await r.json();
+  if (!conns.length) { content.innerHTML = '<p class="text-center text-error">Sin conexiones HA</p>'; return; }
+  let opts = conns.map(c => `<option value="${c.connection_id}">${c.display_name || c.ha_url}</option>`).join('');
+  content.innerHTML = `<div class="space-y-4"><select class="w-full bg-white/50 border-white/60 rounded-xl text-xs" id="gh-ha-conn-select">${opts}</select><button class="w-full py-3 bg-primary text-white font-black uppercase rounded-xl text-[10px]" onclick="discoverGhSensors('${tipo}')">Listar Dispositivos</button><div id="gh-sensor-list" class="space-y-2"></div></div>`;
+}
+
+async function discoverGhSensors(tipo) {
+  const connId = document.getElementById('gh-ha-conn-select').value;
+  const list = document.getElementById('gh-sensor-list');
+  list.innerHTML = '<p class="text-center py-4 animate-spin material-symbols-outlined">sync</p>';
+  const r = await fetch(`/iot/descubrir-sensores?connection_id=${connId}`);
+  const sensors = await r.json();
+  const haType = tipo === 'temperatura' ? 'temperature' : 'ambient_humidity';
+  const relevant = sensors.filter(s => s.sensor_type === haType);
+  if (!relevant.length) { list.innerHTML = '<p class="text-center text-error">No hay sensores.</p>'; return; }
+  let opts = relevant.map(s => `<option value="${s.sensor_id}" data-display="${s.display_name}">${s.display_name} (${s.state})</option>`).join('');
+  list.innerHTML = `<select class="w-full bg-white/50 border-white/60 rounded-xl text-xs" id="gh-sensor-entity-select">${opts}</select><button class="w-full py-4 bg-tertiary text-white font-black uppercase rounded-xl text-[10px]" onclick="linkGhSensor('${tipo}', ${connId})">Vincular</button>`;
+}
+
+async function linkGhSensor(tipo, connId) {
+  const entityId = document.getElementById('gh-sensor-entity-select').value;
+  const displayName = document.getElementById('gh-sensor-entity-select').selectedOptions[0].dataset.display;
+  await fetch(`/actualizar-sensor-invernadero/${invId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sensor_type: tipo, sensor_entity_id: entityId, connection_id: connId, display_name: displayName }) });
+  await loadGreenhouseInfo(); closeGhSensorModal();
+}
+
+async function unlinkGhSensor(tipo) {
+  await fetch(`/actualizar-sensor-invernadero/${invId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sensor_type: tipo, sensor_entity_id: null }) });
+  await loadGreenhouseInfo(); openGhSensorModal();
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch { return String(iso); }
+}
+
+async function registrarAccion(tipo) {
+  if (tipo === 'abonado') {
+    const inp = document.getElementById('abono-input');
+    if (inp) inp.classList.toggle('hidden');
+    return;
+  }
+  await enviarAccion(tipo, null);
+}
+
+async function confirmarAbonado() {
+  const valor = (document.getElementById('tipo-abono-input')?.value || '').trim();
+  await enviarAccion('abonado', valor || null);
+}
+
+async function enviarAccion(tipo, valor) {
+  const feedback = document.getElementById('accion-feedback');
+  if (!feedback) return;
+  feedback.textContent = 'Registrando…';
+  feedback.className = 'text-center text-[10px] font-bold mt-2 text-outline';
+  feedback.classList.remove('hidden');
+  try {
+    const r = await fetch('/registrar-accion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity_type: 'planta', entity_id: String(modalPlant.id), tipo_evento: tipo, valor })
+    });
+    if (r.ok) {
+      feedback.textContent = '✓ Registrado correctamente';
+      feedback.className = 'text-center text-[10px] font-bold mt-2 text-tertiary';
+      document.getElementById('abono-input')?.classList.add('hidden');
+    } else {
+      feedback.textContent = 'Error al registrar';
+      feedback.className = 'text-center text-[10px] font-bold mt-2 text-error';
+    }
+  } catch {
+    feedback.textContent = 'Error de conexión';
+    feedback.className = 'text-center text-[10px] font-bold mt-2 text-error';
+  }
+}
 
 init();
 </script>
