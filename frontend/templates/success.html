@@ -538,7 +538,7 @@
           
           if (!window._initZoom && misParcelasData[0]) {
             window._initZoom = true;
-            map.flyTo([misParcelasData[0].lat, misParcelasData[0].lng], 15);
+            map.flyTo([misParcelasData[0].lat, misParcelasData[0].lng], 18);
           }
         });
     }
@@ -546,7 +546,7 @@
     function focusParcela(id) {
       const p = misParcelasData.find(mp => mp.parcela_id === id);
       if (p && p.lat) {
-        map.setView([p.lat, p.lng], 15);
+        map.setView([p.lat, p.lng], 18);
         mostrarDetalleParcela(p);
       }
     }
