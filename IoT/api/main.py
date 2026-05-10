@@ -365,6 +365,10 @@ def ha_registrar_valvula():
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
         return jsonify({'error': 'Este dispositivo ya está registrado en esta ubicación'}), 409
+    except Exception as e:
+        conn.rollback()
+        app.logger.error(f'INSERT sensors valve failed: {type(e).__name__}: {e}')
+        return jsonify({'error': f'{type(e).__name__}: {str(e)[:200]}'}), 500
     finally:
         cur.close()
         conn.close()

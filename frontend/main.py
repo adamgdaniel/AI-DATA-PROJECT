@@ -509,13 +509,18 @@ def iot_registrar_valvula():
         return jsonify({'error': 'no autenticado'}), 401
     if not IOT_API_URL:
         return jsonify({'error': 'Servicio IoT no configurado'}), 503
-    data = request.json
+    data = request.json or {}
     data['user_id'] = session['user_id']
     try:
-        resp = requests.post(f'{IOT_API_URL}/ha/valvulas', json=data, timeout=10)
+        resp = requests.post(f'{IOT_API_URL}/ha/valvulas', json=data, timeout=15)
+    except requests.exceptions.RequestException as e:
+        logger.error(f'IoT POST /ha/valvulas network error: {e}')
+        return jsonify({'error': f'Sin conexión con IoT API: {e}'}), 502
+    try:
         return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify({'error': 'Error de conexión'}), 503
+    except ValueError:
+        logger.error(f'IoT POST /ha/valvulas non-JSON {resp.status_code}: {resp.text[:500]}')
+        return jsonify({'error': f'IoT API HTTP {resp.status_code}: {resp.text[:200]}'}), 502
 
 
 @app.route('/iot/mis-valvulas')
@@ -565,10 +570,15 @@ def iot_comando():
     data = request.json or {}
     data['user_id'] = session['user_id']
     try:
-        resp = requests.post(f'{IOT_API_URL}/ha/comando', json=data, timeout=15)
+        resp = requests.post(f'{IOT_API_URL}/ha/comando', json=data, timeout=20)
+    except requests.exceptions.RequestException as e:
+        logger.error(f'IoT POST /ha/comando network error: {e}')
+        return jsonify({'error': f'Sin conexión con IoT API: {e}'}), 502
+    try:
         return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify({'error': 'Error de conexión'}), 503
+    except ValueError:
+        logger.error(f'IoT POST /ha/comando non-JSON {resp.status_code}: {resp.text[:500]}')
+        return jsonify({'error': f'IoT API HTTP {resp.status_code}: {resp.text[:200]}'}), 502
 
 
 @app.route('/invernadero')
