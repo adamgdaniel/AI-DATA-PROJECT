@@ -5,6 +5,10 @@ import os
 import json
 import queue
 import threading
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 try:
     from google.cloud import firestore as _fs_module
@@ -806,14 +810,37 @@ def chat():
     data = request.json or {}
     if not AGENT_URL:
         return jsonify({'error': 'Agente no configurado'}), 503
+
+    parcelas_usuario = []
+    try:
+        r = requests.get(
+            f'{DATA_API_URL}/parcelas',
+            params={'user_id': session['user_id']},
+            timeout=5
+        )
+        if r.status_code == 200:
+            parcelas_usuario = [
+                {
+                    'nombre':     p.get('nombre'),
+                    'parcela_id': p.get('parcela_id'),
+                    'cultivo':    p.get('cultivo'),
+                    'variedad':   p.get('variedad'),
+                    'municipio':  p.get('municipio'),
+                    'superficie': p.get('superficie'),
+                }
+                for p in r.json()
+            ]
+    except Exception as e:
+        logger.warning("No se pudieron obtener parcelas del usuario: %s", e)
+
     try:
         resp = requests.post(
             f'{AGENT_URL}/agent/chat',
             json={
-                'user_id': str(session['user_id']),
-                'parcela_id': data.get('parcela_id'),
-                'parcelas_usuario': data.get('parcelas_usuario'),
-                'mensaje': data.get('mensaje', ''),
+                'user_id':          str(session['user_id']),
+                'parcela_id':       data.get('parcela_id'),
+                'parcelas_usuario': parcelas_usuario,
+                'mensaje':          data.get('mensaje', ''),
             },
             timeout=30
         )
