@@ -812,6 +812,7 @@ def chat():
             json={
                 'user_id': str(session['user_id']),
                 'parcela_id': data.get('parcela_id'),
+                'parcelas_usuario': data.get('parcelas_usuario'),
                 'mensaje': data.get('mensaje', ''),
             },
             timeout=30
