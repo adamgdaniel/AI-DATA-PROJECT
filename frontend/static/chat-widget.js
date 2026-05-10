@@ -76,15 +76,28 @@
   }
 
   function getParcelaContext() {
-    // Si la página actual conoce la parcela seleccionada, la enviamos.
     if (typeof window.currentParcela !== 'undefined' &&
         window.currentParcela && window.currentParcela.parcela_id) {
       return window.currentParcela.parcela_id;
     }
-    // Si la URL es /parcela/<id>, lo extraemos.
     var m = window.location.pathname.match(/^\/parcela\/([^\/]+)/);
     if (m) return decodeURIComponent(m[1]);
     return null;
+  }
+
+  // Lee el contexto del invernadero activo si el usuario está en esa página
+  function getInvernaderoContext() {
+    if (typeof window.currentGhSensorData === 'undefined' || !window.currentGhSensorData) {
+      return null;
+    }
+    var inv = window.currentGhSensorData.invernadero || {};
+    // Solo enviamos si hay al menos un dato real
+    if (inv.temperatura == null && inv.humedad_ambiental == null) return null;
+    return {
+      nombre: window.currentGhNombre || 'Invernadero',
+      temperatura: inv.temperatura != null ? parseFloat(inv.temperatura) : null,
+      humedad_ambiental: inv.humedad_ambiental != null ? parseFloat(inv.humedad_ambiental) : null,
+    };
   }
 
   function enviarMensaje() {
@@ -98,8 +111,13 @@
     appendTyping();
 
     var body = { mensaje: texto };
+
     var parcelaId = getParcelaContext();
     if (parcelaId) body.parcela_id = parcelaId;
+
+    // Añadir contexto de invernadero si el usuario está en esa sección
+    var invCtx = getInvernaderoContext();
+    if (invCtx) body.contexto_invernadero = invCtx;
 
     fetch('/chat', {
       method: 'POST',
@@ -134,6 +152,7 @@
       });
   }
 
+  // ── Eventos ──────────────────────────────────────────────────────────────
   fab.addEventListener('click', togglePanel);
   btnX.addEventListener('click', closePanel);
   sendBtn.addEventListener('click', enviarMensaje);
@@ -146,12 +165,11 @@
   });
   input.addEventListener('input', autoresize);
 
-  // Cierre con tecla Escape para mejorar accesibilidad.
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && panel.classList.contains('is-open')) closePanel();
   });
 
-  /* ── Saludo proactivo con efecto typewriter ──────────────── */
+  // ── Burbuja proactiva de saludo ───────────────────────────────────────────
   var greetBubble = document.getElementById('agro-greet-bubble');
 
   if (greetBubble) {
@@ -160,7 +178,6 @@
     var greetTimer = null;
     var typeTimer  = null;
 
-    // Mensajes por sección
     var greetMessages = {
       parcelas: [
         '¡Hola! 👋 Estoy listo para ayudarte con tus parcelas. Pregúntame lo que necesites.',
@@ -196,7 +213,7 @@
       greetBubble.classList.add('is-visible');
 
       var i = 0;
-      var speed = 28; // ms per character
+      var speed = 28;
 
       function typeChar() {
         if (i < message.length) {
@@ -204,7 +221,6 @@
           i++;
           typeTimer = setTimeout(typeChar, speed);
         } else {
-          // Finished typing — remove cursor after a short pause
           setTimeout(function () {
             greetText.classList.remove('is-typing');
           }, 600);
@@ -213,7 +229,6 @@
 
       typeChar();
 
-      // Auto-dismiss after 12 seconds
       greetTimer = setTimeout(function () {
         dismissGreet();
       }, 12000);
@@ -225,29 +240,25 @@
       greetBubble.classList.remove('is-visible');
     }
 
-    // Close button
     if (greetClose) {
       greetClose.addEventListener('click', dismissGreet);
     }
 
-    // Hide bubble when chat opens
+    // Cerrar burbuja al abrir el panel
     var origOpen = openPanel;
     openPanel = function () {
       dismissGreet();
       origOpen();
     };
 
-    // Click on bubble opens the chat
     greetBubble.addEventListener('click', function (e) {
-      if (e.target === greetClose) return; // let close button handle itself
+      if (e.target === greetClose) return;
       dismissGreet();
       openPanel();
     });
 
-    // Trigger greeting every time the user visits parcelas / invernadero
     var section = detectSection();
     if (section) {
-      // Small delay so page renders first
       setTimeout(function () {
         var msg = pickRandom(greetMessages[section]);
         typewriterShow(msg);
