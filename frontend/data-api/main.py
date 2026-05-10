@@ -175,22 +175,35 @@ def update_invernadero_sensor(invernadero_id):
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(f"UPDATE invernaderos SET {col} = %s WHERE id = %s", (entity_id, invernadero_id))
 
+    # Commit the invernadero update independently so it always persists
+    try:
+        cur.execute(f"UPDATE invernaderos SET {col} = %s WHERE id = %s", (entity_id, invernadero_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
+
+    # Register in sensors table as a separate best-effort commit
     if entity_id and data.get('connection_id') and data.get('user_id'):
-        db_type = 'temperature' if sensor_type == 'temperatura' else 'ambient_humidity'
-        cur.execute("""
-            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
-            VALUES (%s, %s, %s, %s, 'invernadero', %s, %s)
-            ON CONFLICT (sensor_id) DO UPDATE SET
-                location_id = EXCLUDED.location_id,
-                location_type = EXCLUDED.location_type,
-                sensor_type = EXCLUDED.sensor_type,
-                connection_id = EXCLUDED.connection_id,
-                display_name = EXCLUDED.display_name
-        """, (entity_id, data['connection_id'], data['user_id'], invernadero_id, db_type, data.get('display_name')))
+        try:
+            db_type = 'temperature' if sensor_type == 'temperatura' else 'ambient_humidity'
+            cur.execute("""
+                INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
+                VALUES (%s, %s, %s, %s, 'invernadero', %s, %s)
+                ON CONFLICT (sensor_id) DO UPDATE SET
+                    location_id = EXCLUDED.location_id,
+                    location_type = EXCLUDED.location_type,
+                    sensor_type = EXCLUDED.sensor_type,
+                    connection_id = EXCLUDED.connection_id,
+                    display_name = EXCLUDED.display_name
+            """, (entity_id, data['connection_id'], data['user_id'], invernadero_id, db_type, data.get('display_name')))
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
-    conn.commit()
     cur.close()
     conn.close()
     return jsonify({'success': True})
@@ -266,34 +279,37 @@ def update_planta_sensor(invernadero_id, planta_id):
     entity_id = data.get('soil_entity_id')
     conn = get_db()
     cur = conn.cursor()
+
+    # Commit the plant update independently so it always persists
     try:
         cur.execute("""
             UPDATE plantas_invernadero SET soil_entity_id = %s
             WHERE id = %s AND invernadero_id = %s
         """, (entity_id, planta_id, invernadero_id))
-
-        if entity_id and data.get('connection_id') and data.get('user_id'):
-            try:
-                cur.execute("""
-                    INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
-                    VALUES (%s, %s, %s, %s, 'planta', 'soil_moisture', %s)
-                    ON CONFLICT (sensor_id) DO UPDATE SET
-                        location_id = EXCLUDED.location_id,
-                        location_type = EXCLUDED.location_type,
-                        sensor_type = EXCLUDED.sensor_type,
-                        connection_id = EXCLUDED.connection_id,
-                        display_name = EXCLUDED.display_name
-                """, (entity_id, data['connection_id'], data['user_id'], planta_id, data.get('display_name')))
-            except Exception:
-                conn.rollback()
-                cur = conn.cursor()
-
         conn.commit()
     except Exception as e:
         conn.rollback()
         cur.close()
         conn.close()
         return jsonify({'error': str(e)}), 500
+
+    # Register in sensors table as a separate best-effort commit
+    if entity_id and data.get('connection_id') and data.get('user_id'):
+        try:
+            cur.execute("""
+                INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
+                VALUES (%s, %s, %s, %s, 'planta', 'soil_moisture', %s)
+                ON CONFLICT (sensor_id) DO UPDATE SET
+                    location_id = EXCLUDED.location_id,
+                    location_type = EXCLUDED.location_type,
+                    sensor_type = EXCLUDED.sensor_type,
+                    connection_id = EXCLUDED.connection_id,
+                    display_name = EXCLUDED.display_name
+            """, (entity_id, data['connection_id'], data['user_id'], planta_id, data.get('display_name')))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
     cur.close()
     conn.close()
     return jsonify({'success': True})

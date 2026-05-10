@@ -65,8 +65,8 @@ SIGPAC_HEADERS = {'Referer': 'https://sigpac.mapa.gob.es/fega/visor/', 'User-Age
 
 # ── Dev-mode in-memory store (only used when DEV_MODE=1) ─────────────────────
 _DEV = bool(os.environ.get('DEV_MODE'))
-_dev_gh = {}        # id -> {id, nombre, sensor_entity_id}
-_dev_plants = {}    # inv_id -> [{id, tipo, variedad, grid_col, grid_row, sensor_entity_id}]
+_dev_gh = {}        # id -> {id, nombre, temperatura_entity_id, hum_amb_entity_id}
+_dev_plants = {}    # inv_id -> [{id, tipo, variedad, grid_col, grid_row, soil_entity_id}]
 _dev_seq = {'gh': 0, 'plant': 0}
 
 
@@ -583,7 +583,7 @@ def anadir_planta(inv_id):
         d = request.json or {}
         plant = {
             'id': _dev_seq['plant'], 'tipo': d.get('tipo'), 'variedad': d.get('variedad'),
-            'grid_col': d.get('grid_col'), 'grid_row': d.get('grid_row'), 'sensor_entity_id': None
+            'grid_col': d.get('grid_col'), 'grid_row': d.get('grid_row'), 'soil_entity_id': None
         }
         _dev_plants.setdefault(inv_id, []).append(plant)
         return jsonify(plant), 201
@@ -615,7 +615,7 @@ def actualizar_sensor_planta(inv_id, planta_id):
     if _DEV:
         for p in _dev_plants.get(inv_id, []):
             if p['id'] == planta_id:
-                p['sensor_entity_id'] = (request.json or {}).get('sensor_entity_id')
+                p['soil_entity_id'] = (request.json or {}).get('soil_entity_id')
         return jsonify({'success': True})
     try:
         body = dict(request.json or {})
