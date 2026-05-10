@@ -1,6 +1,5 @@
 import logging
 import os
-import requests
 from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -33,24 +32,40 @@ def _build_tools() -> list:
     ])]
 
 
-
 class ChatRequest(BaseModel):
     user_id: str
     parcela_id: Optional[str] = None
     parcelas_usuario: Optional[List[dict]] = None
+    contexto_invernadero: Optional[dict] = None   # {nombre, temperatura, humedad_ambiental}
     mensaje: str
 
 
 @app.post("/agent/chat")
 def chat(req: ChatRequest):
     partes = []
+
+    # 1. Parcelas del usuario (para resolver "mis naranjos" → parcela_id)
     if req.parcelas_usuario:
         lista = "\n".join(
             f"- {p.get('nombre', '?')} ({p.get('cultivo', '?')}) → ID: {p.get('parcela_id', '?')}"
             for p in req.parcelas_usuario
         )
         partes.append(f"[Parcelas del usuario]\n{lista}")
+
+    # 2. Contexto de invernadero (datos en tiempo real del frontend vía Firestore)
+    if req.contexto_invernadero:
+        inv = req.contexto_invernadero
+        nombre = inv.get("nombre", "Invernadero")
+        lineas = [f"[Invernadero activo: {nombre}]"]
+        if inv.get("temperatura") is not None:
+            lineas.append(f"Temperatura: {inv['temperatura']}°C")
+        if inv.get("humedad_ambiental") is not None:
+            lineas.append(f"Humedad ambiental: {inv['humedad_ambiental']}%")
+        partes.append("\n".join(lineas))
+
+    # 3. Pregunta del agricultor
     partes.append(f"[Pregunta del agricultor]\n{req.mensaje}")
+
     prompt = "\n\n".join(partes)
 
     today = datetime.now().strftime("%Y-%m-%d")
@@ -61,9 +76,10 @@ def chat(req: ChatRequest):
 
     chat_session = client.chats.create(model=MODEL, config=config)
     logger.info(
-        "agent.chat input user_id=%s parcela_id=%s prompt=%s",
+        "agent.chat input user_id=%s parcela_id=%s tiene_invernadero=%s prompt=%s",
         req.user_id,
         req.parcela_id,
+        req.contexto_invernadero is not None,
         prompt,
     )
     response = chat_session.send_message(prompt)
@@ -81,11 +97,7 @@ def chat(req: ChatRequest):
         for p in tool_parts:
             fc = p.function_call
             tool_args = dict(fc.args)
-            logger.info(
-                "agent.chat tool_request name=%s args=%s",
-                fc.name,
-                tool_args,
-            )
+            logger.info("agent.chat tool_request name=%s args=%s", fc.name, tool_args)
             tool_payload = execute_tool(fc.name, tool_args)
             logger.info("agent.chat tool_response payload=%s", tool_payload)
             tool_responses.append(
