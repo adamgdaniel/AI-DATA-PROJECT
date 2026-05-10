@@ -596,8 +596,10 @@ function renderGrid() {
     el.style.gridRow = plant.grid_row + 1;
     el.style.gridColumn = `${plant.grid_col + 1} / span 2`;
     el.style.zIndex = 5;
-    const cropImg = CROPS[plant.tipo] ? `<img src="${CROPS[plant.tipo].img}">` : '🌱';
-    el.innerHTML = cropImg;
+    const variantImg = (VARIETY_ICONS[plant.tipo] || {})[plant.variedad];
+    const fallbackImg = CROPS[plant.tipo] && CROPS[plant.tipo].img;
+    const imgSrc = variantImg || fallbackImg;
+    el.innerHTML = imgSrc ? `<img src="${imgSrc}">` : '🌱';
 
     if (plant.soil_entity_id) {
       const dot = document.createElement('div');
