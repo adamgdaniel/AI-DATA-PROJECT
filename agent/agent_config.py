@@ -40,6 +40,24 @@ Agri: "Buenas, Juan. Con el poniente de hoy la humedad ha bajado al 30%. Te toca
 
 TOOLS = [
     {
+        "name": "get_sensor_context",
+        "description": (
+            "Obtiene los datos en tiempo real de los sensores IoT de una parcela: "
+            "temperatura, humedad del suelo, humedad ambiental, precipitación, ET₀ y últimas acciones. "
+            "Usar siempre que el usuario pregunte por el estado de una parcela concreta."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "parcela_id": {
+                    "type": "string",
+                    "description": "ID de la parcela SIGPAC (ej: 46-250-0001-000-1)",
+                },
+            },
+            "required": ["parcela_id"],
+        },
+    },
+    {
         "name": "search_documentation",
         "description": (
             "Busca información técnica en manuales y fichas de cultivo agrícola. "
