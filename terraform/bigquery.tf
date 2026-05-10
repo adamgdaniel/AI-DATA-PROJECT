@@ -76,6 +76,7 @@ resource "google_bigquery_table" "lecturas_parcelas" {
   schema = jsonencode([
     { name = "user_id",                type = "STRING",   mode = "REQUIRED" },
     { name = "parcel_id",              type = "STRING",   mode = "REQUIRED" },
+    { name = "nombre",                 type = "STRING",   mode = "NULLABLE" },
     { name = "timestamp",              type = "DATETIME", mode = "REQUIRED" },
     { name = "temperatura",            type = "FLOAT",    mode = "NULLABLE" },
     { name = "humedad_ambiental",      type = "FLOAT",    mode = "NULLABLE" },

@@ -22,7 +22,7 @@ PUBSUB_SUBSCRIPTION = os.environ.get('PUBSUB_SUBSCRIPTION', f'projects/{PROJECT_
 
 BQ_TABLE = f'{PROJECT_ID}:agri_data.lecturas_parcelas'
 BQ_SCHEMA = (
-    'user_id:STRING,parcel_id:STRING,timestamp:DATETIME,'
+    'user_id:STRING,parcel_id:STRING,nombre:STRING,timestamp:DATETIME,'
     'temperatura:FLOAT,humedad_ambiental:FLOAT,humedad_suelo:FLOAT,'
     'precipitacion_mm:FLOAT,et0:FLOAT,radiacion_solar:FLOAT,'
     'fuente_temperatura:STRING,tipo_cultivo:STRING,variedad:STRING,'
@@ -120,6 +120,7 @@ def mergearParcelaConSensores(elemento, window=beam.DoFn.WindowParam):
     yield {
         'user_id': info['user_id'],
         'parcel_id': parcel_id,
+        'nombre': info.get('nombre'),
         'timestamp': window_start.replace(second=0, microsecond=0).isoformat(),
         'temperatura': temp_media if temp_media is not None else info.get('temperatura'),
         'humedad_ambiental': hum_media if hum_media is not None else info.get('humedad_ambiental'),
@@ -166,7 +167,7 @@ class CargarParcelasYMeteo(beam.DoFn):
             conn = self._connect(self.db_name)
             cur = conn.cursor()
             cur.execute("""
-                SELECT id, usuario_id, provincia, municipio, cultivo, variedad
+                SELECT id, usuario_id, provincia, municipio, cultivo, variedad, nombre
                 FROM parcelas_usuario
             """)
             parcelas = {}
@@ -180,6 +181,7 @@ class CargarParcelasYMeteo(beam.DoFn):
                     'codigo_ine': codigo_ine,
                     'cultivo': row[4],
                     'variedad': row[5],
+                    'nombre': row[6],
                 }
             cur.close()
             conn.close()
