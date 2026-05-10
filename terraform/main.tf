@@ -75,6 +75,15 @@ resource "google_cloud_run_v2_service" "api" {
   template {
     service_account = google_service_account.cloudrun.email
 
+    # Direct VPC Egress: necesario para alcanzar Cloud SQL por IP privada
+    vpc_access {
+      network_interfaces {
+        network    = "default"
+        subnetwork = "default"
+      }
+      egress = "PRIVATE_RANGES_ONLY"
+    }
+
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 
@@ -136,6 +145,14 @@ resource "google_cloud_run_v2_service" "data_api" {
 
   template {
     service_account = google_service_account.cloudrun.email
+
+    vpc_access {
+      network_interfaces {
+        network    = "default"
+        subnetwork = "default"
+      }
+      egress = "PRIVATE_RANGES_ONLY"
+    }
 
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello:latest"

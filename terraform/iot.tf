@@ -109,6 +109,14 @@ resource "google_cloud_run_v2_service" "iot_api" {
   template {
     service_account = google_service_account.iot.email
 
+    vpc_access {
+      network_interfaces {
+        network    = "default"
+        subnetwork = "default"
+      }
+      egress = "PRIVATE_RANGES_ONLY"
+    }
+
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 
@@ -205,6 +213,14 @@ resource "google_cloud_run_v2_job" "iot_puller" {
   template {
     template {
       service_account = google_service_account.iot.email
+
+      vpc_access {
+        network_interfaces {
+          network    = "default"
+          subnetwork = "default"
+        }
+        egress = "PRIVATE_RANGES_ONLY"
+      }
 
       containers {
         image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
