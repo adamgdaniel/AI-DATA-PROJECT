@@ -1,5 +1,6 @@
 import os
 import requests
+from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
@@ -85,8 +86,9 @@ def chat(req: ChatRequest):
     else:
         prompt = req.mensaje
 
+    today = datetime.now().strftime("%Y-%m-%d")
     config = types.GenerateContentConfig(
-        system_instruction=SYSTEM_PROMPT,
+        system_instruction=SYSTEM_PROMPT + f"\n\nFecha actual: {today}.",
         tools=_build_tools(),
     )
 
