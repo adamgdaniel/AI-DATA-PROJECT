@@ -360,6 +360,8 @@ function hideLanding() { document.getElementById('landing').style.display = 'non
 async function exitToLanding() {
   if (ghStream) { ghStream.close(); ghStream = null; }
   ghSensorData = { invernadero: {}, plantas: {} };
+  window.currentGhSensorData = null;
+  window.currentGhNombre = null;
   currentGhId = null; plants = [];
   document.getElementById('inv-sensor-widget').classList.add('hidden');
   document.getElementById('btn-sensor-gh').style.display = 'none';
@@ -418,9 +420,17 @@ async function selectGreenhouse(id) {
   await loadPlantas();
   if (ghStream) { ghStream.close(); ghStream = null; }
   ghSensorData = { invernadero: {}, plantas: {} };
+  window.currentGhSensorData = null;
+  window.currentGhNombre = null;
   ghStream = new EventSource(`/stream/invernadero/${currentGhId}`);
   ghStream.onmessage = (e) => {
-    try { ghSensorData = JSON.parse(e.data); updateSensorWidget(); renderGrid(); } catch {}
+    try {
+      ghSensorData = JSON.parse(e.data);
+      window.currentGhSensorData = ghSensorData;
+      window.currentGhNombre = (greenhouses.find(function(g) { return g.id === currentGhId; }) || {}).nombre || null;
+      updateSensorWidget();
+      renderGrid();
+    } catch {}
   };
 }
 
