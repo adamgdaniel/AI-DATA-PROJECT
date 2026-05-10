@@ -180,7 +180,7 @@
 
     function detectSection() {
       var path = window.location.pathname;
-      if (/\/(mis-parcelas|parcela\/|registrar-parcela|tiempo-parcela)/.test(path)) return 'parcelas';
+      if (/\/mapa/.test(path)) return 'parcelas';
       if (/\/(invernadero|mis-invernaderos|crear-invernadero|plantas-invernadero)/.test(path)) return 'invernadero';
       return null;
     }
@@ -244,18 +244,14 @@
       openPanel();
     });
 
-    // Trigger on first session visit to parcelas / invernadero
+    // Trigger greeting every time the user visits parcelas / invernadero
     var section = detectSection();
     if (section) {
-      var storageKey = 'agro_greeted_' + section;
-      if (!sessionStorage.getItem(storageKey)) {
-        sessionStorage.setItem(storageKey, '1');
-        // Small delay so page renders first
-        setTimeout(function () {
-          var msg = pickRandom(greetMessages[section]);
-          typewriterShow(msg);
-        }, 1200);
-      }
+      // Small delay so page renders first
+      setTimeout(function () {
+        var msg = pickRandom(greetMessages[section]);
+        typewriterShow(msg);
+      }, 1200);
     }
   }
 
