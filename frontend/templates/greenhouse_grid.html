@@ -480,9 +480,28 @@ function openPlantModal(plant) {
       <p id="accion-feedback" class="text-center text-[10px] font-bold mt-2 hidden"></p>
     </div>`;
 
+  html += `
+  <div class="border-t border-primary/10 pt-4 mt-2 space-y-2">
+    <div class="flex items-center justify-between">
+      <p class="text-[9px] font-bold text-outline uppercase tracking-widest">Válvulas / Riego</p>
+      <button onclick="abrirPanelValvulaPlanta()" class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-lg hover:bg-primary/20 transition-colors">+ Añadir</button>
+    </div>
+    <div id="plant-valvulas-list"><p class="text-[9px] text-outline px-1">Cargando...</p></div>
+    <div id="plant-valvula-panel" class="hidden p-3 bg-primary/5 rounded-xl space-y-2 border border-primary/10">
+      <select id="plant-valvula-conn-sel" onchange="onValvulaPlantaConexionChange()" class="w-full bg-white/80 border-white/40 rounded-lg text-xs py-1.5 focus:ring-primary focus:border-primary"></select>
+      <div id="plant-valvulas-desc" class="hidden space-y-1">
+        <p class="text-[9px] font-bold text-outline uppercase px-1">Disponibles</p>
+        <div id="plant-valvulas-desc-list" class="space-y-1 max-h-28 overflow-y-auto pr-1"></div>
+      </div>
+      <button onclick="cerrarPanelValvulaPlanta()" class="w-full py-1.5 text-[10px] font-bold text-outline hover:text-primary transition-colors">Cancelar</button>
+    </div>
+    <p id="plant-valvula-feedback" class="text-center text-[10px] font-bold hidden"></p>
+  </div>`;
+
   html += `<button class="w-full py-4 text-[10px] font-black uppercase border-2 border-error/20 text-error rounded-2xl hover:bg-error hover:text-white transition-all mt-4" onclick="removePlant()">Eliminar planta</button>`;
   document.getElementById('plant-modal-content').innerHTML = html;
   document.getElementById('plant-modal').classList.remove('hidden'); document.getElementById('plant-modal').classList.add('flex');
+  cargarValvulasPlanta(plant.id);
 }
 
 function closePlantModal() { document.getElementById('plant-modal').classList.add('hidden'); }
@@ -492,6 +511,113 @@ async function removePlant() {
   await fetch(`/eliminar-planta/${invId}/${modalPlant.id}`, { method: 'DELETE' });
   plants = plants.filter(p => p.id !== modalPlant.id);
   renderGrid(); closePlantModal();
+}
+
+// Válvulas de riego (planta)
+async function cargarValvulasPlanta(plantId) {
+  const list = document.getElementById('plant-valvulas-list');
+  if (!list) return;
+  try {
+    const r = await fetch(`/iot/mis-valvulas?location_id=${plantId}&location_type=planta`);
+    const valvulas = await r.json();
+    if (!Array.isArray(valvulas) || !valvulas.length) {
+      list.innerHTML = '<p class="text-[9px] text-outline px-1">Sin válvulas.</p>';
+      return;
+    }
+    list.innerHTML = valvulas.map(v => `
+      <div class="p-2 rounded-xl bg-white/40 border border-white/60 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="text-[10px] font-bold text-primary truncate">${v.display_name || v.sensor_id}</div>
+          <button onclick="eliminarValvulaPlanta('${v.sensor_id}')" class="text-error/40 hover:text-error transition-colors p-1">
+            <span class="material-symbols-outlined text-sm">delete</span>
+          </button>
+        </div>
+        <div class="flex gap-1">
+          <button onclick="activarRiegoPlanta('${v.sensor_id}',2)" class="flex-1 py-1.5 text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500 text-blue-900 hover:text-white rounded-lg transition-all">💧 2 min</button>
+          <button onclick="activarRiegoPlanta('${v.sensor_id}',5)" class="flex-1 py-1.5 text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500 text-blue-900 hover:text-white rounded-lg transition-all">💧 5 min</button>
+          <button onclick="activarRiegoPlanta('${v.sensor_id}',15)" class="flex-1 py-1.5 text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500 text-blue-900 hover:text-white rounded-lg transition-all">💧 15 min</button>
+        </div>
+      </div>`).join('');
+  } catch { list.innerHTML = '<p class="text-[9px] text-outline px-1">Sin válvulas.</p>'; }
+}
+
+async function activarRiegoPlanta(sensorId, minutos) {
+  const feedback = document.getElementById('plant-valvula-feedback');
+  try {
+    const r = await fetch('/iot/comando', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensor_id: sensorId, action: 'on', duration_minutes: minutos })
+    });
+    const data = await r.json();
+    if (feedback) {
+      feedback.textContent = data.success ? `💧 Riego activado ${minutos} min` : `Error: ${data.error || 'No se pudo activar'}`;
+      feedback.className = `text-center text-[10px] font-bold ${data.success ? 'text-tertiary' : 'text-error'}`;
+      feedback.classList.remove('hidden');
+      setTimeout(() => feedback.classList.add('hidden'), 3500);
+    }
+  } catch {
+    if (feedback) { feedback.textContent = 'Error de conexión'; feedback.className = 'text-center text-[10px] font-bold text-error'; feedback.classList.remove('hidden'); }
+  }
+}
+
+function abrirPanelValvulaPlanta() {
+  const panel = document.getElementById('plant-valvula-panel');
+  const sel = document.getElementById('plant-valvula-conn-sel');
+  panel.classList.remove('hidden');
+  sel.innerHTML = '<option>Cargando...</option>';
+  fetch('/mis-conexiones-ha').then(r => r.json()).then(conns => {
+    sel.innerHTML = '<option value="">-- Conexión --</option>' +
+      conns.map(c => `<option value="${c.connection_id}">${c.display_name || c.ha_url}</option>`).join('');
+  });
+}
+
+function cerrarPanelValvulaPlanta() {
+  const panel = document.getElementById('plant-valvula-panel');
+  if (panel) panel.classList.add('hidden');
+}
+
+function onValvulaPlantaConexionChange() {
+  const id = document.getElementById('plant-valvula-conn-sel').value;
+  const wrap = document.getElementById('plant-valvulas-desc');
+  const list = document.getElementById('plant-valvulas-desc-list');
+  if (!id) return wrap.classList.add('hidden');
+  wrap.classList.remove('hidden');
+  list.innerHTML = '<p class="text-[9px] text-outline">Buscando...</p>';
+  fetch(`/iot/descubrir-valvulas?connection_id=${id}`).then(r => r.json()).then(valvulas => {
+    if (!valvulas.length) { list.innerHTML = '<p class="text-[9px] text-outline">No se encontraron dispositivos.</p>'; return; }
+    list.innerHTML = valvulas.map(v => `
+      <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white/60 border border-white/80">
+        <div class="min-w-0 flex-1">
+          <div class="text-[10px] font-bold text-primary truncate">${v.display_name || v.sensor_id}</div>
+          <div class="text-[8px] text-outline uppercase">${v.domain} · ${v.state ?? ''}</div>
+        </div>
+        <button onclick="añadirValvulaPlanta('${v.sensor_id}','${(v.display_name||v.sensor_id).replace(/'/g,"\\'")}',${id})" class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md hover:bg-primary/20 transition-colors">OK</button>
+      </div>`).join('');
+  });
+}
+
+function añadirValvulaPlanta(sid, dname, cid) {
+  fetch('/iot/registrar-valvula', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sensor_id: sid, display_name: dname, connection_id: cid, location_id: modalPlant.id, location_type: 'planta' })
+  }).then(r => r.json()).then(data => {
+    if (data.success) { cerrarPanelValvulaPlanta(); cargarValvulasPlanta(modalPlant.id); }
+    else {
+      const fb = document.getElementById('plant-valvula-feedback');
+      if (fb) { fb.textContent = data.error || 'Error al registrar'; fb.className = 'text-center text-[10px] font-bold text-error'; fb.classList.remove('hidden'); }
+    }
+  });
+}
+
+function eliminarValvulaPlanta(sid) {
+  if (!confirm('¿Eliminar dispositivo?')) return;
+  fetch('/iot/eliminar-valvula', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sensor_id: sid, location_id: modalPlant.id, location_type: 'planta' })
+  }).then(() => cargarValvulasPlanta(modalPlant.id));
 }
 
 async function openLinkSensor() {
