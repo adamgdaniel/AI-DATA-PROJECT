@@ -4,7 +4,7 @@ import requests
 from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from google import genai
 from google.genai import types
 
@@ -78,6 +78,7 @@ def _get_sensor_context(parcela_id: str) -> str:
 class ChatRequest(BaseModel):
     user_id: str
     parcela_id: Optional[str] = None
+    parcelas_usuario: Optional[List[dict]] = None
     mensaje: str
 
 
@@ -85,16 +86,22 @@ class ChatRequest(BaseModel):
 def chat(req: ChatRequest):
     contexto = _get_sensor_context(req.parcela_id) if req.parcela_id else ""
 
+    partes = []
+    if req.parcelas_usuario:
+        lista = "\n".join(
+            f"- {p.get('nombre', '?')} ({p.get('cultivo', '?')}) → ID: {p.get('parcela_id', '?')}"
+            for p in req.parcelas_usuario
+        )
+        partes.append(f"[Parcelas del usuario]\n{lista}")
     if contexto:
-        prompt = f"[Estado actual de la parcela]\n{contexto}\n\n[Pregunta del agricultor]\n{req.mensaje}"
-    else:
-        prompt = req.mensaje
+        partes.append(f"[Estado actual de la parcela]\n{contexto}")
+    partes.append(f"[Pregunta del agricultor]\n{req.mensaje}")
+    prompt = "\n\n".join(partes)
 
     today = datetime.now().strftime("%Y-%m-%d")
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT + f"\n\nFecha actual: {today}.",
         tools=_build_tools(),
-        max_output_tokens=400,
     )
 
     chat_session = client.chats.create(model=MODEL, config=config)

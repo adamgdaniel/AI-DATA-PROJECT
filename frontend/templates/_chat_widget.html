@@ -25,6 +25,12 @@
   <span class="agro-chat-fab__hint">Pregunta al asistente</span>
 </button>
 
+<!-- Burbuja proactiva de saludo -->
+<div id="agro-greet-bubble" class="agro-greet-bubble" aria-live="polite">
+  <span class="agro-greet-bubble__text"></span>
+  <button class="agro-greet-bubble__close" type="button" aria-label="Cerrar saludo">✕</button>
+</div>
+
 <div id="agro-chat-panel" class="agro-chat-panel" role="dialog" aria-labelledby="agro-chat-title">
   <header class="agro-chat-header">
     <div class="agro-chat-header__avatar" aria-hidden="true">🌾</div>
@@ -38,20 +44,6 @@
   <div id="agro-chat-messages" class="agro-chat-messages" aria-live="polite"></div>
 
   <div class="agro-chat-footer">
-    <button id="agro-chat-camera" class="agro-chat-media-btn" type="button" aria-label="Adjuntar imagen">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-        <circle cx="12" cy="13" r="4"/>
-      </svg>
-    </button>
-    <button id="agro-chat-audio" class="agro-chat-media-btn" type="button" aria-label="Enviar audio">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-        <line x1="12" y1="19" x2="12" y2="23"/>
-        <line x1="8" y1="23" x2="16" y2="23"/>
-      </svg>
-    </button>
     <textarea id="agro-chat-input"
               class="agro-chat-input"
               rows="1"

@@ -152,8 +152,8 @@ class CargarParcelasYMeteo(beam.DoFn):
         self._connector = None
 
     def setup(self):
-        from google.cloud.sql.connector import Connector
-        self._connector = Connector()
+        from google.cloud.sql.connector import Connector, IPTypes
+        self._connector = Connector(ip_type=IPTypes.PRIVATE)
 
     def _connect(self, db):
         return self._connector.connect(

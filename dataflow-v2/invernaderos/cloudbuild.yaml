@@ -58,6 +58,9 @@ steps:
       - '--num_workers=1'
       - '--max_num_workers=1'
       - '--requirements_file=/app/requirements.txt'
+      - '--network=default'
+      - '--subnetwork=regions/europe-west3/subnetworks/default'
+      - '--no_use_public_ips'
     env:
       - 'GCP_PROJECT=$PROJECT_ID'
       - 'INSTANCE_CONNECTION_NAME=$_INSTANCE_CONNECTION_NAME'
