@@ -37,10 +37,10 @@
     }
 
     .glass-panel {
-      background: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
     }
 
     .glass-dark {
@@ -129,10 +129,12 @@
 </head>
 <body class="font-sans antialiased text-primary">
 
-<header class="fixed top-4 left-4 right-4 z-[1000] flex items-center justify-between px-6 py-3 rounded-2xl glass-panel shadow-lg">
+<!-- ── HEADER FLOTANTE (ESTILO MAPA) ──────────────────────────────── -->
+<header class="fixed top-4 left-4 right-4 z-[1000] flex items-center justify-between px-6 py-3 rounded-2xl glass-panel shadow-lg border border-white/40">
   <div class="flex items-center gap-4">
-    <a href="/invernadero" class="p-2 rounded-xl hover:bg-primary/5 text-primary transition-colors">
+    <a href="/invernadero" class="p-2 rounded-xl hover:bg-primary/5 text-primary transition-colors flex items-center gap-2">
       <span class="material-symbols-outlined">arrow_back</span>
+      <span class="hidden sm:inline font-bold text-sm">Volver</span>
     </a>
     <div class="w-px h-6 bg-outline-variant"></div>
     <div class="flex items-center gap-3">
@@ -141,6 +143,7 @@
     </div>
   </div>
 
+  <!-- Invernadero sensor widget -->
   <div id="inv-sensor-widget" class="hidden md:flex items-center gap-8 px-8 py-2 rounded-xl bg-primary/5 border border-primary/10">
     <div class="text-center">
       <p class="text-[9px] font-bold text-outline uppercase tracking-widest">Temperatura</p>
@@ -154,12 +157,16 @@
   </div>
 
   <div class="flex items-center gap-2">
-    <button onclick="openGhSensorModal()" class="p-2.5 rounded-xl hover:bg-primary/5 text-outline hover:text-primary transition-all">
+    <button onclick="openGhSensorModal()" class="p-2.5 rounded-xl hover:bg-primary/5 text-outline hover:text-primary transition-all" title="Ajustes Sensores">
       <span class="material-symbols-outlined">settings_remote</span>
     </button>
-    <button onclick="deleteGreenhouse()" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all">
+    <button onclick="deleteGreenhouse()" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all" title="Eliminar Invernadero">
       <span class="material-symbols-outlined">delete</span>
     </button>
+    <div class="w-px h-6 bg-outline-variant mx-1"></div>
+    <a href="/logout" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all" title="Salir">
+      <span class="material-symbols-outlined">logout</span>
+    </a>
   </div>
 </header>
 
