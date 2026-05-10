@@ -94,7 +94,6 @@ def chat(req: ChatRequest):
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT + f"\n\nFecha actual: {today}.",
         tools=_build_tools(),
-        max_output_tokens=400,
     )
 
     chat_session = client.chats.create(model=MODEL, config=config)
@@ -139,7 +138,8 @@ def chat(req: ChatRequest):
         p.text for p in final_parts
         if hasattr(p, "text") and p.text
     )
-    out = texto_final.strip()
+    palabras = texto_final.strip().split()
+    out = " ".join(palabras[:150])
     logger.info("agent.chat output respuesta=%s", out)
     return {"respuesta": out}
 
