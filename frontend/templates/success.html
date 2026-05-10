@@ -217,6 +217,57 @@
     }
     .btn-eliminar-parcela:hover { background: #ba1a1a; color: white; }
 
+    /* Modal de registro de acción agronómica */
+    .accion-modal {
+      display: none; position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.55); align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .accion-modal.show { display: flex; }
+    .accion-card {
+      background: white; border-radius: 14px;
+      max-width: 360px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      overflow: hidden;
+    }
+    .accion-header {
+      padding: 14px 16px; border-bottom: 1px solid #edeeef;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f8f9fa;
+    }
+    .accion-header strong { font-size: 14px; color: #061b0e; }
+    .accion-close {
+      background: none; border: none; color: #737973;
+      font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;
+    }
+    .accion-close:hover { color: #061b0e; }
+    .accion-body { padding: 16px; }
+    .accion-label {
+      display: block; font-size: 11px; font-weight: 600;
+      color: #434843; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .accion-input {
+      width: 100%; padding: 8px 10px; margin-bottom: 12px;
+      border: 1.5px solid #c3c8c1; border-radius: 6px;
+      font-family: inherit; font-size: 13px; color: #061b0e;
+      background: white;
+    }
+    .accion-input:focus { outline: none; border-color: #6ca200; }
+    .accion-actions {
+      display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;
+    }
+    .accion-actions .btn-cancel-small { margin-top: 0; }
+    .btn-confirmar {
+      padding: 7px 16px; background: #061b0e; color: white;
+      border: none; border-radius: 6px; cursor: pointer;
+      font-size: 12px; font-weight: 600; font-family: inherit;
+    }
+    .btn-confirmar:hover { background: #1b3022; }
+    .btn-confirmar:disabled { opacity: .5; cursor: not-allowed; }
+    .accion-error {
+      color: #ba1a1a; font-size: 11px; margin-bottom: 8px; min-height: 14px;
+    }
+
     /* ── Móvil ── */
     @media (max-width: 768px) {
       body { height: auto; min-height: 100vh; }
@@ -317,9 +368,9 @@
         <div class="dp-section">
           <h4>Acciones</h4>
           <div class="dp-actions">
-            <button class="btn-accion" onclick="registrarAccion('riego')">💧 Regar</button>
-            <button class="btn-accion" onclick="registrarAccion('abono')">🌱 Abonar</button>
-            <button class="btn-accion" onclick="registrarAccion('poda')">✂️ Podar</button>
+            <button class="btn-accion" onclick="abrirRegistroAccion('riego')">💧 Registrar riego</button>
+            <button class="btn-accion" onclick="abrirRegistroAccion('abonado')">🌱 Registrar abonado</button>
+            <button class="btn-accion" onclick="abrirRegistroAccion('poda')">✂️ Registrar poda</button>
           </div>
         </div>
 
@@ -351,6 +402,30 @@
         <h3>Mis parcelas</h3>
         <div id="empty-msg">Cargando...</div>
         <div id="lista-parcelas"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de registro de acción agronómica -->
+  <div id="accion-modal" class="accion-modal" onclick="if(event.target.id==='accion-modal')cerrarRegistroAccion()">
+    <div class="accion-card">
+      <div class="accion-header">
+        <strong id="accion-titulo">Registrar acción</strong>
+        <button class="accion-close" onclick="cerrarRegistroAccion()">×</button>
+      </div>
+      <div class="accion-body">
+        <label class="accion-label" for="accion-fecha">Fecha en la que se realizó</label>
+        <input type="date" id="accion-fecha" class="accion-input"/>
+        <div id="accion-abono-wrap" style="display:none;">
+          <label class="accion-label" for="accion-valor">Tipo de abono</label>
+          <input type="text" id="accion-valor" class="accion-input"
+                 placeholder="ej. NPK 15-15-15, compost, urea…" maxlength="100"/>
+        </div>
+        <div class="accion-error" id="accion-error"></div>
+        <div class="accion-actions">
+          <button class="btn-cancel-small" onclick="cerrarRegistroAccion()">Cancelar</button>
+          <button class="btn-confirmar" id="accion-confirmar" onclick="confirmarAccion()">Registrar</button>
+        </div>
       </div>
     </div>
   </div>
@@ -725,28 +800,82 @@
       }).join('');
     }
 
-    function registrarAccion(tipo) {
+    // ---- Registro de acción agronómica (modal con fecha) ----
+    let _accionTipo = null;
+    const ACCION_LABELS = { riego: 'Riego', abonado: 'Abonado', poda: 'Poda' };
+
+    function abrirRegistroAccion(tipo) {
       if (!currentParcela) return;
-      const tipoMap = { riego: 'riego', abono: 'abonado', poda: 'poda' };
+      _accionTipo = tipo;
+      document.getElementById('accion-titulo').textContent = `Registrar ${ACCION_LABELS[tipo] || tipo}`;
+      // Por defecto, hoy
+      const hoy = new Date().toISOString().slice(0, 10);
+      const inputFecha = document.getElementById('accion-fecha');
+      inputFecha.value = hoy;
+      inputFecha.max   = hoy;  // no permitir futuro
+      // Campo de tipo abono solo si aplica
+      const wrap = document.getElementById('accion-abono-wrap');
+      const valor = document.getElementById('accion-valor');
+      if (tipo === 'abonado') {
+        wrap.style.display = 'block';
+        valor.value = '';
+      } else {
+        wrap.style.display = 'none';
+        valor.value = '';
+      }
+      document.getElementById('accion-error').textContent = '';
+      document.getElementById('accion-confirmar').disabled = false;
+      document.getElementById('accion-modal').classList.add('show');
+      setTimeout(() => (tipo === 'abonado' ? valor : inputFecha).focus(), 50);
+    }
+
+    function cerrarRegistroAccion() {
+      document.getElementById('accion-modal').classList.remove('show');
+      _accionTipo = null;
+    }
+
+    function confirmarAccion() {
+      if (!currentParcela || !_accionTipo) return;
+      const fecha = document.getElementById('accion-fecha').value;
+      const errBox = document.getElementById('accion-error');
+      errBox.textContent = '';
+      if (!fecha) { errBox.textContent = 'Indica una fecha.'; return; }
+      const hoy = new Date().toISOString().slice(0, 10);
+      if (fecha > hoy) { errBox.textContent = 'La fecha no puede ser futura.'; return; }
+
+      const body = {
+        entity_type: 'parcela',
+        entity_id:   currentParcela.parcela_id,
+        tipo_evento: _accionTipo,
+        fecha:       fecha
+      };
+      if (_accionTipo === 'abonado') {
+        const tipoAbono = document.getElementById('accion-valor').value.trim();
+        if (!tipoAbono) { errBox.textContent = 'Indica el tipo de abono.'; return; }
+        body.valor = tipoAbono;
+      }
+
+      const btn = document.getElementById('accion-confirmar');
+      btn.disabled = true; btn.textContent = 'Registrando...';
       fetch('/registrar-accion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entity_type: 'parcela',
-          entity_id:   currentParcela.parcela_id,
-          tipo_evento: tipoMap[tipo] || tipo,
-        })
+        body: JSON.stringify(body)
       })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          const labels = { riego: 'Riego', abono: 'Abonado', poda: 'Poda' };
-          alert(`${labels[tipo] || tipo} registrado correctamente.`);
+      .then(r => r.json().then(data => ({ ok: r.ok, data })))
+      .then(({ ok, data }) => {
+        if (ok && data.success) {
+          cerrarRegistroAccion();
+          alert(`${ACCION_LABELS[_accionTipo] || _accionTipo} registrado para el ${fecha}.`);
         } else {
-          alert(data.error || 'Error al registrar la acción.');
+          errBox.textContent = data.error || 'Error al registrar la acción.';
+          btn.disabled = false; btn.textContent = 'Registrar';
         }
       })
-      .catch(() => alert('Error de conexión al registrar la acción.'));
+      .catch(() => {
+        errBox.textContent = 'Error de conexión.';
+        btn.disabled = false; btn.textContent = 'Registrar';
+      });
     }
 
     // ---- Sensor management ----

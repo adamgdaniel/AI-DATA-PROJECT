@@ -5,13 +5,18 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/iot-api:latest']
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
     args:
-      - gcloud
-      - run
-      - deploy
-      - iot-api
-      - --image=europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/iot-api:latest
-      - --region=europe-west1
-      - --platform=managed
+      - -c
+      - |
+        set -e
+        gcloud run deploy iot-api \
+          --image=europe-west1-docker.pkg.dev/$PROJECT_ID/iot-repo/iot-api:latest \
+          --region=europe-west1 \
+          --platform=managed \
+          --update-env-vars=CLOUD_TASKS_QUEUE=valve-timers,CLOUD_TASKS_LOCATION=europe-west1 \
+          --update-secrets=TASKS_SHARED_SECRET=iot-tasks-shared-secret:latest
+        URL=$(gcloud run services describe iot-api --region=europe-west1 --format='value(status.url)')
+        gcloud run services update iot-api --region=europe-west1 --update-env-vars=IOT_API_URL=$$URL
 options:
   logging: CLOUD_LOGGING_ONLY

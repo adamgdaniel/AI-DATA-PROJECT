@@ -31,7 +31,7 @@ cur.execute("""
         user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         location_id         INTEGER,
         location_type       VARCHAR(20) NOT NULL CHECK (location_type IN ('parcela', 'invernadero', 'planta')),
-        sensor_type         VARCHAR(50) NOT NULL CHECK (sensor_type IN ('soil_moisture', 'temperature', 'ambient_humidity')),
+        sensor_type         VARCHAR(50) NOT NULL CHECK (sensor_type IN ('soil_moisture', 'temperature', 'ambient_humidity', 'valve')),
         display_name        VARCHAR(100),
         active              BOOLEAN DEFAULT TRUE,
         created_at          TIMESTAMP DEFAULT NOW()

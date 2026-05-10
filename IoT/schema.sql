@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS sensors (
     connection_id       INTEGER NOT NULL REFERENCES ha_connections(id) ON DELETE CASCADE,
     user_id             INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     parcela_usuario_id  INTEGER NOT NULL REFERENCES parcelas_usuario(id) ON DELETE CASCADE,
-    sensor_type         VARCHAR(50) NOT NULL CHECK (sensor_type IN ('soil_moisture', 'temperature', 'ambient_humidity')),
+    sensor_type         VARCHAR(50) NOT NULL CHECK (sensor_type IN ('soil_moisture', 'temperature', 'ambient_humidity', 'valve')),
     display_name        VARCHAR(100),
     active              BOOLEAN DEFAULT TRUE,
     created_at          TIMESTAMP DEFAULT NOW()
