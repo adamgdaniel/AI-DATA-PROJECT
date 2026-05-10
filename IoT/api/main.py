@@ -207,7 +207,7 @@ def ha_registrar_sensor():
         return jsonify({'success': True}), 201
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
-        return jsonify({'error': 'Este sensor ya está registrado'}), 409
+        return jsonify({'error': 'Este sensor ya está registrado en esta parcela'}), 409
     finally:
         cur.close()
         conn.close()
@@ -252,20 +252,24 @@ def ha_get_sensores():
 def ha_eliminar_sensor():
     sensor_id = request.args.get('sensor_id')
     user_id = request.args.get('user_id')
+    location_id = request.args.get('location_id')
 
-    if not sensor_id or not user_id:
-        return jsonify({'error': 'sensor_id y user_id requeridos'}), 400
+    if not all([sensor_id, user_id, location_id]):
+        return jsonify({'error': 'sensor_id, user_id y location_id requeridos'}), 400
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("DELETE FROM sensors WHERE sensor_id = %s AND user_id = %s", (sensor_id, user_id))
+    cur.execute("""
+        DELETE FROM sensors 
+        WHERE sensor_id = %s AND user_id = %s AND location_id = %s AND location_type = 'parcela'
+    """, (sensor_id, user_id, location_id))
     deleted = cur.rowcount
     conn.commit()
     cur.close()
     conn.close()
 
     if not deleted:
-        return jsonify({'error': 'Sensor no encontrado'}), 404
+        return jsonify({'error': 'Sensor no encontrado en esta parcela'}), 404
     return jsonify({'success': True})
 
 
@@ -354,7 +358,7 @@ def ha_registrar_valvula():
         return jsonify({'success': True}), 201
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
-        return jsonify({'error': 'Esta válvula ya está registrada'}), 409
+        return jsonify({'error': 'Esta válvula ya está registrada en esta parcela'}), 409
     finally:
         cur.close()
         conn.close()
@@ -401,23 +405,25 @@ def ha_get_valvulas():
 def ha_eliminar_valvula():
     sensor_id = request.args.get('sensor_id')
     user_id = request.args.get('user_id')
+    location_id = request.args.get('location_id')
 
-    if not sensor_id or not user_id:
-        return jsonify({'error': 'sensor_id y user_id requeridos'}), 400
+    if not all([sensor_id, user_id, location_id]):
+        return jsonify({'error': 'sensor_id, user_id y location_id requeridos'}), 400
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM sensors WHERE sensor_id = %s AND user_id = %s AND sensor_type = 'valve'",
-        (sensor_id, user_id)
-    )
+    cur.execute("""
+        DELETE FROM sensors 
+        WHERE sensor_id = %s AND user_id = %s AND location_id = %s 
+          AND sensor_type = 'valve' AND location_type = 'parcela'
+    """, (sensor_id, user_id, location_id))
     deleted = cur.rowcount
     conn.commit()
     cur.close()
     conn.close()
 
     if not deleted:
-        return jsonify({'error': 'Válvula no encontrada'}), 404
+        return jsonify({'error': 'Válvula no encontrada en esta parcela'}), 404
     return jsonify({'success': True})
 
 
