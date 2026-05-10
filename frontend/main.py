@@ -5,6 +5,10 @@ import os
 import json
 import queue
 import threading
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 try:
     from google.cloud import firestore as _fs_module
@@ -323,59 +327,6 @@ def eliminar_parcela(parcela_id):
         return jsonify({'error': f'API no disponible (status {resp.status_code})'}), 502
 
 
-@app.route('/parcela/<parcela_id>')
-def detalle_parcela(parcela_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    try:
-        resp = requests.get(f'{API_URL}/parcelas', params={'user_id': session['user_id']})
-        parcelas = resp.json()
-        parcela = next((p for p in parcelas if p['parcela_id'] == parcela_id), None)
-    except Exception:
-        parcela = None
-    if not parcela:
-        return redirect(url_for('mapa'))
-    return render_template('parcela_detail.html', parcela=parcela)
-
-
-@app.route('/parcela/<parcela_id>/grid', methods=['POST'])
-def update_grid(parcela_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'no autenticado'}), 401
-    data = request.json
-    data['user_id'] = session['user_id']
-    resp = requests.post(f'{API_URL}/parcelas/{parcela_id}/grid', json=data)
-    try:
-        return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify({'error': 'API error'}), 502
-
-
-@app.route('/parcela/<parcela_id>/zona', methods=['POST'])
-def añadir_zona(parcela_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'no autenticado'}), 401
-    data = request.json
-    data['user_id'] = session['user_id']
-    resp = requests.post(f'{API_URL}/parcelas/{parcela_id}/zona', json=data)
-    try:
-        return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify({'error': 'API error'}), 502
-
-
-@app.route('/parcela/<parcela_id>/zona/<zona_id>', methods=['DELETE'])
-def eliminar_zona(parcela_id, zona_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'no autenticado'}), 401
-    resp = requests.delete(
-        f'{API_URL}/parcelas/{parcela_id}/zona/{zona_id}',
-        json={'user_id': session['user_id']}
-    )
-    try:
-        return jsonify(resp.json()), resp.status_code
-    except Exception:
-        return jsonify({'error': 'API error'}), 502
 
 
 @app.route('/tiempo-parcela')
@@ -541,7 +492,26 @@ def iot_eliminar_sensor():
 def invernadero():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('greenhouse.html')
+    return render_template('greenhouse_landing.html')
+
+
+@app.route('/invernadero/<int:inv_id>')
+def invernadero_detalle(inv_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('greenhouse_grid.html')
+
+
+@app.route('/preview-invernadero')
+def preview_invernadero():
+    """Route for previewing UI changes without requiring login (dev only)."""
+    return render_template('greenhouse_landing.html')
+
+
+@app.route('/preview-invernadero-detalle')
+def preview_invernadero_detalle():
+    """Route for previewing UI changes without requiring login (dev only)."""
+    return render_template('greenhouse_grid.html')
 
 
 @app.route('/mis-invernaderos')
@@ -806,13 +776,37 @@ def chat():
     data = request.json or {}
     if not AGENT_URL:
         return jsonify({'error': 'Agente no configurado'}), 503
+
+    parcelas_usuario = []
+    try:
+        r = requests.get(
+            f'{DATA_API_URL}/parcelas',
+            params={'user_id': session['user_id']},
+            timeout=5
+        )
+        if r.status_code == 200:
+            parcelas_usuario = [
+                {
+                    'nombre':     p.get('nombre'),
+                    'parcela_id': p.get('parcela_id'),
+                    'cultivo':    p.get('cultivo'),
+                    'variedad':   p.get('variedad'),
+                    'municipio':  p.get('municipio'),
+                    'superficie': p.get('superficie'),
+                }
+                for p in r.json()
+            ]
+    except Exception as e:
+        logger.warning("No se pudieron obtener parcelas del usuario: %s", e)
+
     try:
         resp = requests.post(
             f'{AGENT_URL}/agent/chat',
             json={
-                'user_id': str(session['user_id']),
-                'parcela_id': data.get('parcela_id'),
-                'mensaje': data.get('mensaje', ''),
+                'user_id':          str(session['user_id']),
+                'parcela_id':       data.get('parcela_id'),
+                'parcelas_usuario': parcelas_usuario,
+                'mensaje':          data.get('mensaje', ''),
             },
             timeout=30
         )

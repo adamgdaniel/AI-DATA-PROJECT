@@ -4,6 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AgroMonitor – Mis Parcelas</title>
+  <link rel="icon" type="image/png" href="/icons/logo_dark_green.png"/>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
@@ -96,10 +97,27 @@
       </a>
     </nav>
     
-    <button class="md:hidden p-2 rounded-xl hover:bg-primary/5">
-      <span class="material-symbols-outlined">menu</span>
+    <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-xl hover:bg-primary/5">
+      <span class="material-symbols-outlined" id="menu-icon">menu</span>
     </button>
   </header>
+
+  <!-- Mobile menu -->
+  <div id="mobile-menu" class="fixed top-[72px] left-4 right-4 z-[999] hidden glass-panel rounded-2xl shadow-xl border border-white/40 p-4 space-y-1">
+    <a href="/invernadero" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-primary/5 transition-colors text-sm font-medium text-outline hover:text-primary">
+      <span class="material-symbols-outlined text-xl">home_work</span>
+      Invernaderos
+    </a>
+    <a href="/home-assistant" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-primary/5 transition-colors text-sm font-medium text-outline hover:text-primary">
+      <span class="material-symbols-outlined text-xl">settings_remote</span>
+      IoT
+    </a>
+    <div class="h-px bg-outline-variant mx-2"></div>
+    <a href="/logout" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-error/5 transition-colors text-sm font-medium text-error">
+      <span class="material-symbols-outlined text-xl">logout</span>
+      Salir
+    </a>
+  </div>
 
   <main class="map-container">
     <div id="map"></div>
@@ -113,7 +131,7 @@
           <span class="material-symbols-outlined text-sm">info</span>
           Explora tus parcelas
         </div>
-        Acércate al mapa (zoom &ge; 14) y haz clic sobre una parcela para seleccionarla.
+        Acércate al mapa y haz clic sobre una parcela para seleccionarla.
       </div>
 
       <!-- Scrollable content -->
@@ -305,11 +323,11 @@
       'Limonero':     '#f1c40f'
     };
     const CROP_IMGS = {
-      'Maiz':         '/icons/corn.webp',
-      'Naranjo':      '/icons/orange.webp',
-      'Mandarino':    '/icons/Tangerine.webp',
-      'Melocotonero': '/icons/peach.png',
-      'Limonero':     '/icons/lemon.png'
+      'Maiz':         '/icons/iconoMaiz.png',
+      'Naranjo':      '/icons/iconoNaranja.png',
+      'Mandarino':    '/icons/iconoMandarina.png',
+      'Melocotonero': '/icons/iconoMelocoton.png',
+      'Limonero':     '/icons/iconoLimon.png'
     };
     const VARIETIES = {
       'Maiz':         ['Híbrida ciclo largo', 'Grano'],
@@ -519,7 +537,10 @@
             const color = CROP_COLORS[p.cultivo] || '#95a5a6';
 
             if (p.geometria) {
-              L.geoJSON(p.geometria, { style: { color, weight: 3, opacity: 0.8, fillColor: color, fillOpacity: 0.3 } })
+              L.geoJSON(p.geometria, { 
+                style: { color, weight: 3, opacity: 0.8, fillColor: color, fillOpacity: 0.3 },
+                className: 'parcel-poly' 
+              })
                 .on('click', (e) => { L.DomEvent.stopPropagation(e); mostrarDetalleParcela(p); })
                 .addTo(misParcelasLayer);
             }
@@ -535,11 +556,6 @@
                 .addTo(misParcelasLayer);
             }
           });
-          
-          if (!window._initZoom && misParcelasData[0]) {
-            window._initZoom = true;
-            map.flyTo([misParcelasData[0].lat, misParcelasData[0].lng], 18);
-          }
         });
     }
 
@@ -640,7 +656,7 @@
       .then(data => {
         if (data.success) {
           cerrarRegistroAccion();
-          alert('Acción registrada con éxito.');
+          mostrarToast('✓ Acción registrada correctamente');
         } else {
           err.textContent = data.error || 'Error al registrar.';
         }
@@ -737,6 +753,22 @@
       if (!confirm('¿Eliminar parcela permanentemente?')) return;
       fetch(`/eliminar-parcela/${currentParcela.id}`, { method: 'DELETE' })
         .then(() => { cerrarDetalle(); cargarParcelas(); });
+    }
+
+    function mostrarToast(msg) {
+      const t = document.createElement('div');
+      t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[3000] px-5 py-3 rounded-2xl glass-panel shadow-xl border border-white/60 text-sm font-bold text-primary';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      const icon = document.getElementById('menu-icon');
+      const isOpen = !menu.classList.contains('hidden');
+      menu.classList.toggle('hidden', isOpen);
+      icon.textContent = isOpen ? 'menu' : 'close';
     }
 
     cargarParcelas();

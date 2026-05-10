@@ -1,10 +1,9 @@
 import logging
 import os
-import requests
 from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from google import genai
 from google.genai import types
 
@@ -16,8 +15,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-GCP_PROJECT   = os.environ.get("GCP_PROJECT_ID", "project-7f8b4dee-2b72-40f2-941")
-SENSOR_API_URL = os.environ.get("SENSOR_API_URL", "http://sensor-api:8080")
+GCP_PROJECT = os.environ.get("GCP_PROJECT_ID", "project-7f8b4dee-2b72-40f2-941")
 
 client = genai.Client(enterprise=True, project=GCP_PROJECT, location="global")
 MODEL = "gemini-3.1-flash-lite"
@@ -34,61 +32,41 @@ def _build_tools() -> list:
     ])]
 
 
-def _get_sensor_context(parcela_id: str) -> str:
-    try:
-        resp = requests.get(
-            f"{SENSOR_API_URL}/sensores/contexto",
-            params={"parcela_id": parcela_id},
-            timeout=10,
-        )
-        if resp.status_code != 200:
-            return ""
-        ctx = resp.json()
-
-        lines = [f"Parcela: {ctx.get('parcela_id', parcela_id)}"]
-        lines.append(f"Cultivo: {ctx.get('cultivo', 'desconocido')}")
-
-        h24 = ctx.get("ultimas_24h", {})
-        if h24.get("temp_media") is not None:
-            lines.append(f"Temperatura (24h): {h24['temp_media']}°C")
-        if h24.get("humedad_suelo_media") is not None:
-            lines.append(f"Humedad suelo (24h): {h24['humedad_suelo_media']}%")
-        if h24.get("humedad_ambiental_media") is not None:
-            lines.append(f"Humedad ambiental (24h): {h24['humedad_ambiental_media']}%")
-
-        d7 = ctx.get("ultimos_7d", {})
-        if d7.get("temp_media") is not None:
-            lines.append(f"Temperatura media (7d): {d7['temp_media']}°C")
-        if d7.get("precipitacion_acumulada") is not None:
-            lines.append(f"Precipitación acumulada (7d): {d7['precipitacion_acumulada']} mm")
-        if d7.get("et0_acumulado") is not None:
-            lines.append(f"ET₀ acumulado (7d): {d7['et0_acumulado']} mm")
-
-        acciones = ctx.get("acciones_recientes", [])
-        if acciones:
-            a = acciones[0]
-            detalle = f" ({a['detalle']})" if a.get("detalle") else ""
-            lines.append(f"Última acción: {a['tipo']} el {a['fecha'][:10]}{detalle}")
-
-        return "\n".join(lines)
-    except Exception:
-        return ""
-
-
 class ChatRequest(BaseModel):
     user_id: str
     parcela_id: Optional[str] = None
+    parcelas_usuario: Optional[List[dict]] = None
+    contexto_invernadero: Optional[dict] = None   # {nombre, temperatura, humedad_ambiental}
     mensaje: str
 
 
 @app.post("/agent/chat")
 def chat(req: ChatRequest):
-    contexto = _get_sensor_context(req.parcela_id) if req.parcela_id else ""
+    partes = []
 
-    if contexto:
-        prompt = f"[Estado actual de la parcela]\n{contexto}\n\n[Pregunta del agricultor]\n{req.mensaje}"
-    else:
-        prompt = req.mensaje
+    # 1. Parcelas del usuario (para resolver "mis naranjos" → parcela_id)
+    if req.parcelas_usuario:
+        lista = "\n".join(
+            f"- {p.get('nombre', '?')} ({p.get('cultivo', '?')}) → ID: {p.get('parcela_id', '?')}"
+            for p in req.parcelas_usuario
+        )
+        partes.append(f"[Parcelas del usuario]\n{lista}")
+
+    # 2. Contexto de invernadero (datos en tiempo real del frontend vía Firestore)
+    if req.contexto_invernadero:
+        inv = req.contexto_invernadero
+        nombre = inv.get("nombre", "Invernadero")
+        lineas = [f"[Invernadero activo: {nombre}]"]
+        if inv.get("temperatura") is not None:
+            lineas.append(f"Temperatura: {inv['temperatura']}°C")
+        if inv.get("humedad_ambiental") is not None:
+            lineas.append(f"Humedad ambiental: {inv['humedad_ambiental']}%")
+        partes.append("\n".join(lineas))
+
+    # 3. Pregunta del agricultor
+    partes.append(f"[Pregunta del agricultor]\n{req.mensaje}")
+
+    prompt = "\n\n".join(partes)
 
     today = datetime.now().strftime("%Y-%m-%d")
     config = types.GenerateContentConfig(
@@ -98,9 +76,10 @@ def chat(req: ChatRequest):
 
     chat_session = client.chats.create(model=MODEL, config=config)
     logger.info(
-        "agent.chat input user_id=%s parcela_id=%s prompt=%s",
+        "agent.chat input user_id=%s parcela_id=%s tiene_invernadero=%s prompt=%s",
         req.user_id,
         req.parcela_id,
+        req.contexto_invernadero is not None,
         prompt,
     )
     response = chat_session.send_message(prompt)
@@ -118,11 +97,7 @@ def chat(req: ChatRequest):
         for p in tool_parts:
             fc = p.function_call
             tool_args = dict(fc.args)
-            logger.info(
-                "agent.chat tool_request name=%s args=%s",
-                fc.name,
-                tool_args,
-            )
+            logger.info("agent.chat tool_request name=%s args=%s", fc.name, tool_args)
             tool_payload = execute_tool(fc.name, tool_args)
             logger.info("agent.chat tool_response payload=%s", tool_payload)
             tool_responses.append(

@@ -1,9 +1,9 @@
 import os
 import requests
 
-RAG_API_URL        = os.environ.get("RAG_API_URL",        "http://rag-api:8080")
-MODEL_SERVING_URL  = os.environ.get("MODEL_SERVING_URL",  "http://model-serving:8080")
-SENSOR_API_URL     = os.environ.get("SENSOR_API_URL",     "http://sensor-api:8080")
+RAG_API_URL       = os.environ.get("RAG_API_URL",       "http://rag-api:8080")
+MODEL_SERVING_URL = os.environ.get("MODEL_SERVING_URL", "http://model-serving:8080")
+SENSOR_API_URL    = os.environ.get("SENSOR_API_URL",    "http://sensor-api:8080")
 
 
 def execute_tool(tool_name: str, tool_args: dict) -> dict:
@@ -36,14 +36,10 @@ def _search_docs(args: dict) -> dict:
 
 
 def _get_sensor_context(args: dict) -> dict:
-    # Validación explícita: parcela_id es required pero protegemos el servidor
-    parcela_id = args.get("parcela_id")
-    if not parcela_id:
-        return {"error": "parcela_id es obligatorio para consultar sensores."}
     try:
         resp = requests.get(
             f"{SENSOR_API_URL}/sensores/contexto",
-            params={"parcela_id": parcela_id},
+            params={"parcela_id": args["parcela_id"]},
             timeout=10,
         )
         if resp.status_code != 200:

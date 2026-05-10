@@ -266,24 +266,34 @@ def update_planta_sensor(invernadero_id, planta_id):
     entity_id = data.get('soil_entity_id')
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("""
-        UPDATE plantas_invernadero SET soil_entity_id = %s
-        WHERE id = %s AND invernadero_id = %s
-    """, (entity_id, planta_id, invernadero_id))
-
-    if entity_id and data.get('connection_id') and data.get('user_id'):
+    try:
         cur.execute("""
-            INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
-            VALUES (%s, %s, %s, %s, 'planta', 'soil_moisture', %s)
-            ON CONFLICT (sensor_id) DO UPDATE SET
-                location_id = EXCLUDED.location_id,
-                location_type = EXCLUDED.location_type,
-                sensor_type = EXCLUDED.sensor_type,
-                connection_id = EXCLUDED.connection_id,
-                display_name = EXCLUDED.display_name
-        """, (entity_id, data['connection_id'], data['user_id'], planta_id, data.get('display_name')))
+            UPDATE plantas_invernadero SET soil_entity_id = %s
+            WHERE id = %s AND invernadero_id = %s
+        """, (entity_id, planta_id, invernadero_id))
 
-    conn.commit()
+        if entity_id and data.get('connection_id') and data.get('user_id'):
+            try:
+                cur.execute("""
+                    INSERT INTO sensors (sensor_id, connection_id, user_id, location_id, location_type, sensor_type, display_name)
+                    VALUES (%s, %s, %s, %s, 'planta', 'soil_moisture', %s)
+                    ON CONFLICT (sensor_id) DO UPDATE SET
+                        location_id = EXCLUDED.location_id,
+                        location_type = EXCLUDED.location_type,
+                        sensor_type = EXCLUDED.sensor_type,
+                        connection_id = EXCLUDED.connection_id,
+                        display_name = EXCLUDED.display_name
+                """, (entity_id, data['connection_id'], data['user_id'], planta_id, data.get('display_name')))
+            except Exception:
+                conn.rollback()
+                cur = conn.cursor()
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        return jsonify({'error': str(e)}), 500
     cur.close()
     conn.close()
     return jsonify({'success': True})

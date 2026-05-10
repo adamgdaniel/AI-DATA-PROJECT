@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgroMonitor – Mis Parcelas (Final Fix Preview)</title>
+  <link rel="icon" type="image/png" href="/icons/logo_dark_green.png"/>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary":                  "#061b0e",
+            "on-primary":               "#ffffff",
+            "primary-container":        "#1b3022",
+            "tertiary":                 "#6ca200",
+            "tertiary-fixed":           "#b2f746",
+            "background":               "#f8f9fa",
+            "surface":                  "#ffffff",
+            "outline":                  "#737973",
+            "outline-variant":          "#c3c8c1",
+            "error":                    "#ba1a1a",
+          },
+          fontFamily: { sans: ["Inter", "sans-serif"] }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .map-container { height: 100vh; width: 100%; position: relative; }
+    #map { height: 100%; width: 100%; z-index: 0; }
+    .crop-marker { background: none !important; border: none !important; }
+  </style>
+</head>
+<body class="font-sans antialiased text-primary overflow-hidden">
+
+  <header class="fixed top-4 left-4 right-4 z-[1000] flex items-center justify-between px-6 py-3 rounded-2xl glass-panel shadow-lg border border-white/40">
+    <div class="flex items-center gap-3">
+      <img src="../icons/logo_dark_green.png" alt="AgroMonitor" class="h-8 w-8 object-contain"/>
+      <span class="font-bold text-lg tracking-tight">AgroMonitor</span>
+    </div>
+  </header>
+
+  <main class="map-container">
+    <div id="map"></div>
+    <aside class="fixed top-24 right-4 bottom-4 w-80 z-[1000] flex flex-col gap-4 overflow-hidden">
+      <div class="p-5 rounded-2xl glass-panel shadow-lg space-y-4 border border-white/50">
+        <h3 class="text-sm font-bold text-primary">Control de Enfoque</h3>
+        <p class="text-[10px] text-outline leading-relaxed uppercase font-black tracking-widest">Prueba la interactividad:</p>
+        
+        <div class="space-y-2">
+            <button onclick="focusTestParcel()" class="w-full p-3 rounded-xl bg-primary text-white text-xs font-bold flex items-center justify-between group hover:bg-tertiary transition-all">
+                <span>Ver Huerto de Naranjos</span>
+                <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">travel_explore</span>
+            </button>
+            <p class="text-[9px] text-outline italic px-1">Al pulsar, la cámara vuela con zoom 19 y se activa el efecto de luz.</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map', { zoomControl: false }).setView([39.48, -0.35], 14);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19
+    }).addTo(map);
+
+    let selectionLayer = null;
+
+    function focusTestParcel() {
+      const coords = [39.47875, -0.349];
+      const bounds = [[39.478, -0.351], [39.4795, -0.347]];
+      
+      // 1. Zoom animado (flyTo) a nivel 19
+      map.flyTo(coords, 19, { duration: 1.5 });
+
+      // 2. Efecto Iluminación (Luz blanca + Lime Dashed)
+      if (selectionLayer) selectionLayer.remove();
+      
+      selectionLayer = L.layerGroup([
+        L.rectangle(bounds, { color: '#ffffff', weight: 8, opacity: 0.4, fill: false }),
+        L.rectangle(bounds, { color: '#b2f746', weight: 2, opacity: 1, dashArray: '8, 8', fillColor: '#b2f746', fillOpacity: 0.2 })
+      ]).addTo(map);
+    }
+
+    // Marcador de ejemplo sin caja blanca
+    const icon = L.divIcon({
+      html: `<div class="drop-shadow-2xl"><img src="../icons/iconoNaranja.png" class="w-10 h-10 object-contain"></div>`,
+      className: 'crop-marker',
+      iconAnchor: [20, 20]
+    });
+    L.marker([39.47875, -0.349], { icon }).addTo(map);
+  </script>
+</body>
+</html>

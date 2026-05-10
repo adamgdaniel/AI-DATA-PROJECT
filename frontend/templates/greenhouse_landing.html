@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgroMonitor – Invernaderos</title>
+  <link rel="icon" type="image/png" href="/icons/logo_dark_green.png"/>
+  
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary":                  "#061b0e",
+            "on-primary":               "#ffffff",
+            "primary-container":        "#1b3022",
+            "tertiary":                 "#6ca200",
+            "tertiary-fixed":           "#b2f746",
+            "background":               "#f8f9fa",
+            "outline":                  "#737973",
+            "outline-variant":          "#c3c8c1",
+            "error":                    "#ba1a1a",
+          },
+          fontFamily: { sans: ["Inter", "sans-serif"] }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .glass-dark {
+      background: rgba(6, 27, 14, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+      background: url('/icons/bg_inv_v8.jpg') center center / cover no-repeat;
+      height: 100vh;
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    body::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at center, rgba(6, 27, 14, 0.3) 0%, rgba(6, 27, 14, 0.8) 100%);
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
+  </style>
+  <link rel="stylesheet" href="/static/theme-override.css"/>
+</head>
+<body class="font-sans antialiased text-primary">
+
+
+<div class="relative z-10 w-full max-w-md space-y-8 text-center px-6 pt-20">
+  <div class="space-y-2">
+    <div class="flex justify-center mb-4">
+      <div class="p-4 rounded-3xl glass-panel shadow-2xl">
+        <img src="/icons/logo_dark_green.png" alt="AgroMonitor" class="h-16 w-16 object-contain"/>
+      </div>
+    </div>
+    <h1 class="text-4xl font-black text-white tracking-tight drop-shadow-lg">Invernaderos</h1>
+    <div class="inline-block px-4 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mt-2">
+      <p class="text-tertiary-fixed font-bold tracking-widest uppercase text-[10px]">Gestión de cultivos bajo cubierta</p>
+    </div>
+  </div>
+
+  <div class="space-y-3">
+    <div id="gh-cards" class="p-2 rounded-3xl glass-dark shadow-2xl space-y-2 border border-white/10">
+      <div id="gh-cards-empty" class="text-white/40 text-xs py-8 uppercase tracking-widest font-bold text-center">Cargando...</div>
+    </div>
+
+    <button onclick="openNewGhModal()" class="w-full py-4 rounded-2xl bg-tertiary text-white font-bold shadow-lg shadow-tertiary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+      <span class="material-symbols-outlined">add_circle</span>
+      Nuevo Invernadero
+    </button>
+  </div>
+
+  <div class="pt-8">
+    <a href="/mapa" class="text-white/60 hover:text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors">
+      <span class="material-symbols-outlined text-lg">arrow_back</span>
+      Volver a mis parcelas
+    </a>
+  </div>
+</div>
+
+<!-- Modal: new greenhouse -->
+<div id="new-gh-modal" class="fixed inset-0 z-[3000] hidden items-center justify-center p-4 bg-primary/60 backdrop-blur-md">
+  <div class="w-full max-w-sm glass-panel rounded-3xl shadow-2xl p-8 border border-white/60">
+    <h3 class="text-xl font-black text-primary mb-6 flex items-center gap-2">
+      <span class="material-symbols-outlined">add_home</span>
+      Nuevo invernadero
+    </h3>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-[10px] font-bold text-outline uppercase px-1 tracking-widest mb-1">Nombre del sector</label>
+        <input type="text" id="new-gh-name" placeholder="Ej: Invernadero norte" maxlength="60" class="w-full bg-white/50 border-white/60 rounded-xl text-sm focus:ring-tertiary focus:border-tertiary"/>
+      </div>
+      <div id="new-gh-err" class="text-xs text-error font-bold min-height-[1rem]"></div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeNewGhModal()" class="flex-1 py-3 text-sm font-bold text-outline hover:bg-primary/5 rounded-xl transition-all">Cancelar</button>
+        <button onclick="createGreenhouse()" class="flex-1 py-3 bg-primary text-white text-sm font-bold rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">Crear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function loadGreenhouses() {
+  try {
+    const r = await fetch('/mis-invernaderos');
+    const greenhouses = r.ok ? await r.json() : [];
+    const cards = document.getElementById('gh-cards');
+    if (greenhouses.length === 0) {
+      cards.innerHTML = '<div class="text-white/40 text-xs py-8 uppercase tracking-widest font-bold text-center">Sin invernaderos registrados</div>';
+    } else {
+      cards.innerHTML = greenhouses.map(gh => `
+        <a href="/invernadero/${gh.id}" class="w-full flex items-center justify-between p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all group text-white">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🏡</div>
+            <div class="text-left">
+              <div class="font-bold text-sm">${gh.nombre}</div>
+              <div class="text-outline text-[9px] uppercase font-bold tracking-wider">Invernadero Activo</div>
+            </div>
+          </div>
+          <span class="material-symbols-outlined text-tertiary-fixed text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+        </a>`).join('');
+    }
+  } catch { }
+}
+
+function openNewGhModal() {
+  document.getElementById('new-gh-name').value = '';
+  document.getElementById('new-gh-err').textContent = '';
+  document.getElementById('new-gh-modal').classList.remove('hidden');
+  document.getElementById('new-gh-modal').classList.add('flex');
+}
+function closeNewGhModal() {
+  document.getElementById('new-gh-modal').classList.add('hidden');
+}
+
+async function createGreenhouse() {
+  const nombre = document.getElementById('new-gh-name').value.trim();
+  if (!nombre) return;
+  try {
+    const r = await fetch('/crear-invernadero', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre })
+    });
+    if (r.ok) {
+      const gh = await r.json();
+      window.location.href = `/invernadero/${gh.id}`;
+    }
+  } catch { }
+}
+
+loadGreenhouses();
+</script>
+{% include '_chat_widget.html' %}
+</body>
+</html>

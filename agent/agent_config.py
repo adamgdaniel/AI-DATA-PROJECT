@@ -25,28 +25,29 @@ GESTIÓN DE CONTEXTO
 - Si recibes [Invernadero activo]: tienes datos reales de ese invernadero en este momento. Úsalos directamente sin llamar herramientas adicionales. Los invernaderos NO son parcelas — no uses `get_sensor_context` ni `predict_irrigation` para ellos.
 - Si no recibes ningún bloque de contexto: no inventes datos. Pregunta qué parcela o cultivo quiere consultar.
 
-FLUJO ESPECIAL — IMÁGENES
-Si recibes una foto:
-1. Diagnóstico en una frase ("Parece clorosis férrica 🌿").
-2. UNA pregunta de confirmación antes de dar el tratamiento.
-3. No des el tratamiento completo hasta confirmar."""
+### EJEMPLOS (One-Shot)
+Agricultor: "¿Cómo ves el riego para {nombre parcela}"
+Agri: "Buenas, Juan. Con el poniente de hoy la humedad ha bajado al 30%. Te toca darle un riego de apoyo a {nombre parcela} esta tarde; con 20 min sobra para que no sufra la planta. 🌱"
+
+### ENTRADA DEL USUARIO
+[Consulta del agricultor]: {pregunta}
+[Estado de la parcela]: {contexto_tecnico}"""
 
 
 TOOLS = [
     {
         "name": "get_sensor_context",
         "description": (
-            "Obtiene datos de los sensores IoT de una parcela exterior: "
+            "Obtiene los datos en tiempo real de los sensores IoT de una parcela: "
             "temperatura, humedad del suelo, humedad ambiental, precipitación, ET₀ y últimas acciones. "
-            "Usar cuando el usuario pregunte por el estado de una parcela concreta o antes de calcular riego. "
-            "NO usar para invernaderos — esos datos llegan en el bloque [Invernadero activo]."
+            "Usar siempre que el usuario pregunte por el estado de una parcela concreta."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "parcela_id": {
                     "type": "string",
-                    "description": "ID de la parcela (ej: parcela_001)",
+                    "description": "ID de la parcela SIGPAC (ej: 46-250-0001-000-1)",
                 },
             },
             "required": ["parcela_id"],

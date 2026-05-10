@@ -150,4 +150,109 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && panel.classList.contains('is-open')) closePanel();
   });
+
+  /* ── Saludo proactivo con efecto typewriter ──────────────── */
+  var greetBubble = document.getElementById('agro-greet-bubble');
+
+  if (greetBubble) {
+    var greetText  = greetBubble.querySelector('.agro-greet-bubble__text');
+    var greetClose = greetBubble.querySelector('.agro-greet-bubble__close');
+    var greetTimer = null;
+    var typeTimer  = null;
+
+    // Mensajes por sección
+    var greetMessages = {
+      parcelas: [
+        '¡Hola! 👋 Estoy listo para ayudarte con tus parcelas. Pregúntame lo que necesites.',
+        '¡Bienvenido a tus parcelas! 🌾 ¿Necesitas saber cuándo regar o consultar el estado del suelo?',
+        '¡Hola! Puedo analizar tus cultivos y recomendarte acciones. ¡Pregúntame! 🌱',
+        '¿Sabías que puedo predecir el riego óptimo para tus parcelas? Estoy aquí para ayudarte. 💧',
+        '¡Hey! 🚜 Si tienes dudas sobre tus cultivos o el clima, soy tu asistente. ¡Pregunta sin miedo!'
+      ],
+      invernadero: [
+        '¡Hola! 🌿 Estoy listo para ayudarte con tu invernadero. ¿En qué puedo ayudarte?',
+        '¡Bienvenido al invernadero! 🏡 Pregúntame sobre temperatura, humedad o el estado de tus plantas.',
+        '¿Necesitas ajustar las condiciones del invernadero? Pregúntame y te asesoro. 🌡️',
+        '¡Hola! Puedo ayudarte a monitorear tus plantas y optimizar el ambiente. 🌻',
+        '¡Hey! 🔬 Si algo no va bien con tus plantas, cuéntamelo. Estoy aquí para ayudar.'
+      ]
+    };
+
+    function detectSection() {
+      var path = window.location.pathname;
+      if (/\/mapa/.test(path)) return 'parcelas';
+      if (/\/(invernadero|mis-invernaderos|crear-invernadero|plantas-invernadero)/.test(path)) return 'invernadero';
+      return null;
+    }
+
+    function pickRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function typewriterShow(message) {
+      if (!greetText) return;
+      greetText.textContent = '';
+      greetText.classList.add('is-typing');
+      greetBubble.classList.add('is-visible');
+
+      var i = 0;
+      var speed = 28; // ms per character
+
+      function typeChar() {
+        if (i < message.length) {
+          greetText.textContent += message[i];
+          i++;
+          typeTimer = setTimeout(typeChar, speed);
+        } else {
+          // Finished typing — remove cursor after a short pause
+          setTimeout(function () {
+            greetText.classList.remove('is-typing');
+          }, 600);
+        }
+      }
+
+      typeChar();
+
+      // Auto-dismiss after 12 seconds
+      greetTimer = setTimeout(function () {
+        dismissGreet();
+      }, 12000);
+    }
+
+    function dismissGreet() {
+      clearTimeout(greetTimer);
+      clearTimeout(typeTimer);
+      greetBubble.classList.remove('is-visible');
+    }
+
+    // Close button
+    if (greetClose) {
+      greetClose.addEventListener('click', dismissGreet);
+    }
+
+    // Hide bubble when chat opens
+    var origOpen = openPanel;
+    openPanel = function () {
+      dismissGreet();
+      origOpen();
+    };
+
+    // Click on bubble opens the chat
+    greetBubble.addEventListener('click', function (e) {
+      if (e.target === greetClose) return; // let close button handle itself
+      dismissGreet();
+      openPanel();
+    });
+
+    // Trigger greeting every time the user visits parcelas / invernadero
+    var section = detectSection();
+    if (section) {
+      // Small delay so page renders first
+      setTimeout(function () {
+        var msg = pickRandom(greetMessages[section]);
+        typewriterShow(msg);
+      }, 1200);
+    }
+  }
+
 })();
