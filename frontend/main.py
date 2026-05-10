@@ -769,6 +769,11 @@ def registrar_accion():
         return jsonify({'error': str(e)}), 502
 
 
+# ─────────────────────────────────────────────────────────────
+# REEMPLAZA solo la función chat() en frontend/main.py
+# Busca: @app.route('/chat', methods=['POST'])
+# ─────────────────────────────────────────────────────────────
+
 @app.route('/chat', methods=['POST'])
 def chat():
     if 'user_id' not in session:
@@ -777,6 +782,7 @@ def chat():
     if not AGENT_URL:
         return jsonify({'error': 'Agente no configurado'}), 503
 
+    # Obtener lista de parcelas del usuario desde data-api
     parcelas_usuario = []
     try:
         r = requests.get(
@@ -799,16 +805,22 @@ def chat():
     except Exception as e:
         logger.warning("No se pudieron obtener parcelas del usuario: %s", e)
 
+    payload = {
+        'user_id':          str(session['user_id']),
+        'parcela_id':       data.get('parcela_id'),
+        'parcelas_usuario': parcelas_usuario,
+        'mensaje':          data.get('mensaje', ''),
+    }
+
+    # Pasar contexto del invernadero si el frontend lo envía
+    if data.get('contexto_invernadero'):
+        payload['contexto_invernadero'] = data['contexto_invernadero']
+
     try:
         resp = requests.post(
             f'{AGENT_URL}/agent/chat',
-            json={
-                'user_id':          str(session['user_id']),
-                'parcela_id':       data.get('parcela_id'),
-                'parcelas_usuario': parcelas_usuario,
-                'mensaje':          data.get('mensaje', ''),
-            },
-            timeout=30
+            json=payload,
+            timeout=30,
         )
         return jsonify(resp.json()), resp.status_code
     except Exception as e:
