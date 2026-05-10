@@ -545,7 +545,26 @@ def iot_eliminar_sensor():
 def invernadero():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('greenhouse.html')
+    return render_template('greenhouse_landing.html')
+
+
+@app.route('/invernadero/<int:inv_id>')
+def invernadero_detalle(inv_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('greenhouse_grid.html')
+
+
+@app.route('/preview-invernadero')
+def preview_invernadero():
+    """Route for previewing UI changes without requiring login (dev only)."""
+    return render_template('greenhouse_landing.html')
+
+
+@app.route('/preview-invernadero-detalle')
+def preview_invernadero_detalle():
+    """Route for previewing UI changes without requiring login (dev only)."""
+    return render_template('greenhouse_grid.html')
 
 
 @app.route('/mis-invernaderos')

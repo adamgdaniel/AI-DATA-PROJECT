@@ -4,6 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AgroMonitor – Mis Parcelas</title>
+  <link rel="icon" type="image/png" href="/icons/logo_dark_green.png"/>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
@@ -519,7 +520,11 @@
             const color = CROP_COLORS[p.cultivo] || '#95a5a6';
 
             if (p.geometria) {
-              L.geoJSON(p.geometria, { style: { color, weight: 3, opacity: 0.8, fillColor: color, fillOpacity: 0.3 } })
+              // Iniciamos con fillOpacity 0 para evitar la "mancha" durante el zoom inicial
+              L.geoJSON(p.geometria, { 
+                style: { color, weight: 3, opacity: 0.8, fillColor: color, fillOpacity: 0 },
+                className: 'parcel-poly' 
+              })
                 .on('click', (e) => { L.DomEvent.stopPropagation(e); mostrarDetalleParcela(p); })
                 .addTo(misParcelasLayer);
             }
@@ -539,6 +544,20 @@
           if (!window._initZoom && misParcelasData[0]) {
             window._initZoom = true;
             map.flyTo([misParcelasData[0].lat, misParcelasData[0].lng], 18);
+            
+            // Una vez terminado el flyTo, restauramos el relleno de las parcelas
+            map.once('moveend', () => {
+              misParcelasLayer.eachLayer(layer => {
+                if (layer.setStyle) {
+                  layer.setStyle({ fillOpacity: 0.3 });
+                }
+              });
+            });
+          } else {
+            // Si no hay zoom inicial (ya se hizo), aseguramos que tengan relleno
+            misParcelasLayer.eachLayer(layer => {
+              if (layer.setStyle) layer.setStyle({ fillOpacity: 0.3 });
+            });
           }
         });
     }

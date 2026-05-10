@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgroMonitor – Invernaderos</title>
+  <link rel="icon" type="image/png" href="/icons/logo_dark_green.png"/>
+  
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            "primary":                  "#061b0e",
+            "on-primary":               "#ffffff",
+            "primary-container":        "#1b3022",
+            "tertiary":                 "#6ca200",
+            "tertiary-fixed":           "#b2f746",
+            "background":               "#f8f9fa",
+            "outline":                  "#737973",
+            "outline-variant":          "#c3c8c1",
+            "error":                    "#ba1a1a",
+          },
+          fontFamily: { sans: ["Inter", "sans-serif"] }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --cell: clamp(48px, 6.5vw, 84px);
+    }
+
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .glass-dark {
+      background: rgba(6, 27, 14, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+      background: url('/icons/invernadero_fondo.png') center center / cover no-repeat;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #iso-grid {
+      display: grid;
+      grid-template-columns: repeat(10, var(--cell));
+      grid-template-rows: repeat(7, var(--cell));
+      transform: rotateX(60deg) rotateZ(45deg);
+      transform-origin: center center;
+      transform-style: preserve-3d;
+    }
+
+    .cell {
+      width: var(--cell); height: var(--cell);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: background 0.12s;
+      transform-style: preserve-3d;
+    }
+    .cell:hover { background: rgba(108, 162, 0, 0.2); }
+    .cell.drag-over { background: rgba(178, 247, 70, 0.3) !important; outline: 3px solid #b2f746 inset; }
+    .cell.occupied { background: transparent; pointer-events: none; }
+
+    .plant {
+      position: relative;
+      width: calc(var(--cell) * 1.8);
+      height: var(--cell);
+      cursor: pointer;
+      background: rgba(60, 30, 10, 0.45);
+      border: 1.5px solid rgba(120, 70, 20, 0.7);
+      border-radius: 6px;
+      transition: background 0.12s;
+      transform-style: preserve-3d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .plant:hover { background: rgba(90, 50, 15, 0.6); }
+    .plant img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; transform: translateY(-10px); filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); }
+
+    .sensor-dot {
+      position: absolute; top: 4px; right: 4px;
+      width: 10px; height: 100%; border-radius: 50%;
+      background: #b2f746; border: 2px solid #061b0e;
+      box-shadow: 0 0 10px #b2f74688;
+      display: none;
+    }
+
+    /* SOIL CHIP - PROPORTIONAL FIX */
+    .soil-chip {
+      position: absolute;
+      top: -65px; 
+      left: 50%;
+      transform: translateX(-50%) rotateZ(-45deg) rotateX(-60deg) scale(1.1);
+      transform-origin: bottom center;
+      background: rgba(6, 27, 14, 0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-left: 4px solid #b2f746;
+      color: #ffffff;
+      padding: 4px 10px; 
+      border-radius: 8px;
+      font-size: 15px; 
+      font-weight: 800;
+      white-space: nowrap;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
+  </style>
+  <link rel="stylesheet" href="/static/theme-override.css"/>
+</head>
+<body class="font-sans antialiased text-primary">
+
+<!-- ── MAIN HEADER ────────────────────────────────────────────────── -->
+<header class="fixed top-4 left-4 right-4 z-[1000] flex items-center justify-between px-6 py-3 rounded-2xl glass-panel shadow-lg">
+  <div class="flex items-center gap-4">
+    <a href="/invernadero" class="p-2 rounded-xl hover:bg-primary/5 text-primary transition-colors">
+      <span class="material-symbols-outlined">arrow_back</span>
+    </a>
+    <div class="w-px h-6 bg-outline-variant"></div>
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🏡</span>
+      <span id="header-gh-name" class="font-bold text-lg tracking-tight text-primary">Invernadero</span>
+    </div>
+  </div>
+
+  <div id="inv-sensor-widget" class="hidden md:flex items-center gap-8 px-8 py-2 rounded-xl bg-primary/5 border border-primary/10">
+    <div class="text-center">
+      <p class="text-[9px] font-bold text-outline uppercase tracking-widest">Temperatura</p>
+      <p id="inv-temp" class="text-lg font-black text-primary">—<span class="text-xs font-bold text-outline ml-0.5">°C</span></p>
+    </div>
+    <div class="w-px h-8 bg-primary/10"></div>
+    <div class="text-center">
+      <p class="text-[9px] font-bold text-outline uppercase tracking-widest">Humedad Amb.</p>
+      <p id="inv-hum" class="text-lg font-black text-primary">—<span class="text-xs font-bold text-outline ml-0.5">%</span></p>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <button id="btn-sensor-gh" onclick="openGhSensorModal()" class="p-2.5 rounded-xl hover:bg-primary/5 text-outline hover:text-primary transition-all">
+      <span class="material-symbols-outlined">settings_remote</span>
+    </button>
+    <button id="btn-del-gh" onclick="deleteGreenhouse()" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all">
+      <span class="material-symbols-outlined">delete</span>
+    </button>
+  </div>
+</header>
+
+<!-- ── GRID AREA ─────────────────────────────────────────────────── -->
+<div id="grid-area" class="flex-1 flex items-center justify-center relative pt-12">
+  <div class="grid-scene">
+    <div id="iso-grid"></div>
+  </div>
+</div>
+
+<!-- ── TOOLBAR ────────────────────────────────────────────────────── -->
+<div id="toolbar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1000] p-3 rounded-[2.5rem] glass-dark shadow-2xl border border-white/10 flex items-center gap-4">
+  <div id="toolbar-inner" class="flex items-center gap-2 px-2">
+    <div class="crop-btn p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all group" 
+         draggable="true" data-crop="tomate" ondragstart="onCropDragStart(event,'tomate')" onclick="selectCrop('tomate')">
+      <img class="w-8 h-8 object-contain group-hover:scale-110 transition-transform" src="/icons/icons-invernadero/tomate-removebg-preview.png"/>
+    </div>
+    <div class="crop-btn p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all group" 
+         draggable="true" data-crop="pepino" ondragstart="onCropDragStart(event,'pepino')" onclick="selectCrop('pepino')">
+      <img class="w-8 h-8 object-contain group-hover:scale-110 transition-transform" src="/icons/icons-invernadero/pepino-removebg-preview.png"/>
+    </div>
+    <div class="crop-btn p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all group" 
+         draggable="true" data-crop="pimiento" ondragstart="onCropDragStart(event,'pimiento')" onclick="selectCrop('pimiento')">
+      <img class="w-8 h-8 object-contain group-hover:scale-110 transition-transform" src="/icons/icons-invernadero/pimiento-removebg-preview.png"/>
+    </div>
+    <div class="crop-btn p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all group" 
+         draggable="true" data-crop="calabacin" ondragstart="onCropDragStart(event,'calabacin')" onclick="selectCrop('calabacin')">
+      <img class="w-8 h-8 object-contain group-hover:scale-110 transition-transform" src="/icons/icons-invernadero/calabacin-removebg-preview.png"/>
+    </div>
+  </div>
+  <div class="w-px h-10 bg-white/10"></div>
+  <div class="pr-6 pl-2 text-left">
+    <p id="toolbar-hint-label" class="text-[10px] font-bold text-white/40 uppercase tracking-widest">Modo Plantado</p>
+    <p id="toolbar-hint" class="text-xs text-tertiary-fixed font-medium">Arrastra un cultivo al suelo</p>
+  </div>
+</div>
+
+<!-- Modal: variety picker -->
+<div id="variety-modal" class="fixed inset-0 z-[3000] hidden items-center justify-center p-4 bg-primary/60 backdrop-blur-md">
+  <div class="w-full max-w-xs glass-panel rounded-3xl shadow-2xl p-8 border border-white/60">
+    <div id="variety-modal-content" class="space-y-3 text-center"></div>
+  </div>
+</div>
+
+<!-- Modal: invernadero sensor -->
+<div id="gh-sensor-modal" class="fixed inset-0 z-[3000] hidden items-center justify-center p-4 bg-primary/60 backdrop-blur-md">
+  <div class="w-full max-w-sm glass-panel rounded-3xl shadow-2xl p-8 border border-white/60">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-black text-primary">Ajustes del Sector</h3>
+      <button onclick="closeGhSensorModal()" class="text-outline hover:text-primary"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <p class="text-xs text-outline mb-6">Vincula sensores de Home Assistant para monitorizar este invernadero en tiempo real.</p>
+    <div id="gh-sensor-modal-content" class="space-y-6"></div>
+  </div>
+</div>
+
+<!-- Modal: plant detail -->
+<div id="plant-modal" class="fixed inset-0 z-[3000] hidden items-center justify-center p-4 bg-primary/60 backdrop-blur-md">
+  <div class="w-full max-w-sm glass-panel rounded-3xl shadow-2xl p-8 border border-white/60">
+    <button class="absolute top-6 right-6 text-outline hover:text-primary" onclick="closePlantModal()"><span class="material-symbols-outlined">close</span></button>
+    <div id="plant-modal-content"></div>
+  </div>
+</div>
+
+<script>
+const invId = window.location.pathname.split('/').pop();
+const CROPS = {
+  tomate:    { img: '/icons/icons-invernadero/tomate-removebg-preview.png',      label: 'Tomate',    color: '#c0392b' },
+  pepino:    { img: '/icons/icons-invernadero/pepino-removebg-preview.png',     label: 'Pepino',    color: '#27ae60' },
+  pimiento:  { img: '/icons/icons-invernadero/pimiento-removebg-preview.png', label: 'Pimiento',  color: '#e67e22' },
+  calabacin: { img: '/icons/icons-invernadero/calabacin-removebg-preview.png',    label: 'Calabacín', color: '#2ecc71' }
+};
+const VARIETIES = {
+  tomate:    ['Rama/LongLife', 'Pera', 'Cherry'],
+  pimiento:  ['California', 'Lamuyo'],
+  pepino:    ['Holandés'],
+  calabacin: ['Verde oscuro']
+};
+const VARIETY_ICONS = {
+  tomate: {
+    'Rama/LongLife': '/icons/icons-invernadero/tomate_long_life-removebg-preview.png',
+    'Pera': '/icons/icons-invernadero/tomate_pera-removebg-preview.png',
+    'Cherry': '/icons/icons-invernadero/cherry-removebg-preview.png'
+  },
+  pepino: { 'Holandés': '/icons/icons-invernadero/pepino_holandes-removebg-preview.png' },
+  pimiento: { 'California': '/icons/icons-invernadero/pimiento-removebg-preview.png', 'Lamuyo': '/icons/icons-invernadero/lamuyo-removebg-preview.png' },
+  calabacin: { 'Verde oscuro': '/icons/icons-invernadero/calabacin_verde_oscuro-removebg-preview.png' }
+};
+
+let plants = [];
+let greenhouses = [];
+let dragCrop = null;
+let selectedCrop = null;
+let ghSensorData = { invernadero: {}, plantas: {} };
+let ghStream = null;
+
+async function init() {
+  await loadGreenhouses();
+  await loadPlantas();
+  ghStream = new EventSource(`/stream/invernadero/${invId}`);
+  ghStream.onmessage = (e) => {
+    try { ghSensorData = JSON.parse(e.data); updateSensorWidget(); renderGrid(); } catch {}
+  };
+}
+
+async function loadGreenhouses() {
+  const r = await fetch('/mis-invernaderos');
+  greenhouses = await r.json();
+  const gh = greenhouses.find(g => String(g.id) === invId);
+  if (gh) document.getElementById('header-gh-name').textContent = gh.nombre;
+}
+
+async function loadPlantas() {
+  const r = await fetch(`/plantas-invernadero/${invId}`);
+  plants = await r.json();
+  renderGrid();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('iso-grid');
+  grid.innerHTML = '';
+  const occupied = new Set();
+  plants.forEach(p => { occupied.add(`${p.grid_row},${p.grid_col}`); occupied.add(`${p.grid_row},${p.grid_col + 1}`); });
+
+  for (let row = 0; row < 7; row++) {
+    for (let col = 0; col < 10; col++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.gridRow = row + 1; cell.style.gridColumn = col + 1;
+      cell.dataset.row = row; cell.dataset.col = col;
+
+      if (occupied.has(`${row},${col}`)) {
+        cell.classList.add('occupied');
+      } else {
+        cell.addEventListener('dragover', e => { e.preventDefault(); cell.classList.add('drag-over'); });
+        cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+        cell.addEventListener('drop', e => { e.preventDefault(); cell.classList.remove('drag-over'); placePlant(parseInt(cell.dataset.row), parseInt(cell.dataset.col)); });
+        cell.addEventListener('click', () => { if (selectedCrop) placePlant(parseInt(cell.dataset.row), parseInt(cell.dataset.col)); });
+      }
+      grid.appendChild(cell);
+    }
+  }
+
+  plants.forEach(plant => {
+    const el = document.createElement('div');
+    el.className = 'plant';
+    el.style.gridRow = plant.grid_row + 1; el.style.gridColumn = `${plant.grid_col + 1} / span 2`;
+    el.style.zIndex = 5;
+    const variantImg = (VARIETY_ICONS[plant.tipo] || {})[plant.variedad];
+    const fallbackImg = CROPS[plant.tipo]?.img;
+    el.innerHTML = `<img src="${variantImg || fallbackImg}">`;
+
+    const plantaData = ghSensorData.plantas && ghSensorData.plantas[String(plant.id)];
+    if (plantaData && plantaData.humedad_suelo != null) {
+      const chip = document.createElement('div');
+      chip.className = 'soil-chip';
+      chip.innerHTML = `<span>💧</span><span>${parseFloat(plantaData.humedad_suelo).toFixed(0)}%</span>`;
+      el.appendChild(chip);
+    }
+    el.addEventListener('click', () => openPlantModal(plant));
+    grid.appendChild(el);
+  });
+}
+
+function placePlant(row, col) {
+  const tipo = dragCrop || selectedCrop;
+  if (!tipo || col + 1 >= 10) return;
+  dragCrop = null;
+  const varieties = VARIETIES[tipo] || [];
+  if (varieties.length === 1) { confirmPlacePlant(row, col, tipo, varieties[0]); return; }
+  openVarietyModal(row, col, tipo);
+}
+
+function openVarietyModal(row, col, tipo) {
+  pendingPlant = { row, col, tipo };
+  const crop = CROPS[tipo];
+  let html = `<div class="space-y-4">
+    <div class="mb-4"><img src="${crop.img}" class="w-12 h-12 mx-auto mb-2"><h3 class="text-primary font-black uppercase text-xs tracking-widest">${crop.label}</h3></div>
+    <div class="space-y-2">`;
+  (VARIETIES[tipo] || []).forEach(v => {
+    html += `<button class="w-full py-3 bg-primary/5 hover:bg-tertiary/10 text-primary font-bold rounded-xl border border-primary/10 transition-all text-sm" onclick="selectVariety('${v}')">${v}</button>`;
+  });
+  html += `</div><button class="w-full py-2 text-xs font-bold text-outline hover:text-primary mt-2" onclick="closeVarietyModal()">Cancelar</button></div>`;
+  document.getElementById('variety-modal-content').innerHTML = html;
+  document.getElementById('variety-modal').classList.remove('hidden'); document.getElementById('variety-modal').classList.add('flex');
+}
+
+function closeVarietyModal() { document.getElementById('variety-modal').classList.add('hidden'); document.getElementById('variety-modal').classList.remove('flex'); }
+
+async function selectVariety(variedad) {
+  const { row, col, tipo } = pendingPlant;
+  closeVarietyModal();
+  await confirmPlacePlant(row, col, tipo, variedad);
+}
+
+async function confirmPlacePlant(row, col, tipo, variedad) {
+  const r = await fetch(`/anadir-planta/${invId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tipo, variedad, grid_col: col, grid_row: row })
+  });
+  if (r.ok) { plants.push(await r.json()); renderGrid(); }
+}
+
+function selectCrop(tipo) {
+  selectedCrop = selectedCrop === tipo ? null : tipo;
+  document.querySelectorAll('.crop-btn').forEach(btn => {
+    const isSelected = btn.dataset.crop === selectedCrop;
+    btn.classList.toggle('bg-tertiary/20', isSelected); btn.classList.toggle('border-tertiary/40', isSelected);
+  });
+}
+
+function onCropDragStart(e, tipo) { dragCrop = tipo; e.dataTransfer.setData('text/plain', tipo); selectedCrop = null; }
+
+async function deleteGreenhouse() {
+  if (confirm('¿Eliminar este invernadero?')) {
+    await fetch(`/eliminar-invernadero/${invId}`, { method: 'DELETE' });
+    window.location.href = '/invernadero';
+  }
+}
+
+function updateSensorWidget() {
+  const inv = ghSensorData.invernadero || {};
+  if (inv.temperatura != null) {
+    document.getElementById('inv-sensor-widget').classList.remove('hidden');
+    document.getElementById('inv-temp').innerHTML = `${parseFloat(inv.temperatura).toFixed(1)} <span class="text-xs font-bold text-outline">°C</span>`;
+    document.getElementById('inv-hum').innerHTML = `${parseFloat(inv.humedad_ambiental).toFixed(1)} <span class="text-xs font-bold text-outline">%</span>`;
+  }
+}
+
+// Plant Modal and Sensor linking logic (Restored)
+let modalPlant = null;
+function openPlantModal(plant) {
+  modalPlant = plant;
+  const crop = CROPS[plant.tipo];
+  const iconPath = (VARIETY_ICONS[plant.tipo] || {})[plant.variedad] || crop.img;
+  let html = `
+    <div class="flex items-center gap-4 mb-6">
+      <div class="w-16 h-16 rounded-2xl bg-white/50 flex items-center justify-center p-2 shadow-inner"><img src="${iconPath}" class="w-full h-full object-contain"></div>
+      <div><h3 class="text-xl font-black text-primary leading-tight">${crop.label}</h3><p class="text-xs text-outline font-bold uppercase tracking-widest">${plant.variedad}</p></div>
+    </div>
+    <button class="w-full py-4 text-[10px] font-black uppercase border-2 border-error/20 text-error rounded-2xl hover:bg-error hover:text-white transition-all" onclick="removePlant()">Eliminar planta</button>`;
+  document.getElementById('plant-modal-content').innerHTML = html;
+  document.getElementById('plant-modal').classList.remove('hidden'); document.getElementById('plant-modal').classList.add('flex');
+}
+
+function closePlantModal() { document.getElementById('plant-modal').classList.add('hidden'); }
+
+async function removePlant() {
+  await fetch(`/eliminar-planta/${invId}/${modalPlant.id}`, { method: 'DELETE' });
+  plants = plants.filter(p => p.id !== modalPlant.id);
+  renderGrid(); closePlantModal();
+}
+
+function openGhSensorModal() {
+  const gh = greenhouses.find(g => String(g.id) === invId);
+  document.getElementById('gh-sensor-modal-content').innerHTML = `
+    <div class="p-4 rounded-2xl bg-primary/5 border border-primary/10">
+      <p class="text-[10px] font-black uppercase text-primary mb-2">Sensores vinculados</p>
+      <p class="text-xs text-outline italic">Funcionalidad completa en el dashboard original.</p>
+    </div>`;
+  document.getElementById('gh-sensor-modal').classList.remove('hidden'); document.getElementById('gh-sensor-modal').classList.add('flex');
+}
+function closeGhSensorModal() { document.getElementById('gh-sensor-modal').classList.add('hidden'); }
+
+init();
+</script>
+{% include '_chat_widget.html' %}
+</body>
+</html>
