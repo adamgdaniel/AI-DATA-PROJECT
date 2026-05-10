@@ -50,13 +50,19 @@ def _get_sensor_context(args: dict) -> dict:
 
 
 def _predict_irrigation(args: dict) -> dict:
+    # Validación: los tres campos son required — fallamos limpio si faltan
+    parcela_id = args.get("parcela_id")
+    cultivo    = args.get("cultivo")
+    fase       = args.get("fase")
+    if not parcela_id or not cultivo or not fase:
+        return {"error": "Faltan datos obligatorios: parcela_id, cultivo y fase son necesarios."}
     try:
         resp = requests.post(
             f"{MODEL_SERVING_URL}/recomendar",
             json={
-                "parcela_id": args["parcela_id"],
-                "cultivo":    args["cultivo"],
-                "fase":       args["fase"],
+                "parcela_id": parcela_id,
+                "cultivo":    cultivo,
+                "fase":       fase,
                 "codigo_ine": args.get("codigo_ine", ""),
             },
             timeout=15,
