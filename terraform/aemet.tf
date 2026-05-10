@@ -49,6 +49,14 @@ resource "google_cloud_run_v2_job" "aemet_ingest" {
     template {
       service_account = google_service_account.cloudrun.email
 
+      vpc_access {
+        network_interfaces {
+          network    = "default"
+          subnetwork = "default"
+        }
+        egress = "PRIVATE_RANGES_ONLY"
+      }
+
       containers {
         image = "us-docker.pkg.dev/cloudrun/container/hello:latest"
 
