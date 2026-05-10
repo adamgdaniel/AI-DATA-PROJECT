@@ -131,7 +131,7 @@
           <span class="material-symbols-outlined text-sm">info</span>
           Explora tus parcelas
         </div>
-        Acércate al mapa (zoom &ge; 14) y haz clic sobre una parcela para seleccionarla.
+        Acércate al mapa y haz clic sobre una parcela para seleccionarla.
       </div>
 
       <!-- Scrollable content -->
@@ -537,9 +537,8 @@
             const color = CROP_COLORS[p.cultivo] || '#95a5a6';
 
             if (p.geometria) {
-              // Iniciamos con fillOpacity 0 para evitar la "mancha" durante el zoom inicial
               L.geoJSON(p.geometria, { 
-                style: { color, weight: 3, opacity: 0.8, fillColor: color, fillOpacity: 0 },
+                style: { color, weight: 3, opacity: 0.8, fillColor: color, fillOpacity: 0.3 },
                 className: 'parcel-poly' 
               })
                 .on('click', (e) => { L.DomEvent.stopPropagation(e); mostrarDetalleParcela(p); })
@@ -557,25 +556,6 @@
                 .addTo(misParcelasLayer);
             }
           });
-          
-          if (!window._initZoom && misParcelasData[0]) {
-            window._initZoom = true;
-            map.flyTo([misParcelasData[0].lat, misParcelasData[0].lng], 18);
-            
-            // Una vez terminado el flyTo, restauramos el relleno de las parcelas
-            map.once('moveend', () => {
-              misParcelasLayer.eachLayer(layer => {
-                if (layer.setStyle) {
-                  layer.setStyle({ fillOpacity: 0.3 });
-                }
-              });
-            });
-          } else {
-            // Si no hay zoom inicial (ya se hizo), aseguramos que tengan relleno
-            misParcelasLayer.eachLayer(layer => {
-              if (layer.setStyle) layer.setStyle({ fillOpacity: 0.3 });
-            });
-          }
         });
     }
 

@@ -132,19 +132,22 @@
 <!-- ── HEADER FLOTANTE (ESTILO MAPA) ──────────────────────────────── -->
 <header class="fixed top-4 left-4 right-4 z-[1000] flex items-center justify-between px-6 py-3 rounded-2xl glass-panel shadow-lg border border-white/40">
   <div class="flex items-center gap-4">
-    <a href="/invernadero" class="p-2 rounded-xl hover:bg-primary/5 text-primary transition-colors flex items-center gap-2">
+    <a href="/invernadero" class="p-2 rounded-xl hover:bg-primary/5 text-primary transition-colors flex items-center gap-2" title="Volver">
       <span class="material-symbols-outlined">arrow_back</span>
-      <span class="hidden sm:inline font-bold text-sm">Volver</span>
     </a>
-    <div class="w-px h-6 bg-outline-variant"></div>
-    <div class="flex items-center gap-3">
-      <span class="text-2xl">🏡</span>
-      <span id="header-gh-name" class="font-bold text-lg tracking-tight text-primary">Invernadero</span>
+    <div class="flex items-center gap-3 pl-2 sm:pl-0 sm:border-l-0 sm:ml-0">
+      <img src="/icons/logo_dark_green.png" alt="AgroMonitor" class="h-8 w-8 object-contain"/>
+      <span class="font-bold text-lg tracking-tight hidden sm:inline">AgroMonitor</span>
+    </div>
+    <div class="w-px h-6 bg-outline-variant mx-1 hidden sm:block"></div>
+    <div class="flex items-center gap-2">
+      <span class="text-xl hidden md:inline">🏡</span>
+      <span id="header-gh-name" class="font-bold text-lg tracking-tight text-primary truncate max-w-[120px] sm:max-w-xs">Invernadero</span>
     </div>
   </div>
 
   <!-- Invernadero sensor widget -->
-  <div id="inv-sensor-widget" class="hidden md:flex items-center gap-8 px-8 py-2 rounded-xl bg-primary/5 border border-primary/10">
+  <div id="inv-sensor-widget" class="hidden lg:flex items-center gap-8 px-8 py-2 rounded-xl bg-primary/5 border border-primary/10">
     <div class="text-center">
       <p class="text-[9px] font-bold text-outline uppercase tracking-widest">Temperatura</p>
       <p id="inv-temp" class="text-lg font-black text-primary">—<span class="text-xs font-bold text-outline ml-0.5">°C</span></p>
@@ -163,8 +166,8 @@
     <button onclick="deleteGreenhouse()" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all" title="Eliminar Invernadero">
       <span class="material-symbols-outlined">delete</span>
     </button>
-    <div class="w-px h-6 bg-outline-variant mx-1"></div>
-    <a href="/logout" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all" title="Salir">
+    <div class="w-px h-6 bg-outline-variant mx-1 hidden sm:block"></div>
+    <a href="/logout" class="p-2.5 rounded-xl hover:bg-error/5 text-error transition-all hidden sm:flex" title="Salir">
       <span class="material-symbols-outlined">logout</span>
     </a>
   </div>
