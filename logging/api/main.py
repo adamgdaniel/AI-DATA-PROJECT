@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from google.cloud import bigquery
+from google.cloud import bigquery, firestore
 import psycopg2
 import bcrypt
 import json
@@ -15,12 +15,19 @@ app = Flask(__name__)
 GCP_PROJECT_ID = os.environ.get('GCP_PROJECT_ID', '')
 
 _bq = None
+_fs = None
 
 def _bq_client():
     global _bq
     if _bq is None and GCP_PROJECT_ID:
         _bq = bigquery.Client(project=GCP_PROJECT_ID)
     return _bq
+
+def _fs_client():
+    global _fs
+    if _fs is None:
+        _fs = firestore.Client()
+    return _fs
 
 
 def get_db():
@@ -285,6 +292,17 @@ def registrar_evento():
     errors = client.insert_rows_json(table_id, [row])
     if errors:
         return jsonify({'error': str(errors)}), 500
+
+    # Actualizar estado actual en Firestore (best-effort, no bloquea si falla)
+    if entity_type == 'parcela':
+        try:
+            campo_map = {'riego': 'ultimo_riego', 'abonado': 'ultimo_abonado', 'poda': 'ultima_poda'}
+            fs_update = {campo_map[tipo_evento]: ts_str}
+            if tipo_evento == 'abonado' and data.get('valor'):
+                fs_update['tipo_abono'] = data['valor']
+            _fs_client().document(f'usuarios/{user_id}/parcelas/{entity_id}').set(fs_update, merge=True)
+        except Exception as e:
+            app.logger.warning(f"Firestore update skipped: {e}")
 
     return jsonify({'success': True}), 201
 

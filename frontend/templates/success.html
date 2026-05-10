@@ -14,7 +14,7 @@
     header {
       background: #f3f4f5; border-bottom: 1px solid #c3c8c1;
       box-shadow: 0 2px 8px rgba(27,48,34,0.08);
-      padding: 14px 28px;
+      padding: 5px 28px;
       display: flex; justify-content: space-between; align-items: center;
       flex-shrink: 0; z-index: 100;
     }
@@ -25,7 +25,7 @@
     .header-nav a {
       color: #434843; font-size: 13px; font-weight: 500; text-decoration: none;
       display: flex; align-items: center; gap: 6px;
-      padding: 6px 12px; border-radius: 8px; transition: background .15s, color .15s;
+      padding: 2px 12px; border-radius: 8px; transition: background .15s, color .15s;
     }
     .header-nav a:hover { background: #edeeef; color: #061b0e; }
     .header-nav a img { height: 18px; width: 18px; object-fit: contain; flex-shrink: 0; }
@@ -501,16 +501,14 @@
       const temp     = data.temperatura;
       const humAmb   = data.humedad_ambiental;
       const humSuelo = data.humedad_suelo;
-      const fuente   = data.fuente_temperatura;
       if (temp == null && humAmb == null) return;
 
       const items = [];
       if (temp     != null) items.push(`🌡 ${parseFloat(temp).toFixed(1)} °C`);
       if (humAmb   != null) items.push(`💧 ${parseFloat(humAmb).toFixed(0)} %`);
       if (humSuelo != null) items.push(`🌱 ${parseFloat(humSuelo).toFixed(0)} %`);
-      const srcLabel = fuente === 'sensor' ? '⚡ sensor IoT' : '🌐 Open-Meteo';
       const inner = items.join('<span class="spb-sep"> · </span>');
-      const html  = `<div class="sensor-popup-body"><div class="spb-readings">${inner}</div><div class="spb-src">${srcLabel}</div></div>`;
+      const html  = `<div class="sensor-popup-body"><div class="spb-readings">${inner}</div></div>`;
 
       if (sensorPopup) {
         sensorPopup.setContent(html);
@@ -670,11 +668,20 @@
             <div class="parcela-item" onclick="focusParcela('${p.parcela_id}')">
               <strong>
                 <img src="${CROP_IMGS[p.cultivo] || ''}" style="width:16px;height:16px;vertical-align:middle;object-fit:contain">
-                ${p.parcela_id}
+                ${p.nombre || p.parcela_id}
               </strong>
               ${p.cultivo}${p.variedad ? ' · ' + p.variedad : ''}${p.superficie ? ' · ' + p.superficie + ' ha' : ''}
             </div>
           `).join('');
+
+          // Auto-zoom to first parcel on first load
+          if (!window._initialZoomDone) {
+            window._initialZoomDone = true;
+            const first = parcelas.find(p => p.lat && p.lng);
+            if (first) {
+              map.flyTo([first.lat, first.lng], 15, { duration: 2.5 });
+            }
+          }
 
           parcelas.forEach(p => {
             misParcelasIds.add(p.parcela_id);
@@ -728,7 +735,7 @@
       document.getElementById('info-panel').style.display = 'none';
       abrirSensorStream(p);
       document.getElementById('dp-icon').innerHTML = `<img src="${CROP_IMGS[p.cultivo] || ''}" style="width:34px;height:34px;object-fit:contain">`;
-      document.getElementById('dp-id').textContent = p.parcela_id;
+      document.getElementById('dp-id').textContent = p.nombre || p.parcela_id;
       document.getElementById('dp-cultivo').textContent = p.cultivo + (p.variedad ? ' · ' + p.variedad : '');
       document.getElementById('dp-sup').textContent = p.superficie ?? '-';
       document.getElementById('detail-panel').style.display = 'block';
