@@ -23,6 +23,12 @@ resource "google_project_iam_member" "iot_pubsub_publisher" {
   member  = "serviceAccount:${google_service_account.iot.email}"
 }
 
+resource "google_project_iam_member" "iot_tasks_enqueuer" {
+  project = var.project_id
+  role    = "roles/cloudtasks.enqueuer"
+  member  = "serviceAccount:${google_service_account.iot.email}"
+}
+
 resource "google_service_account_iam_member" "cloudbuild_act_as_iot" {
   service_account_id = google_service_account.iot.name
   role               = "roles/iam.serviceAccountUser"
@@ -62,6 +68,37 @@ resource "google_secret_manager_secret_iam_member" "iot_read_encryption_key" {
   secret_id = google_secret_manager_secret.iot_encryption_key.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.iot.email}"
+}
+
+# --- Secret Manager: shared secret para callbacks de Cloud Tasks ---
+resource "google_secret_manager_secret" "iot_tasks_secret" {
+  secret_id = "iot-tasks-shared-secret"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "iot_read_tasks_secret" {
+  secret_id = google_secret_manager_secret.iot_tasks_secret.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.iot.email}"
+}
+
+# --- Cloud Tasks: cola para apagado diferido de válvulas ---
+resource "google_cloud_tasks_queue" "valve_timers" {
+  name     = "valve-timers"
+  location = var.region
+
+  rate_limits {
+    max_dispatches_per_second = 10
+    max_concurrent_dispatches = 10
+  }
+
+  retry_config {
+    max_attempts = 3
+    min_backoff  = "10s"
+    max_backoff  = "60s"
+  }
 }
 
 # --- Cloud Run Service: IoT API ---
@@ -108,6 +145,23 @@ resource "google_cloud_run_v2_service" "iot_api" {
           }
         }
       }
+      env {
+        name  = "CLOUD_TASKS_QUEUE"
+        value = google_cloud_tasks_queue.valve_timers.name
+      }
+      env {
+        name  = "CLOUD_TASKS_LOCATION"
+        value = var.region
+      }
+      env {
+        name = "TASKS_SHARED_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.iot_tasks_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
 
       volume_mounts {
         name       = "cloudsql"
@@ -129,7 +183,9 @@ resource "google_cloud_run_v2_service" "iot_api" {
 
   depends_on = [
     google_project_iam_member.iot_cloudsql,
-    google_secret_manager_secret_iam_member.iot_read_encryption_key
+    google_secret_manager_secret_iam_member.iot_read_encryption_key,
+    google_secret_manager_secret_iam_member.iot_read_tasks_secret,
+    google_cloud_tasks_queue.valve_timers
   ]
 }
 

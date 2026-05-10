@@ -98,6 +98,98 @@
     }
     #no-geom.show { display: flex; }
     #no-geom p { color: rgba(255,255,255,.5); font-size: 13px; line-height: 1.5; }
+
+    /* RIEGO FAB + MODAL */
+    #riego-fab {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(2,119,189,0.85); color: white;
+      border: 1px solid rgba(255,255,255,.3); border-radius: 22px;
+      padding: 8px 14px; font-family: inherit; font-size: 12px; font-weight: 700;
+      cursor: pointer; z-index: 5;
+      box-shadow: 0 4px 12px rgba(0,0,0,.4);
+      display: flex; align-items: center; gap: 6px;
+    }
+    #riego-fab:hover { background: rgba(2,119,189,1); }
+    #riego-modal {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,.75); align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    #riego-modal.show { display: flex; }
+    .rmodal-card {
+      background: #102a1c; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px; max-width: 420px; width: 100%;
+      max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    }
+    .rmodal-header {
+      padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .rmodal-header strong { font-size: 15px; color: #b2f746; }
+    .rmodal-close {
+      background: none; border: none; color: rgba(255,255,255,.5);
+      font-size: 20px; cursor: pointer; padding: 0 4px;
+    }
+    .rmodal-close:hover { color: white; }
+    .rmodal-body { padding: 14px 16px; }
+    .rmodal-body p.muted { color: rgba(255,255,255,.5); font-size: 12px; line-height: 1.5; }
+    .valve-card {
+      background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px; padding: 12px; margin-bottom: 10px;
+    }
+    .valve-name { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .valve-id { font-size: 10px; color: rgba(255,255,255,.4); font-family: monospace; }
+    .valve-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+    .valve-actions button {
+      padding: 7px 4px; font-family: inherit; font-size: 11px; font-weight: 600;
+      background: rgba(2,119,189,.2); color: #90cdf4;
+      border: 1px solid rgba(2,119,189,.4); border-radius: 6px; cursor: pointer;
+    }
+    .valve-actions button:hover { background: rgba(2,119,189,.4); color: white; }
+    .valve-actions button.off { background: rgba(186,26,26,.2); color: #f1948a; border-color: rgba(186,26,26,.4); }
+    .valve-actions button.off:hover { background: rgba(186,26,26,.5); color: white; }
+    .valve-actions button:disabled { opacity: .4; cursor: not-allowed; }
+    .valve-status {
+      font-size: 11px; padding: 4px 8px; border-radius: 10px;
+      background: rgba(255,255,255,.08); display: inline-block;
+    }
+    .valve-status.active { background: rgba(2,119,189,.4); color: white; }
+    .valve-delete {
+      background: none; border: none; color: rgba(255,255,255,.4);
+      font-size: 14px; cursor: pointer; float: right; margin-top: -2px;
+    }
+    .valve-delete:hover { color: #f1948a; }
+    .add-valve-btn {
+      width: 100%; padding: 10px; margin-top: 4px;
+      background: rgba(178,247,70,.1); color: #b2f746;
+      border: 1px dashed rgba(178,247,70,.4); border-radius: 8px;
+      font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .add-valve-btn:hover { background: rgba(178,247,70,.2); }
+    .conn-pick, .discover-list {
+      background: rgba(255,255,255,.05); padding: 10px;
+      border-radius: 8px; margin-bottom: 8px;
+    }
+    .conn-pick label { font-size: 11px; color: rgba(255,255,255,.6); display: block; margin-bottom: 4px; }
+    .conn-pick select {
+      width: 100%; padding: 7px; background: #061b0e; color: white;
+      border: 1px solid rgba(255,255,255,.15); border-radius: 6px; font-family: inherit; font-size: 12px;
+    }
+    .discover-item {
+      padding: 8px 10px; background: rgba(255,255,255,.04); border-radius: 6px;
+      margin-bottom: 6px; cursor: pointer; font-size: 12px;
+      border: 1px solid transparent;
+    }
+    .discover-item:hover { border-color: rgba(178,247,70,.5); background: rgba(178,247,70,.05); }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #1a3a27; color: white; padding: 10px 20px;
+      border-radius: 20px; font-size: 13px; z-index: 200;
+      box-shadow: 0 4px 16px rgba(0,0,0,.4);
+      border: 1px solid rgba(178,247,70,.3);
+    }
+    .toast.error { border-color: rgba(186,26,26,.6); color: #f1948a; }
   </style>
 </head>
 <body>
@@ -124,10 +216,23 @@
 <div id="canvas-wrap">
   <canvas id="c"></canvas>
   <div id="hint">Arrastra para seleccionar cuadrículas</div>
+  <button id="riego-fab" onclick="openRiegoModal()">💧 Riego</button>
   <div id="no-geom">
     <p style="font-size:32px">⚠️</p>
     <p>Esta parcela no tiene geometría guardada.<br>
        Elimínala y vuelve a registrarla desde el mapa para ver la cuadrícula.</p>
+  </div>
+</div>
+
+<div id="riego-modal" onclick="if(event.target.id==='riego-modal')closeRiegoModal()">
+  <div class="rmodal-card">
+    <div class="rmodal-header">
+      <strong>💧 Riego inteligente</strong>
+      <button class="rmodal-close" onclick="closeRiegoModal()">×</button>
+    </div>
+    <div class="rmodal-body" id="riego-body">
+      <p class="muted">Cargando válvulas…</p>
+    </div>
   </div>
 </div>
 
@@ -431,6 +536,182 @@
   const ro = new ResizeObserver(resize);
   ro.observe(canvas.parentElement);
   resize();
+
+  // ══════════════════════════════════════════════════════════════════════
+  // RIEGO INTELIGENTE — control de válvulas vía Home Assistant
+  // ══════════════════════════════════════════════════════════════════════
+  const PARCELA_DB_ID = PARCELA.id;
+
+  function showToast(msg, isError) {
+    const t = document.createElement('div');
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  function openRiegoModal() {
+    document.getElementById('riego-modal').classList.add('show');
+    renderValvulas();
+  }
+  function closeRiegoModal() {
+    document.getElementById('riego-modal').classList.remove('show');
+  }
+
+  async function renderValvulas() {
+    const body = document.getElementById('riego-body');
+    body.innerHTML = '<p class="muted">Cargando válvulas…</p>';
+    try {
+      const r = await fetch(`/iot/mis-valvulas?parcela_usuario_id=${PARCELA_DB_ID}`);
+      const valvulas = await r.json();
+      if (!Array.isArray(valvulas) || valvulas.length === 0) {
+        body.innerHTML = `
+          <p class="muted">No tienes válvulas registradas en esta parcela.<br>
+          Conecta primero Home Assistant y añade una válvula inteligente.</p>
+          <button class="add-valve-btn" onclick="startAddValve()">+ Añadir válvula</button>`;
+        return;
+      }
+      body.innerHTML = valvulas.map(v => `
+        <div class="valve-card" data-sensor="${v.sensor_id}">
+          <button class="valve-delete" title="Eliminar"
+                  onclick="deleteValvula('${v.sensor_id.replace(/'/g, "\\'")}')">🗑</button>
+          <div class="valve-name">${v.display_name || v.sensor_id}</div>
+          <div class="valve-id">${v.sensor_id}</div>
+          <div class="valve-actions">
+            <button onclick="comando('${v.sensor_id.replace(/'/g, "\\'")}','on',null,this)">On</button>
+            <button onclick="comando('${v.sensor_id.replace(/'/g, "\\'")}','on',2,this)">2 min</button>
+            <button onclick="comando('${v.sensor_id.replace(/'/g, "\\'")}','on',5,this)">5 min</button>
+            <button onclick="comando('${v.sensor_id.replace(/'/g, "\\'")}','on',15,this)">15 min</button>
+          </div>
+          <div class="valve-actions" style="grid-template-columns:1fr;margin-top:6px;">
+            <button class="off" onclick="comando('${v.sensor_id.replace(/'/g, "\\'")}','off',null,this)">⏹ Apagar</button>
+          </div>
+        </div>
+      `).join('') + `<button class="add-valve-btn" onclick="startAddValve()">+ Añadir válvula</button>`;
+    } catch (e) {
+      body.innerHTML = `<p class="muted">Error cargando válvulas: ${e.message}</p>`;
+    }
+  }
+
+  async function comando(sensor_id, action, duration_minutes, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    try {
+      const r = await fetch('/iot/comando-valvula', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          sensor_id, action, duration_minutes,
+          parcela_id: PARCELA.parcela_id
+        })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        showToast(data.error || 'Error enviando orden', true);
+      } else if (action === 'on' && data.scheduled_off) {
+        showToast(`💧 Riego activo · se apagará en ${data.duration_minutes} min`);
+      } else if (action === 'on') {
+        showToast('💧 Válvula encendida');
+      } else {
+        showToast('⏹ Válvula apagada');
+      }
+    } catch (e) {
+      showToast('Error de red: ' + e.message, true);
+    } finally {
+      renderValvulas();
+    }
+  }
+
+  async function deleteValvula(sensor_id) {
+    if (!confirm('¿Eliminar esta válvula del sistema? (no la apaga, solo la desvincula)')) return;
+    try {
+      await fetch('/iot/eliminar-valvula', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sensor_id})
+      });
+      showToast('Válvula eliminada');
+      renderValvulas();
+    } catch (e) {
+      showToast('Error eliminando: ' + e.message, true);
+    }
+  }
+
+  async function startAddValve() {
+    const body = document.getElementById('riego-body');
+    body.innerHTML = '<p class="muted">Buscando conexiones HA…</p>';
+    try {
+      const r = await fetch('/mis-conexiones-ha');
+      const conns = await r.json();
+      if (!Array.isArray(conns) || conns.length === 0) {
+        body.innerHTML = `
+          <p class="muted">No tienes ninguna conexión a Home Assistant.<br>
+          <a href="/home-assistant" style="color:#b2f746;">Configurar HA →</a></p>
+          <button class="add-valve-btn" onclick="renderValvulas()">← Volver</button>`;
+        return;
+      }
+      body.innerHTML = `
+        <div class="conn-pick">
+          <label>Conexión Home Assistant</label>
+          <select id="conn-select">
+            ${conns.map(c => `<option value="${c.connection_id}">${c.display_name || c.ha_url}</option>`).join('')}
+          </select>
+        </div>
+        <button class="add-valve-btn" onclick="discoverValvulas()">🔍 Buscar válvulas en HA</button>
+        <button class="add-valve-btn" style="background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);border-style:solid;margin-top:6px;"
+                onclick="renderValvulas()">← Volver</button>
+        <div id="discover-results"></div>`;
+    } catch (e) {
+      body.innerHTML = `<p class="muted">Error: ${e.message}</p>`;
+    }
+  }
+
+  async function discoverValvulas() {
+    const connId = document.getElementById('conn-select').value;
+    const results = document.getElementById('discover-results');
+    results.innerHTML = '<p class="muted" style="margin-top:10px;">Buscando…</p>';
+    try {
+      const r = await fetch(`/iot/descubrir-valvulas?connection_id=${connId}`);
+      const items = await r.json();
+      if (!Array.isArray(items) || items.length === 0) {
+        results.innerHTML = `<p class="muted" style="margin-top:10px;">
+          No se encontraron válvulas/switches con nombre relacionado a riego.<br>
+          Renombra el dispositivo en HA con palabras como "valvula", "riego" o ponle device_class "valve".
+        </p>`;
+        return;
+      }
+      results.innerHTML = '<div class="discover-list">' + items.map(it => `
+        <div class="discover-item"
+             onclick="registerValvula('${connId}','${it.sensor_id.replace(/'/g, "\\'")}','${(it.display_name||'').replace(/'/g, "\\'")}')">
+          <strong>${it.display_name || it.sensor_id}</strong><br>
+          <span style="color:rgba(255,255,255,.5);font-size:10px;font-family:monospace;">${it.sensor_id}</span>
+        </div>`).join('') + '</div>';
+    } catch (e) {
+      results.innerHTML = `<p class="muted">Error: ${e.message}</p>`;
+    }
+  }
+
+  async function registerValvula(connection_id, sensor_id, display_name) {
+    try {
+      const r = await fetch('/iot/registrar-valvula', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          sensor_id, connection_id,
+          location_id: PARCELA_DB_ID,
+          display_name: display_name || sensor_id
+        })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        showToast(data.error || 'Error registrando', true);
+        return;
+      }
+      showToast('✅ Válvula vinculada');
+      renderValvulas();
+    } catch (e) {
+      showToast('Error de red: ' + e.message, true);
+    }
+  }
 </script>
 {% include '_chat_widget.html' %}
 </body>

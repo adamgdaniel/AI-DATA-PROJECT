@@ -22,6 +22,10 @@ output "sensor_api_url" {
   value = google_cloud_run_v2_service.sensor_api.uri
 }
 
+output "iot_api_url" {
+  value = google_cloud_run_v2_service.iot_api.uri
+}
+
 output "model_serving_url" {
   value = google_cloud_run_v2_service.model_serving.uri
 }

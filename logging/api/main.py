@@ -243,6 +243,27 @@ def registrar_evento():
     if tipo_evento not in ('riego', 'abonado', 'poda'):
         return jsonify({'error': 'tipo_evento debe ser riego, abonado o poda'}), 400
 
+    # Timestamp: si el cliente envía 'fecha' (YYYY-MM-DD) o 'timestamp' (ISO), lo usamos.
+    # Si no, NOW() en UTC. Aceptamos solo fecha porque el agricultor indica el día,
+    # no la hora exacta — fijamos hora a 12:00 para que caiga claro dentro del día.
+    ts_str = None
+    fecha = data.get('fecha')
+    timestamp_in = data.get('timestamp')
+    if fecha:
+        try:
+            d = datetime.strptime(fecha, '%Y-%m-%d')
+            ts_str = d.strftime('%Y-%m-%dT12:00:00')
+        except ValueError:
+            return jsonify({'error': "fecha debe tener formato YYYY-MM-DD"}), 400
+    elif timestamp_in:
+        try:
+            d = datetime.fromisoformat(timestamp_in.replace('Z', '+00:00'))
+            ts_str = d.strftime('%Y-%m-%dT%H:%M:%S')
+        except ValueError:
+            return jsonify({'error': "timestamp inválido (ISO 8601)"}), 400
+    else:
+        ts_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
+
     client = _bq_client()
     if not client:
         return jsonify({'error': 'BigQuery no configurado'}), 503
@@ -251,7 +272,7 @@ def registrar_evento():
         'user_id':     str(user_id),
         'entity_type': entity_type,
         'entity_id':   entity_id,
-        'timestamp':   datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S'),
+        'timestamp':   ts_str,
         'tipo_evento': tipo_evento,
         'valor':       data.get('valor'),
     }
